@@ -182,7 +182,84 @@ public class PatternCatalog {
                 blackboard(),
                 voting(),
                 debate(),
-                bdi());
+                bdi(),
+                kennelDesk());
+    }
+
+    // 14 — the capstone: four patterns composed into one system
+    private PatternDef kennelDesk() {
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "request", "input", 0),
+                        node("router", "KennelRouter", "router", 1),
+                        node("behaviour", "BehaviourExpert", "agent", 2),
+                        node("nutrition", "NutritionExpert", "agent", 2),
+                        node("vet", "VetExpert", "agent", 2),
+                        node("activity", "ActivityPlanner", "agent", 2),
+                        node("meal", "MealPlanner", "agent", 2),
+                        node("writer", "CarePlanWriter", "join", 3),
+                        node("editor", "PlanEditor", "agent", 4),
+                        node("critic", "PlanCritic", "agent", 4)),
+                List.of(edge("in", "router"),
+                        edge("router", "behaviour", "behaviour"),
+                        edge("router", "nutrition", "nutrition"),
+                        edge("router", "vet", "veterinary"),
+                        edge("in", "activity", "in parallel"),
+                        edge("in", "meal"),
+                        edge("behaviour", "writer"), edge("nutrition", "writer"),
+                        edge("vet", "writer", "answer"),
+                        edge("activity", "writer"), edge("meal", "writer"),
+                        edge("writer", "editor", "plan"),
+                        edge("editor", "critic"),
+                        edge("critic", "editor", "score < 0.8")));
+
+        Runner runner = (model, input, listener) -> {
+            // 1. Conditional routing — one LLM judgement decides which specialist answers.
+            var router = agent(Agents.KennelRouter.class, model, "KennelRouter", "category");
+            var behaviour = agent(Agents.BehaviourExpert.class, model, "BehaviourExpert", "answer");
+            var nutrition = agent(Agents.NutritionExpert.class, model, "NutritionExpert", "answer");
+            var vet = agent(Agents.VetExpert.class, model, "VetExpert", "answer");
+            UntypedAgent triage = AgenticServices.conditionalBuilder()
+                    .subAgents(s -> category(s).equals("behaviour"), behaviour)
+                    .subAgents(s -> category(s).equals("nutrition"), nutrition)
+                    .subAgents(s -> category(s).equals("veterinary"), vet)
+                    .build();
+
+            // 2. Parallel — the day's two halves are independent, so fan them out.
+            var activity = agent(Agents.ActivityPlanner.class, model, "ActivityPlanner", "activity");
+            var meal = agent(Agents.MealPlanner.class, model, "MealPlanner", "meal");
+            UntypedAgent gather = AgenticServices.parallelBuilder()
+                    .subAgents(activity, meal)
+                    .build();
+
+            // 3. Loop — refine the merged plan until the critic is satisfied, but never forever.
+            var editor = agent(Agents.PlanEditor.class, model, "PlanEditor", "plan");
+            var critic = agent(Agents.PlanCritic.class, model, "PlanCritic", "score");
+            UntypedAgent refine = AgenticServices.loopBuilder()
+                    .subAgents(editor, critic)
+                    .maxIterations(3)
+                    .exitCondition(s -> score(s) >= 0.8)
+                    .testExitAtLoopEnd(true)
+                    .build();
+
+            // 4. Sequence — the spine that holds the three composites plus the merge step.
+            var writer = agent(Agents.CarePlanWriter.class, model, "CarePlanWriter", "plan");
+            UntypedAgent app = AgenticServices.sequenceBuilder()
+                    .subAgents(router, triage, gather, writer, refine)
+                    .outputKey("plan")
+                    .listener(listener)
+                    .build();
+            var r = app.invokeWithAgenticScope(Map.of("request", input));
+            return result(r, "plan");
+        };
+
+        return new PatternDef("kennelDesk", "Kennel Desk (composite)", "composite",
+                "A real system, not a pattern: routing picks a specialist, a parallel step plans "
+                        + "the day, a sequence merges both into a plan, and a loop refines it until "
+                        + "a critic passes it.",
+                // caveat: the interesting failures in composites are at the seams, not inside them.
+                "Composites fail at the seams: every step depends on a key an earlier one wrote, so "
+                        + "one agent answering off-format breaks a step that looks unrelated.",
+                topo, "Zao has been limping after long walks and refuses his dinner", runner);
     }
 
     // 1 — single agent

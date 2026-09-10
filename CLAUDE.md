@@ -19,7 +19,7 @@ Two distinct halves:
 mvn quarkus:dev                       # dev mode + live reload; needs Maven 3.9+. Open http://localhost:8080
 mvn quarkus:dev -Ddashboard.model=mock  # no Ollama / no API key — deterministic offline run
 mvn -DskipTests package               # build fast-jar to target/quarkus-app/
-mvn test                              # smoke-runs all 13 patterns on the mock model (%test profile)
+mvn test                              # smoke-runs all 13 patterns + the composite on the mock model
 ```
 
 Point at a real model by overriding env vars (same code path as the default):
@@ -56,15 +56,25 @@ before `java -jar` (e.g. `cp -r target/quarkus-app /tmp/app && java -jar /tmp/ap
 
 ## Architecture
 
-Backend is a handful of small classes in `src/main/java/dev/devoxx/dashboard/`; the frontend is one
-static file.
+Backend is a handful of small classes in `src/main/java/dev/devoxx/dashboard/`; the frontend is four
+static files (no build step).
 
-- **`PatternCatalog`** — the heart. A `@ApplicationScoped` registry of all 13 patterns built in `build()`.
+- **`PatternCatalog`** — the heart. A `@ApplicationScoped` registry of the 13 patterns **plus one
+  composite** (`kennelDesk`, category `composite`), built in `build()`.
   Each pattern is a `PatternDef` = display metadata (name, category, `useful`, `caveat`) + a static
   `Topology.Graph` (for the SVG) + a `Runner` lambda that wires and invokes the agents live. **This is
   where you add or change a pattern** — every wiring here is deliberately written to double as readable
   demo code for the talk. Categories: `workflow` (single, sequential, loop, parallel, parallelMapper,
-  conditional), `pure-agent` (supervisor), `pattern-zoo` (goap, p2p, blackboard, voting, debate, bdi).
+  conditional), `pure-agent` (supervisor), `pattern-zoo` (goap, p2p, blackboard, voting, debate, bdi),
+  `composite` (kennelDesk).
+- **`kennelDesk` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
+  pattern: conditional routing picks a specialist, a parallel step plans the day, a sequence merges
+  both into a care plan, and a loop refines it until a critic passes. It exists to show that the
+  builders *nest* — each composite is itself an `UntypedAgent` that another builder takes as a
+  sub-agent — and to make the dial visible: deterministic scaffolding with LLM judgement at three
+  points. Its diagram uses the `stages` layout, where each node carries an explicit column number,
+  because no automatic layout recovers the real order of a composite's steps. When adding another
+  composite, give it `category: "composite"` — the gallery counts patterns and composites separately.
 - **`Agents`** — all agent contracts as public nested interfaces (`@Agent` + `@UserMessage`/`@V`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)

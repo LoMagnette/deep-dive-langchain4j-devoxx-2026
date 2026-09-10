@@ -16,18 +16,27 @@ public final class Topology {
      * without it a fan-out diagram shows work being split and never brought back together,
      * which is half the pattern.
      */
-    public record Node(String id, String label, String role) {
+    /**
+     * @param stage optional column for the {@code stages} layout, which is what lets a composite
+     *              system be drawn left-to-right by step. Null for the automatic layouts.
+     */
+    public record Node(String id, String label, String role, Integer stage) {
     }
 
     public record Edge(String from, String to, String label) {
     }
 
-    /** layout: chain | loop | fanout | branch | star | dag | mesh. */
+    /** layout: chain | loop | fanout | branch | star | dag | mesh | stages. */
     public record Graph(List<Node> nodes, List<Edge> edges, String layout) {
     }
 
     public static Node node(String id, String label, String role) {
-        return new Node(id, label, role);
+        return new Node(id, label, role, null);
+    }
+
+    /** A node pinned to a column of the {@code stages} layout. */
+    public static Node node(String id, String label, String role, int stage) {
+        return new Node(id, label, role, stage);
     }
 
     public static Edge edge(String from, String to) {

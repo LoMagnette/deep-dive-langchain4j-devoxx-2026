@@ -190,6 +190,29 @@ public final class Agents {
         String judge(@V("motion") String motion);
     }
 
+    // 14 — the capstone's own agents: merge the specialists' work, then refine it
+    public interface CarePlanWriter {
+        @Agent(description = "Turns the specialists' findings into one care plan for Zao")
+        @UserMessage("Write one short care plan for the dog Zao, in three or four sentences. "
+                + "Specialist advice: {{answer}} Activity: {{activity}} Meal: {{meal}}")
+        String write(@V("answer") String answer, @V("activity") String activity,
+                     @V("meal") String meal);
+    }
+
+    public interface PlanEditor {
+        @Agent(description = "Tightens a care plan without changing its advice")
+        @UserMessage("Improve this care plan, keeping it short: {{plan}}")
+        String edit(@V("plan") String plan);
+    }
+
+    /** Returns a String for the same reason {@link PackCritic} does — see its javadoc. */
+    public interface PlanCritic {
+        @Agent(description = "Scores how good a care plan is, from 0.0 to 1.0")
+        @UserMessage("Rate this care plan from 0.0 to 1.0. Answer with the number only — "
+                + "no words, no explanation, no markdown. Plan: {{plan}}")
+        String score(@V("plan") String plan);
+    }
+
     // 13 — BDI (two desires of different priority; unique agent types)
     public interface CareScout {
         @Agent(description = "Gathers what is known about the dog before anything is written")

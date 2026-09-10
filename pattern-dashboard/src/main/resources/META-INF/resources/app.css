@@ -78,7 +78,8 @@ body:not(.on-grid) .gallery{display:none}
 .cat{align-self:flex-start;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--muted)}
 .cat.pure-agent{background:var(--accent-soft);color:var(--accent)}
-.cat.pattern-zoo{color:var(--accent2);background:color-mix(in srgb,var(--accent2) 12%,transparent)}
+.cat.composite{background:var(--accent);color:var(--btn-ink);}
+  .cat.pattern-zoo{color:var(--accent2);background:color-mix(in srgb,var(--accent2) 12%,transparent)}
 /* A shape signature: you learn to recognise a fan-out from a chain before reading the name. */
 .thumb{width:100%;height:60px;display:block;margin-top:12px;background:var(--panel2);border-radius:10px}
 .thumb .tedge{stroke:var(--node-line);stroke-width:5;fill:none}

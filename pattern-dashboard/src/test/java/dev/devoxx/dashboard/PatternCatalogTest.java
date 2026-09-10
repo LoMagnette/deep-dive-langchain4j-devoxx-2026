@@ -55,8 +55,35 @@ class PatternCatalogTest {
             }
         }
 
-        assertEquals(13, catalog.infos().size(), "expected all 13 patterns registered");
+        assertEquals(13, catalog.infos().stream()
+                        .filter(i -> !i.category().equals("composite")).count(),
+                "expected all 13 patterns registered");
         assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
+    }
+
+    /**
+     * The capstone is the one entry that is a system rather than a pattern, so what matters is
+     * that the composition actually holds together: every stage runs, and each one is reached
+     * through the key the previous stage wrote.
+     */
+    @Test
+    void theCompositeRunsEveryStageItAdvertises() {
+        var def = new PatternCatalog().byId("kennelDesk").orElseThrow();
+        Run r = run(def);
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+
+        var invoked = r.invoked();
+        assertTrue(invoked.contains("KennelRouter"), "no triage: " + invoked);
+        assertTrue(invoked.stream().anyMatch(a -> a.endsWith("Expert")),
+                "routing reached no specialist: " + invoked);
+        assertTrue(invoked.contains("ActivityPlanner") && invoked.contains("MealPlanner"),
+                "the parallel step did not fan out: " + invoked);
+        assertTrue(invoked.contains("CarePlanWriter"), "nothing merged the findings: " + invoked);
+        // The mock alternates 0.60 then 0.95, so a working exit condition scores exactly twice.
+        assertEquals(2, invoked.stream().filter("PlanCritic"::equals).count(),
+                "refinement loop should iterate once then exit: " + invoked);
+
+        assertTrue(r.result() != null && !r.result().isBlank(), "no plan produced");
     }
 
     @Test

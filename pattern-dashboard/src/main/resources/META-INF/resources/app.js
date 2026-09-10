@@ -1,7 +1,8 @@
 /* Application: routing, the pattern catalogue, live runs over SSE, the dock and the
    layout chrome. Rendering primitives live in render.js, which loads first. */
 
-const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents","pattern-zoo":"Pattern zoo"};
+const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
+                    "pattern-zoo":"Pattern zoo","composite":"Putting it together"};
 let patterns = [], current = null, es = null;
 
 async function boot(){
@@ -47,6 +48,13 @@ function route(){
 window.addEventListener('hashchange', route);
 
 function buildGallery(){
+  const n = patterns.filter(p => p.category !== 'composite').length;
+  const composites = patterns.length - n;
+  document.querySelector('.gallery-head h2').textContent = `${n} agentic patterns`;
+  document.querySelector('.gallery-head p').textContent = composites
+    ? `Each one runs live against a real model — plus ${composites === 1 ? 'a system that combines'
+        : composites + ' systems that combine'} them. Pick one to try it.`
+    : 'Every one of them runs live against a real model. Pick one to try it.';
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   patterns.forEach(p => {

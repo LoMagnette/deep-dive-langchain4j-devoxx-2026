@@ -77,6 +77,7 @@ function layout(topo){
   const nodes = topo.nodes.map(n=>({...n}));
   const idx = {}; nodes.forEach((n,i)=>idx[n.id]=n);
   const lay = topo.layout;
+  let cw=W, ch=H;                     // the canvas this graph needs, reported back to the caller
   const cx=W/2, cy=H/2;
   const agents = nodes.filter(n=>n.role!=='board'&&n.role!=='supervisor'&&n.role!=='input'&&n.role!=='router');
 
@@ -110,17 +111,35 @@ function layout(topo){
     center.x=cx; center.y=cy;
     const R=150;
     others.forEach((o,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/others.length; o.x=cx+R*Math.cos(a); o.y=cy+R*Math.sin(a); });
+  } else if(lay==='stages'){
+    /* Hand-placed columns. A composite has a real order of steps, and no automatic layout
+       recovers it — the stage number on each node is the diagram's script. */
+    const byStage = new Map();
+    nodes.forEach(n => {
+      const st = n.stage == null ? 0 : n.stage;
+      if(!byStage.has(st)) byStage.set(st, []);
+      byStage.get(st).push(n);
+    });
+    const stages = [...byStage.keys()].sort((a,b)=>a-b);
+    cw = Math.max(W, stages.length * 225);   // room for the edge labels between columns
+    const colGap = cw/(stages.length+1);
+    stages.forEach((st,i)=>{
+      const col = byStage.get(st);
+      const rowGap = ch/(col.length+1);
+      col.forEach((n,j)=>{ n.x = colGap*(i+1); n.y = rowGap*(j+1); });
+    });
   } else { // mesh
     const R=150;
     nodes.forEach((nd,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/nodes.length; nd.x=cx+R*Math.cos(a); nd.y=cy+R*Math.sin(a); });
   }
-  return {nodes, idx};
+  return {nodes, idx, cw, ch};
 }
 
 function drawGraph(topo){
   const svg=document.getElementById('graph');
   svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--node-line)"/></marker></defs>';
-  const {nodes,idx}=layout(topo);
+  const {nodes,idx,cw,ch}=layout(topo);
+  svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);
   const order={}; topo.nodes.forEach((n,i)=>order[n.id]=i);
   /* A->B and B->A drawn as straight lines land exactly on top of each other, so a mutual
      relationship (debate rebuttals, supervisor invoke/result, blackboard read/write) rendered
@@ -190,7 +209,8 @@ function markNode(agent, cls){
 }
 
 function drawThumb(svg, topo){
-  const {nodes, idx} = layout(topo);
+  const {nodes, idx, cw, ch} = layout(topo);
+  svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
   const parts = [];
   topo.edges.forEach(e => {
     const a = idx[e.from], b = idx[e.to];
