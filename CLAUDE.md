@@ -112,6 +112,16 @@ static file.
   `renderMarkdown` is ~40 lines with no dependency (a CDN is the one thing sure to fail on conference
   wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
   keep that order if you extend it. Known simplification: nested bullets flatten to one level.
+  **Theming rule: the dog is in the craft, not in the jokes.** This is shown on a Devoxx stage, so
+  the canine character lives in the palette (a Belgian shepherd's fawn/rust coat on warm paper), a
+  drawn paw mark shared by the header and favicon, a near-subliminal paw texture on the empty
+  canvas, and the pulse on a working agent. It must NOT live in emoji decoration, pun button labels
+  ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
+  talk. Labels stay plain; the names in `Agents` already carry the theme. Two glyphs remain, both
+  functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
+  Every colour pair is checked against WCAG 4.5:1 in both themes — the event and log panes are dark
+  in *both*, so their text colours are deliberately theme-independent (theme-following inks
+  measured 2.8:1 there).
   The rail collapses (header ☰) and the dock is drag-resizable by its grip (arrow keys too,
   double-click to reset); both sizes persist in `localStorage` under `dashboard.layout`, so a reload
   or a dev-mode restart mid-talk doesn't undo how the room's view was set up. Every storage access is

@@ -3,53 +3,79 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>LangChain4j Agentic Patterns — Zao Dashboard</title>
+<title>Zao's Pack — LangChain4j Agentic Patterns</title>
+<!-- The same drawn paw as the header, so the tab and the page share one mark. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23a8461a'%3E%3Cellipse cx='12' cy='16.6' rx='5.2' ry='4.3'/%3E%3Cellipse cx='5.5' cy='10.3' rx='2.3' ry='3'/%3E%3Cellipse cx='9.9' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='14.5' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='18.7' cy='10.4' rx='2.3' ry='3'/%3E%3C/g%3E%3C/svg%3E"/>
 <style>
+  /* Zao's colouring: a Belgian shepherd's fawn coat and black mask, on warm paper rather than
+     the cool grey every dashboard already uses. Contrast is kept projector-strong. */
   :root{
-    --bg:#f6f7fb; --panel:#ffffff; --panel2:#eef1f7; --ink:#111827; --muted:#5b6472;
-    --line:#d7dce6; --accent:#4f46e5; --accent2:#0ea5e9;
-    --node:#ffffff; --node-line:#c3cad8; --node-active:#fde68a; --node-active-line:#d97706;
-    --node-done:#bbf7d0; --node-done-line:#16a34a; --board:#e0e7ff; --board-line:#6366f1;
-    --c-start:#6b7280; --c-before:#2563eb; --c-after:#16a34a; --c-error:#dc2626;
-    --c-result:#7c3aed; --c-done:#6b7280;
+    --bg:#f6f1e7; --panel:#fffdf8; --panel2:#efe5d5; --ink:#2b2019; --muted:#786451;
+    --line:#dbcbb3; --accent:#a8461a; --accent2:#12695c;
+    --node:#fffdf8; --node-line:#c7b193; --node-active:#f6c667; --node-active-line:#a8461a;
+    --node-done:#cbe0bd; --node-done-line:#4a7c3f; --board:#ecdcbf; --board-line:#a8461a;
+    --term:#1c140e; --on-accent:#fff;
+  }
+  /* The event/log panes are dark in BOTH themes, so their text colours must NOT follow the
+     theme. Light-mode-dark inks on a near-black pane measured 2.8:1 — invisible from row ten. */
+  :root{
+    --c-start:#ab9781; --c-before:#6fb6de; --c-after:#8ed07f; --c-error:#f08a80;
+    --c-result:#eaa96a; --c-done:#ab9781;
+    /* De-emphasised, but still 5.6:1 — the old cool grey measured 3.8:1 and vanished on a beamer. */
+    --term-dim:#9d8a75;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#0b0f17; --panel:#131a26; --panel2:#0f1622; --ink:#e6ebf2; --muted:#9aa6b8;
-      --line:#243043; --accent:#818cf8; --accent2:#38bdf8;
-      --node:#1a2333; --node-line:#33415a; --node-active:#78591b; --node-active-line:#fbbf24;
-      --node-done:#14532d; --node-done-line:#22c55e; --board:#1e2a52; --board-line:#818cf8;
-      --c-start:#9ca3af; --c-before:#60a5fa; --c-after:#4ade80; --c-error:#f87171;
-      --c-result:#c4b5fd; --c-done:#9ca3af;
+      --bg:#15100c; --panel:#221a13; --panel2:#1b1410; --ink:#f2e8db; --muted:#ab9781;
+      --line:#3c2f24; --accent:#e8894a; --accent2:#5fc0ad;
+      --node:#2a2018; --node-line:#4d3c2d; --node-active:#6d4a13; --node-active-line:#f4b45c;
+      --node-done:#27402a; --node-done-line:#6fbf5f; --board:#3a2c18; --board-line:#e8894a;
+      --term:#0e0a07;
+      /* White on a light-orange accent is 2.6:1; the coat colour needs dark ink on it here. */
+      --on-accent:#241608;
     }
+    /* The paw trail is a data URI, which CSS variables cannot reach into, so the dark coat
+       needs its own copy rather than a recoloured one. */
+    .graphwrap{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23e8894a' fill-opacity='0.045'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
   }
+  /* Rounded system faces read friendlier than the default UI stack, and cost no download —
+     a webfont from a CDN is exactly what dies on conference wifi. */
+  :root{ --display: ui-rounded,"SF Pro Rounded","Segoe UI Variable Display","Nunito",
+                    "Trebuchet MS",system-ui,sans-serif; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  header.top{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex:0 0 auto}
-  header.top h1{font-size:20px;margin:0;font-weight:700}
+  /* A collar-stripe under the header: the one flash of Belgium in the chrome. */
+  header.top{padding:13px 20px;border-bottom:3px solid var(--accent);display:flex;align-items:center;gap:14px;flex:0 0 auto;
+    background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%)}
+  header.top h1{font-family:var(--display);font-size:21px;margin:0;font-weight:800;letter-spacing:-.01em}
   header.top .sub{color:var(--muted);font-size:14px}
-  .railtoggle{flex:0 0 auto;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px;line-height:1;cursor:pointer}
-  .railtoggle:hover{background:var(--panel2);border-color:var(--accent)}
+  .railtoggle{flex:0 0 auto;width:34px;height:34px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:15px;line-height:1;cursor:pointer}
+  .railtoggle:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
+  /* A drawn mark, not an emoji: identity without the novelty-shop register. */
+  .mark{flex:0 0 auto;width:23px;height:23px;fill:var(--accent)}
   .layout{display:flex;flex:1 1 auto;min-height:0}
   /* left rail — collapsible, to hand the diagram the full width on a projector */
   .rail{width:250px;flex:0 0 auto;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel2);padding:10px;transition:width .15s ease}
   body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;border-right:0;visibility:hidden;
     /* delay hiding until the slide finishes, so collapsed buttons stop taking focus */
     transition:width .15s ease, visibility 0s linear .15s}
-  .rail h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 8px 6px}
-  .rail button{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:2px}
-  .rail button:hover{background:var(--panel)}
-  .rail button.active{background:var(--accent);color:#fff;font-weight:600}
+  .rail h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:16px 8px 6px}
+  .rail button{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer;font-size:14px;margin-bottom:2px}
+  .rail button:hover{background:var(--panel);border-color:var(--line)}
+  /* The selected pattern wears the collar. The colour is the signal; no badge needed. */
+  .rail button.active{background:var(--accent);color:var(--on-accent);font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,.12)}
   /* center */
   .main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
   .head{padding:16px 22px;border-bottom:1px solid var(--line);flex:0 0 auto}
   .head h2{margin:0 0 4px;font-size:24px}
   .head .useful{color:var(--muted);font-size:15px}
   .caveat{margin-top:10px;background:color-mix(in srgb,#f59e0b 18%,transparent);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:14px}
-  /* The graph now owns the whole stage: result and scope moved into the dock's tabs. */
-  .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative}
-  svg{width:100%;height:100%;display:block}
+  /* The graph owns the whole stage: result and scope moved into the dock's tabs. The empty
+     canvas is a paw trail rather than blank paper — kept faint so edges stay legible. */
+  .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23a8461a' fill-opacity='0.032'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+  svg#graph{width:100%;height:100%;display:block;position:relative}
   /* Scope pane: a debugger's variables table — name, type, value, and what just changed. */
   #scope{padding:0}
   #scope .empty{display:block;padding:10px 14px}
@@ -85,11 +111,17 @@
   #result a{color:var(--accent2)}
   /* controls — directly under the title, above the diagram: the run is the first thing you do */
   .controls{padding:10px 22px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex:0 0 auto;background:var(--panel2)}
-  .controls input{flex:1 1 auto;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px}
-  .controls button{padding:9px 18px;border-radius:8px;border:none;font-weight:700;font-size:15px;cursor:pointer}
-  .btn-run{background:var(--accent);color:#fff}
+  .controls input{flex:1 1 auto;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:15px}
+  .controls input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .controls button{padding:9px 20px;border-radius:999px;border:none;font-weight:700;font-size:15px;cursor:pointer}
+  .btn-run{background:var(--accent);color:var(--on-accent);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+  .btn-run:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-run:active:not(:disabled){transform:translateY(1px);box-shadow:none}
   .btn-reset{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .btn-reset:hover{border-color:var(--accent);color:var(--accent)}
   .controls button:disabled{opacity:.5;cursor:not-allowed}
+  .pale{color:var(--muted);font-weight:600}
+  .head h2{font-family:var(--display)}
   /* bottom dock: run events + server log */
   /* Taller than a pure log strip: the result and the scope live in here now. Drag-resizable,
      because how much room the log deserves depends on which pattern is being demoed. */
@@ -100,27 +132,32 @@
   .grip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   body.resizing{cursor:ns-resize;user-select:none}
   .tabs{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel2);border-bottom:1px solid var(--line);flex:0 0 auto}
-  .tab{background:none;border:1px solid transparent;color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+  .tab{background:none;border:1px solid transparent;color:var(--muted);padding:4px 12px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600}
   .tab:hover{background:var(--panel)}
-  .tab.active{background:var(--panel);color:var(--ink);border-color:var(--line)}
+  .tab.active{background:var(--panel);color:var(--accent);border-color:var(--accent)}
   .tab .dot{color:#f87171;font-size:16px;line-height:0;vertical-align:middle}
   .tabs .spacer{flex:1 1 auto}
   .tabs select,.tabs .mini{font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
   .pane{flex:1 1 auto;overflow-y:auto;padding:10px 14px;min-height:0}
   /* Streams read as a terminal; result and scope read as a document. */
-  .pane.term{background:#000;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
+  .pane.term{background:var(--term);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
   .pane.doc{background:var(--panel);font-size:14px}
   .pane .line{white-space:pre-wrap;word-break:break-word}
   .empty{color:var(--muted);font-style:italic}
-  .seq,.time{color:#6b7280}
-  .logger{color:#a78bfa}
+  .seq,.time{color:var(--term-dim)}
+  .logger{color:#c4a6f5}
   .lvl-ERROR{color:#f87171;font-weight:700}
   .lvl-WARN{color:#fbbf24;font-weight:700}
   .lvl-INFO{color:#93c5fd}
-  .lvl-DEBUG,.lvl-TRACE{color:#6b7280}
+  .lvl-DEBUG,.lvl-TRACE{color:var(--term-dim)}
   /* svg node classes set via attributes */
   .node rect{fill:var(--node);stroke:var(--node-line);stroke-width:1.5}
   .node.board rect{fill:var(--board);stroke:var(--board-line);stroke-dasharray:5 3}
+  /* The working agent wags. Small amplitude: it should read as alive at the back of a room,
+     not distract from the topology. */
+  @keyframes wag{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+  .node.active rect{animation:wag 1.15s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+  @media (prefers-reduced-motion: reduce){ .node.active rect{animation:none} }
   /* A join is a step, not an agent — drawn plainer so it never reads as one. */
   .node.join rect{fill:var(--panel2);stroke:var(--node-line);stroke-dasharray:4 3}
   .node.join text{fill:var(--muted);font-style:italic}
@@ -135,8 +172,13 @@
 <body>
 <header class="top">
   <button class="railtoggle" id="rail-toggle" aria-expanded="true" aria-controls="rail" title="Show/hide the pattern list">☰</button>
-  <h1>🐕 LangChain4j Agentic Patterns</h1>
-  <span class="sub">Live-running all 13 patterns, themed around the Belgian shepherd <b>Zao</b> and his pack — from puppy to pack.</span>
+  <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+    <ellipse cx="12" cy="16.6" rx="5.2" ry="4.3"/><ellipse cx="5.5" cy="10.3" rx="2.3" ry="3"/>
+    <ellipse cx="9.9" cy="7.3" rx="2.4" ry="3.2"/><ellipse cx="14.5" cy="7.3" rx="2.4" ry="3.2"/>
+    <ellipse cx="18.7" cy="10.4" rx="2.3" ry="3"/>
+  </svg>
+  <h1>Zao's Pack <span class="pale">· LangChain4j agentic patterns</span></h1>
+  <span class="sub">All 13 patterns, running live. From puppy to pack — autonomy is a dial.</span>
 </header>
 <div class="layout">
   <nav class="rail" id="rail"></nav>
@@ -148,8 +190,8 @@
     </div>
     <div class="controls">
       <input id="input" placeholder="input for the pattern"/>
-      <button class="btn-run" id="run">▶ Run</button>
-      <button class="btn-reset" id="reset">Reset</button>
+      <button class="btn-run" id="run" title="Run this pattern">Run</button>
+      <button class="btn-reset" id="reset" title="Clear the run and start over">Reset</button>
     </div>
     <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div class="dock" id="dock">
@@ -169,8 +211,8 @@
         </select>
         <button class="mini" id="pane-clear">clear</button>
       </div>
-      <div class="pane doc" id="result" hidden><span class="empty">no run yet</span></div>
-      <div class="pane doc" id="scope" hidden><span class="empty">— empty —</span></div>
+      <div class="pane doc" id="result" hidden><span class="empty">No run yet.</span></div>
+      <div class="pane doc" id="scope" hidden><span class="empty">Empty until an agent writes to it.</span></div>
       <div class="pane term" id="console"></div>
       <div class="pane term" id="log" hidden></div>
     </div>
@@ -213,9 +255,9 @@ function select(id){
 
 function reset(){
   document.getElementById('console').innerHTML='';
-  document.getElementById('scope').innerHTML='<span class="empty">— empty —</span>';
+  document.getElementById('scope').innerHTML='<span class="empty">Empty until an agent writes to it.</span>';
   lastScope={}; expandedVars.clear();
-  document.getElementById('result').innerHTML='<span class="empty">no run yet</span>';
+  document.getElementById('result').innerHTML='<span class="empty">No run yet.</span>';
   document.getElementById('result-dot').hidden=true;
   document.querySelectorAll('.node').forEach(n=>n.classList.remove('active','done'));
 }
@@ -468,7 +510,7 @@ function run(){
     else if(ev.type==='run-result'){
       document.getElementById('result').innerHTML = ev.data!=null
         ? '<div class="md">' + renderMarkdown(ev.data) + '</div>'
-        : '<span class="empty">(no output)</span>';
+        : '<span class="empty">The run produced no output.</span>';
       revealResult();
     } else if(ev.type==='run-done'){
       es.close(); es=null; document.getElementById('run').disabled=false;
