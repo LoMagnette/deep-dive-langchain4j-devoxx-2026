@@ -39,15 +39,16 @@ final class Parsing {
         return v;
     }
 
-    /** The kinds of care the kennel router is allowed to dispatch to. */
-    private static final List<String> CATEGORIES = List.of("behaviour", "nutrition", "veterinary");
+    /** The desks the night line is allowed to dispatch to. */
+    private static final List<String> CATEGORIES = List.of("emergency", "behaviour", "booking");
 
     /**
-     * Normalises the router's answer to exactly one known category. Asked to "return one word",
-     * a real model answers "This request is best categorised as: **medical**." — an exact
+     * Normalises the router's answer to exactly one known desk. Asked to "return one word", a
+     * real model answers "This call is best categorised as: **medical**." — an exact
      * {@code equalsIgnoreCase} then matches no branch at all and the run silently produces null.
-     * We take the LAST category mentioned (models state the conclusion at the end) and fall back
-     * to the first category so that some branch always fires.
+     * We take the LAST desk mentioned (models state the conclusion at the end) and fall back to
+     * the first, which is deliberately {@code emergency}: on an out-of-hours line the classifier
+     * must fail towards the desk where being wrong is survivable, not towards the booking desk.
      */
     static String category(AgenticScope s) {
         String raw = str(s, "category").toLowerCase(Locale.ROOT);
@@ -65,15 +66,22 @@ final class Parsing {
 
     /**
      * Splits the user's typed input into items for the parallel mapper. A single-chunk input
-     * (nothing to fan out over) falls back to three canned topics.
+     * (nothing to fan out over) falls back to three canned overnight notes.
      */
     static List<String> items(String input) {
-        List<String> parsed = Arrays.stream(String.valueOf(input).split("[,;\n]"))
+        String text = String.valueOf(input);
+        // Semicolons and newlines win over commas when both are present. One run's overnight
+        // notes are full of commas ("Run 2 — Nero, left his supper, panting at 03:00"), so
+        // splitting on every separator at once turns three runs into nine fragments and the
+        // mapper fans out over shrapnel — with no error, just a watch-list that makes no sense.
+        String separators = text.matches("(?s).*[;\n].*") ? "[;\n]" : ",";
+        List<String> parsed = Arrays.stream(text.split(separators))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
         return parsed.size() > 1 ? parsed
-                : List.of("Zao's favourite chew toys", "wolf packs in the Ardennes",
-                        "why dogs howl at sirens");
+                : List.of("Run 2 — Nero, left his supper, panting at 03:00",
+                        "Run 5 — Luna, chewed her bedding, no stool overnight",
+                        "Run 7 — Zao, slept through, ate everything");
     }
 }

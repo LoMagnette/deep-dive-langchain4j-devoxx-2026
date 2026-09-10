@@ -1,8 +1,17 @@
 # LangChain4j Agentic Patterns — Zao Dashboard
 
-A Quarkus web app that visualizes and **live-runs** all 13 LangChain4j agentic patterns,
-themed around a Belgian dog named **Zao**. Each pattern is streamed over Server-Sent Events
-and animated on an SVG topology graph, with a live scope-state panel and an event console.
+A Quarkus web app that visualizes and **live-runs** all 13 LangChain4j agentic patterns plus
+two composite systems. Each pattern is streamed over Server-Sent Events and animated on an SVG
+topology graph, with a live scope-state panel and an event console.
+
+The setting is a working Ardennes boarding kennel and rescue, where the Belgian shepherd **Zao**
+is the resident dog — and the setting is load-bearing rather than decorative. Every demo problem
+is picked so that **removing the pattern visibly degrades the answer**: the kennel has hard
+constraints (capacity, vaccination rules, medication times), competing interests (a full kennel
+versus welfare rules, two families wanting the same rescue dog), and artefacts that can be wrong
+in ways an audience can check for itself. A bloat call belongs at the emergency desk; a booking
+with an expired rabies booster must be declined; a discharge note either names every dose or it
+does not.
 
 Open <http://localhost:8080> after starting.
 
@@ -58,12 +67,29 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 
 ## API
 
-- `GET /api/patterns` — JSON metadata + static topology for all 13 patterns.
+- `GET /api/patterns` — JSON metadata + static topology for all 13 patterns and both composites.
 - `GET /api/patterns/{id}/run?input=...` — `text/event-stream` of `RunEvent`s
   (`run-start`, `agent-before`, `agent-after`, `agent-error`, `run-result`, `run-done`).
 
-## The 13 patterns
+## The catalogue
 
-Workflows: `single`, `sequential`, `loop`, `parallel`, `parallelMapper`, `conditional`.
-Pure agents: `supervisor`.
-Pattern zoo: `goap`, `p2p`, `blackboard`, `voting`, `debate`, `bdi`.
+| Pattern | The problem it is shown on |
+|---|---|
+| `single` | A hurried drop-off note becomes a structured boarding record |
+| `sequential` | …and then the run sheet the kennel hand carries — a different reader, so a second agent |
+| `loop` | A jargon-filled discharge note refined until four named rules hold |
+| `parallel` | Capacity and paperwork checked at once; **any FAIL declines the booking** |
+| `parallelMapper` | The morning round: one inspection per occupied run, gathered into a watch-list |
+| `conditional` | The out-of-hours line: emergency / behaviour / booking, where mis-routing is fatal |
+| `supervisor` | "Sort out his week" — you cannot enumerate which specialists that needs |
+| `goap` | A boarding quote: audit → allocate → price, **registered backwards on purpose** |
+| `p2p` | An overbooked bank holiday: foreman vs. welfare officer, neither outranks the other |
+| `blackboard` | Why has the dog stopped eating? Medical, behaviour and feeding notes on one board |
+| `voting` | Is this rescue dog safe with a toddler? Three rubrics over a self-contradicting dossier |
+| `debate` | Two homes, one dog: the counter-case has to be stated before the panel rules |
+| `bdi` | The morning shift, ordered by desire **priority** rather than declaration order |
+| `nightHandover` | *Composite:* routing + parallel + merge + refinement loop → the night handover sheet |
+| `placementCouncil` | *Composite:* mapper + debate + vote, and the glue agents between them |
+
+`PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the claims above, so
+a prompt change that turns a pattern back into decoration fails the build rather than the talk.

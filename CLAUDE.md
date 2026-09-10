@@ -10,8 +10,8 @@ Two distinct halves:
 - **Root** (`README.md`) — talk planning: the through-line is "autonomy is a dial," told as "From Puppy
   to Pack." The `NN-*.md` planning docs referenced in the root README are the speaker's notes.
 - **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 13
-  LangChain4j agentic patterns, themed around a Belgian shepherd named **Zao**. This is the code you
-  will actually build and edit.
+  LangChain4j agentic patterns, set in a working Ardennes boarding kennel and rescue where the
+  Belgian shepherd **Zao** is the resident dog. This is the code you will actually build and edit.
 
 ## Commands (run inside `pattern-dashboard/`)
 
@@ -19,7 +19,7 @@ Two distinct halves:
 mvn quarkus:dev                       # dev mode + live reload; needs Maven 3.9+. Open http://localhost:8080
 mvn quarkus:dev -Ddashboard.model=mock  # no Ollama / no API key — deterministic offline run
 mvn -DskipTests package               # build fast-jar to target/quarkus-app/
-mvn test                              # smoke-runs all 13 patterns + the composite on the mock model
+mvn test                              # smoke-runs all 13 patterns + both composites on the mock model
 ```
 
 Point at a real model by overriding env vars (same code path as the default):
@@ -72,39 +72,89 @@ static files (no build step).
   `all()`. `PatternCatalog` does not change. Every wiring is deliberately written to double as
   readable demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the
   way they did when it was all one class.
-- **`kennelDesk` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
-  pattern: conditional routing picks a specialist, a parallel step plans the day, a sequence merges
-  both into a care plan, and a loop refines it until a critic passes. It exists to show that the
-  builders *nest* — each composite is itself an `UntypedAgent` that another builder takes as a
-  sub-agent — and to make the dial visible: deterministic scaffolding with LLM judgement at three
-  points. Its diagram uses the `stages` layout, where each node carries an explicit column number,
-  because no automatic layout recovers the real order of a composite's steps. When adding another
-  composite, give it `category: "composite"` — the gallery counts patterns and composites separately.
-- **`packCouncil` is the second composite, mixing zoo patterns with plain plumbing**: a parallel
-  mapper scouts three angles, one agent turns the findings into a motion, a **debate** argues it to
-  a verdict, and a **vote** ratifies it. Its lesson is the opposite of the first one's: the exotic
-  planners are the easy part, and most of the work is the small adapter agents between them
-  (`CouncilBriefer`, `CouncilNote`) because each pattern expects its input under its own key.
-  Two traps this pattern already paid for, worth knowing before writing a third composite:
+- **The demo problems are chosen so the pattern is load-bearing.** The setting is a working
+  Ardennes boarding kennel and rescue (Zao is the resident dog), and that is doing work, not
+  decoration: a kennel has hard constraints (capacity, vaccination rules, medication times),
+  competing interests (revenue vs. welfare, two families wanting the same rescue dog) and
+  artefacts that can be wrong in ways the room can see. The test for a demo problem is
+  **"remove the pattern and does the answer visibly degrade?"** Four failure modes this
+  catalogue was rewritten to escape, worth re-checking whenever you add a pattern:
+  - **Nothing to disagree about.** Voting ran three copies of one prompt over an obviously
+    positive sentence, so the tally was decoration. It now runs three *different rubrics*
+    (temperament test / foster diary / medical file) over a dossier that contradicts itself.
+  - **Nothing to satisfy.** The loop's critic scored a story out of 1.0, so the mock had to fake
+    0.60/0.95 to make it iterate and nobody watching could tell a good pass from a bad one. The
+    critic now scores a **fraction of four named rules** the audience holds too.
+  - **Patterns that are secretly a sequence.** GOAP, BDI and blackboard were all straight lines.
+    GOAP now has a real precondition chain and is registered **backwards on purpose**; BDI has
+    three desires whose priorities (not declaration order) pick the winner; blackboard's three
+    note-takers each read only `problem`, so any of them can go first.
+  - **Output nobody can check.** "Write a vivid tale" makes a failed run look like a good one.
+    Every default input now has a checkable right answer — the bloat call belongs at the
+    emergency desk, the booking is declined for an expired booster, the quote is arithmetic.
+  `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts these claims, so a
+  prompt tweak that quietly turns a pattern back into decoration goes red. Extend it too.
+- **`nightHandover` is the capstone, and the payoff of the talk's arc.** It is a system rather
+  than a pattern: conditional routing triages an out-of-hours call to a desk, a parallel step
+  plans exercise and feeding, a sequence merges all three into the sheet the night hand carries,
+  and a loop refines it until it names the dog, every dose and who to telephone. It exists to
+  show that the builders *nest* — each composite is itself an `UntypedAgent` that another builder
+  takes as a sub-agent — and to make the dial visible: deterministic scaffolding with LLM
+  judgement at three points. Its diagram uses the `stages` layout, where each node carries an
+  explicit column number, because no automatic layout recovers the real order of a composite's
+  steps. When adding another composite, give it `category: "composite"` — the gallery counts
+  patterns and composites separately.
+  One seam it pays for out loud: it seeds the scope with the same text under **both** `call` and
+  `request`, because `RotaPlanner`/`FeedPlanner` come from the supervisor demo where the planner
+  protocol names every argument `request`. Reusing an agent means accepting the key it already
+  declared; get it wrong and you get `MissingArgumentException` pointing at a step that looks
+  unrelated.
+- **`placementCouncil` is the second composite, mixing zoo patterns with plain plumbing**: a
+  parallel mapper reads three angles of a rescue dossier, one agent turns the findings into a
+  motion, a **debate** argues it to a ruling, and a **vote** ratifies it. Its lesson is the
+  opposite of the first one's: the exotic planners are the easy part, and most of the work is the
+  small adapter agents between them (`CouncilBriefer`, `CouncilNote`) because each pattern
+  expects its input under its own key. Its result is composed from the scope (ruling **and**
+  ratification) rather than the debate's `verdict` alone — otherwise the last third of the
+  diagram looks decorative because nothing it produced reaches the screen.
+  Three traps these composites already paid for, worth knowing before writing a third:
   - **Scope values are passed through, never coerced.** The mapper writes `findings` as a `List`;
     declaring `@V("findings") String` fails at runtime with a bare `argument type mismatch`.
   - **Parallel steps invoke the listener from several threads.** Anything collecting those events
     must be thread-safe — a plain `ArrayList` in a test silently drops them and reads as a flaky
     "that agent never ran". The SSE path is fine (Mutiny's emitter serialises), and is verified.
+  - **A refinement loop feeds its own output back into the next prompt.** In the mock that means
+    a rule matching a word which appears in the *sheet* hijacks the loop's second pass, and the
+    composite returns the wrong stage's answer with no error at all. See the rule ordering note
+    in `MockChatModel`.
 - **`Agents`** — all agent contracts as public nested interfaces (`@Agent` + `@UserMessage`/`@V`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
   `currentModel()` re-probes when the last attempt fell back. `PatternResource` calls `currentModel()`
   per run rather than injecting a `ChatModel` once — that is what makes recovery-without-restart work.
-- **`MockChatModel`** — deterministic, no-network `ChatModel`. It pattern-matches **the last user
-  message** (never the accumulated conversation — that would pin multi-turn planners to their first
-  choice) and returns canned, PARSEABLE answers (a score alternating 0.60/0.95 so loops visibly iterate
-  then exit; "POSITIVE" for sentiment so voting converges; a line ending "AGREE" so debate/consensus
-  fires; a 3-step supervisor plan activity→meal→done). If you change an agent prompt in `Agents`, keep
-  these heuristics in mind or the mock run will break — `mvn test` will tell you. Its care-category
-  branch must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan names
-  `ActivityPlanner`/`MealPlanner` literally — renaming those two agents breaks the supervisor demo.
+- **`MockChatModel`** — deterministic, no-network `ChatModel`, and the thing `mvn test` runs
+  against. It pattern-matches **the last user message** (never the accumulated conversation —
+  that would pin multi-turn planners to their first choice) against an **ordered rule table**,
+  and returns canned, PARSEABLE answers. The table is ordered on purpose and each rule's comment
+  says what it stands in front of, because kennel prompts overlap heavily: three agents mention
+  "handover sheet", two mention "vaccination status", and the *specific* rule has to come first.
+  Three hazards it already handles, each of which produced a wrong demo with no error:
+  - **Whitespace is collapsed before matching.** The prompts are text blocks, so "PASS or FAIL"
+    is one phrase to a reader and `"PASS or\nFAIL"` to `String.contains` — a rule that looks
+    obviously right silently never fires.
+  - **Rules that match on quoted content go below rules that match on an instruction.** A
+    refinement loop feeds the sheet it just wrote back in; a desk rule matching a word inside
+    that sheet hijacks the loop's second pass.
+  - **Item-aware replies read only the item.** The morning round's prompt itself lists the urgent
+    signs, so matching the whole text flags every run and the scatter/gather comes back as three
+    identical lines.
+  The demo-critical values: a score alternating 0.60/0.95 so loops visibly iterate then exit;
+  one-word `PLACE` for every assessor so `VotingStrategy.majority()` has something it can tally;
+  identical advocate replies so `ConvergenceStrategy.unanimous()` (all responses equal) fires; a
+  3-step supervisor plan rota→feed→done. Its desk-routing rule must stay in step with
+  `Parsing.CATEGORIES`, and its canned supervisor plan names `RotaPlanner`/`FeedPlanner`
+  literally — renaming those two agents breaks the supervisor demo.
 - **`Errors`** — flattens a throwable's cause chain for display. LangChain4j reports every agent failure
   as `AgentInvocationException: Failed to invoke agent method`, so surfacing only `getMessage()` makes a
   dead Ollama and a parse failure look identical.
@@ -125,7 +175,7 @@ static files (no build step).
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
-  `Agents.PackCritic` returns one.
+  `Agents.DischargeChecker` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
   markdown subset, topology layout/drawing — functions of their arguments, which is why the same
@@ -173,7 +223,7 @@ static files (no build step).
   wrapped — a private-mode browser where `localStorage` throws must still boot the page.
 - **The diagrams deliberately do not draw the AgenticScope.** It was the identical terminal box in all
   13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
-  is Blackboard, where the shared board *is* the pattern — remove it there and you get three
+  is Blackboard, where the shared board *is* the pattern — remove it there and you get four
   disconnected agents. The graph layout treats a `board` node as optional and re-centres without it.
 - **A topology must show what the pattern actually does, not just who is involved.** The test for a
   diagram is whether someone who can't hear the speaker would infer the mechanism. Concretely:

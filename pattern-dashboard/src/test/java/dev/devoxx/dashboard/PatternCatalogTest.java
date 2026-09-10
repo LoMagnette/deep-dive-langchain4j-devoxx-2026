@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
@@ -75,22 +76,23 @@ class PatternCatalogTest {
      */
     @Test
     void theCompositeRunsEveryStageItAdvertises() {
-        var def = new PatternCatalog().byId("kennelDesk").orElseThrow();
+        var def = new PatternCatalog().byId("nightHandover").orElseThrow();
         Run r = run(def);
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
 
         var invoked = r.invoked();
-        assertTrue(invoked.contains("KennelRouter"), "no triage: " + invoked);
-        assertTrue(invoked.stream().anyMatch(a -> a.endsWith("Expert")),
-                "routing reached no specialist: " + invoked);
-        assertTrue(invoked.contains("ActivityPlanner") && invoked.contains("MealPlanner"),
+        assertTrue(invoked.contains("NightLineRouter"), "no triage: " + invoked);
+        assertTrue(invoked.stream().anyMatch(
+                        a -> a.equals("EmergencyVet") || a.endsWith("Desk")),
+                "routing reached no desk: " + invoked);
+        assertTrue(invoked.contains("RotaPlanner") && invoked.contains("FeedPlanner"),
                 "the parallel step did not fan out: " + invoked);
-        assertTrue(invoked.contains("CarePlanWriter"), "nothing merged the findings: " + invoked);
+        assertTrue(invoked.contains("HandoverWriter"), "nothing merged the findings: " + invoked);
         // The mock alternates 0.60 then 0.95, so a working exit condition scores exactly twice.
-        assertEquals(2, invoked.stream().filter("PlanCritic"::equals).count(),
+        assertEquals(2, invoked.stream().filter("HandoverChecker"::equals).count(),
                 "refinement loop should iterate once then exit: " + invoked);
 
-        assertTrue(r.result() != null && !r.result().isBlank(), "no plan produced");
+        assertTrue(r.result() != null && !r.result().isBlank(), "no handover sheet produced");
     }
 
     @Test
@@ -99,7 +101,7 @@ class PatternCatalogTest {
         Run r = run(def);
         // The mock alternates 0.60 then 0.95, so the scorer must run twice: once below the
         // 0.8 bar, once above it. One invocation would mean the exit condition never gated.
-        long scorings = r.invoked().stream().filter("PackCritic"::equals).count();
+        long scorings = r.invoked().stream().filter("DischargeChecker"::equals).count();
         assertEquals(2, scorings, "loop should refine once, then exit: " + r.invoked());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
@@ -108,8 +110,8 @@ class PatternCatalogTest {
     void supervisorDelegatesToBothSpecialists() {
         var def = new PatternCatalog().byId("supervisor").orElseThrow();
         Run r = run(def);
-        assertTrue(r.invoked().contains("ActivityPlanner"), "no activity planning: " + r.invoked());
-        assertTrue(r.invoked().contains("MealPlanner"), "no meal planning: " + r.invoked());
+        assertTrue(r.invoked().contains("RotaPlanner"), "no rota planning: " + r.invoked());
+        assertTrue(r.invoked().contains("FeedPlanner"), "no feed planning: " + r.invoked());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
 
@@ -126,43 +128,113 @@ class PatternCatalogTest {
 
     @Test
     void categorySurvivesAChattyRouter() {
-        assertEquals("veterinary", Parsing.category(scope("category", "veterinary")));
-        assertEquals("veterinary", Parsing.category(
-                scope("category", "This request is best categorised as: **veterinary**.")));
-        assertEquals("nutrition", Parsing.category(scope("category", "Nutrition")));
+        assertEquals("booking", Parsing.category(scope("category", "booking")));
+        assertEquals("booking", Parsing.category(
+                scope("category", "This call is best categorised as: **booking**.")));
+        assertEquals("behaviour", Parsing.category(scope("category", "Behaviour")));
         // The conclusion comes last, so the last label mentioned wins.
-        assertEquals("veterinary", Parsing.category(
-                scope("category", "Not a behaviour question — this is veterinary.")));
-        // Unknown answers must still pick a branch rather than silently routing nowhere.
-        assertEquals("behaviour", Parsing.category(scope("category", "no idea")));
+        assertEquals("emergency", Parsing.category(
+                scope("category", "Not a behaviour question — this is an emergency.")));
+        // An unrecognised answer must still pick a desk rather than silently routing nowhere,
+        // and on a night line it has to fall towards the desk where being wrong is survivable.
+        assertEquals("emergency", Parsing.category(scope("category", "no idea")));
     }
 
     @Test
     void mapperItemsComeFromTheTypedInput() {
         assertEquals(List.of("a", "b", "c"), Parsing.items("a, b, c"));
         assertEquals(List.of("a", "b"), Parsing.items("a;\nb"));
-        // A single chunk has nothing to fan out over, so fall back to the canned topics.
+        // Semicolons beat commas when both are present, or one run's notes ("Run 2 — Nero, left
+        // his supper, panting at 03:00; Run 5 — ...") fan out as six fragments instead of two.
+        assertEquals(List.of("Run 2 — Nero, left his supper", "Run 5 — Luna, no stool"),
+                Parsing.items("Run 2 — Nero, left his supper; Run 5 — Luna, no stool"));
+        // A single chunk has nothing to fan out over, so fall back to the canned run notes.
         assertEquals(3, Parsing.items("one thing only").size());
     }
 
     @Test
     void theCouncilCarriesTwoZooPatternsEndToEnd() {
-        var def = new PatternCatalog().byId("packCouncil").orElseThrow();
+        var def = new PatternCatalog().byId("placementCouncil").orElseThrow();
         Run r = run(def);
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
 
         var invoked = r.invoked();
         // The mapper fans one agent over three angles, so the scout is invoked more than once.
-        assertTrue(invoked.stream().filter(a -> a.startsWith("PackScout")).count() >= 3,
+        assertTrue(invoked.stream().filter(a -> a.startsWith("CaseScout")).count() >= 3,
                 "the mapper did not scatter: " + invoked);
         assertTrue(invoked.contains("CouncilBriefer"), "findings were never turned into a motion");
-        assertTrue(invoked.contains("DogAdvocate") && invoked.contains("HouseholdAdvocate"),
+        assertTrue(invoked.contains("HomeOneAdvocate") && invoked.contains("HomeTwoAdvocate"),
                 "the debate did not happen: " + invoked);
-        assertTrue(invoked.contains("PackJudge"), "nobody ruled: " + invoked);
-        assertTrue(invoked.contains("MoodSnifferA") && invoked.contains("MoodSnifferB")
-                        && invoked.contains("MoodSnifferC"),
-                "the vote did not reach all three voters: " + invoked);
+        assertTrue(invoked.contains("PlacementPanel"), "nobody ruled: " + invoked);
+        assertTrue(invoked.contains("TemperamentAssessor") && invoked.contains("FosterAssessor")
+                        && invoked.contains("MedicalAssessor"),
+                "the vote did not reach all three assessors: " + invoked);
         assertTrue(r.result() != null && !r.result().isBlank(), "no verdict produced");
+    }
+
+    /**
+     * The demos have to demonstrate something. Every assertion here is a claim the speaker makes
+     * out loud, and each one used to be false of this dashboard: a vote whose voters could not
+     * disagree, a scatter/gather whose items came back identical, a "planner" with only one
+     * possible order to find. If one of these goes red, a prompt change has quietly turned a
+     * pattern back into decoration — which no "it ran without erroring" test would notice.
+     */
+    @Test
+    void theDemoProblemsActuallyDemonstrateTheirPattern() {
+        var catalog = new PatternCatalog();
+
+        // Admissions: capacity passes, the paperwork fails, and it is the JOIN that decides. A
+        // fan-out demo where the combiner only concatenates is missing half the pattern.
+        Run booking = run(catalog.byId("parallel").orElseThrow());
+        assertTrue(booking.invoked().containsAll(List.of("CapacityCheck", "HealthCheck")),
+                "both checks must run: " + booking.invoked());
+        assertTrue(booking.result().contains("DECLINED"),
+                "the join must decline on a failed check: " + booking.result());
+
+        // The night line must reach the emergency desk for a bloat call. Routing that to the
+        // booking desk is precisely the mistake conditional routing is here to prevent.
+        Run call = run(catalog.byId("conditional").orElseThrow());
+        assertTrue(call.invoked().contains("EmergencyVet"),
+                "a dog in distress must reach the vet: " + call.invoked());
+
+        // GOAP's agents are registered backwards on purpose, so the only way to get this order
+        // is for the planner to have derived it from the declared I/O keys.
+        List<String> quote = run(catalog.byId("goap").orElseThrow()).invoked();
+        assertTrue(quote.indexOf("VaccinationAuditor") < quote.indexOf("RunAllocator"),
+                "cannot allocate a run before the vaccination is known: " + quote);
+        assertTrue(quote.indexOf("RunAllocator") < quote.indexOf("QuotePricer"),
+                "cannot price a stay before a run is allocated: " + quote);
+
+        // The morning round must produce one line per run AND they must differ. Three identical
+        // lines would run the pattern perfectly and show nothing.
+        List<String> watchList = run(catalog.byId("parallelMapper").orElseThrow())
+                .result().lines().toList();
+        assertEquals(3, watchList.size(), "one line per run: " + watchList);
+        assertEquals(3, Set.copyOf(watchList).size(),
+                "the mapped results must not be indistinguishable: " + watchList);
+
+        // BDI orders by priority and precondition, not by declaration order.
+        List<String> shift = run(catalog.byId("bdi").orElseThrow()).invoked();
+        assertTrue(shift.indexOf("SafetyRound") < shift.indexOf("MedsRound"),
+                "no dog is medicated before it has been looked at: " + shift);
+        assertTrue(shift.indexOf("MedsRound") < shift.indexOf("ShiftReport"),
+                "the report needs both rounds: " + shift);
+
+        // The refinement loop has to actually fix the draft it was given: the fourth rule says
+        // the note ends with the telephone line, and the input deliberately does not.
+        String discharge = run(catalog.byId("loop").orElseThrow()).result();
+        assertTrue(discharge.strip().endsWith("if anything worries you."),
+                "the loop did not bring the draft up to the rules: " + discharge);
+
+        // Every assessor votes, or a "majority" is one opinion wearing a rosette — and the
+        // result has to show the three of them separately, because whether they split is the
+        // only interesting thing about a vote.
+        Run ballot = run(catalog.byId("voting").orElseThrow());
+        assertTrue(ballot.invoked().containsAll(List.of("TemperamentAssessor", "FosterAssessor",
+                "MedicalAssessor")), "the vote did not reach all three rubrics: "
+                + ballot.invoked());
+        assertEquals(3, ballot.result().lines().filter(l -> l.startsWith("- ")).count(),
+                "each rubric's own vote must be visible: " + ballot.result());
     }
 
     /**
@@ -208,9 +280,9 @@ class PatternCatalogTest {
                 "only one branch runs, so a join would misrepresent it");
 
         // Supervisor and blackboard are loops, not one-way arrows.
-        assertTrue(mutual(catalog, "supervisor", "supervisor", "activity"),
+        assertTrue(mutual(catalog, "supervisor", "supervisor", "rota"),
                 "supervisor invokes the planner and reads its result back");
-        assertTrue(mutual(catalog, "blackboard", "tracker", "scope"),
+        assertTrue(mutual(catalog, "blackboard", "medical", "board"),
                 "blackboard experts read as well as write");
     }
 
