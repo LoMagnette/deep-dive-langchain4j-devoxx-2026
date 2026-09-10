@@ -75,6 +75,17 @@ static files (no build step).
   points. Its diagram uses the `stages` layout, where each node carries an explicit column number,
   because no automatic layout recovers the real order of a composite's steps. When adding another
   composite, give it `category: "composite"` — the gallery counts patterns and composites separately.
+- **`packCouncil` is the second composite, mixing zoo patterns with plain plumbing**: a parallel
+  mapper scouts three angles, one agent turns the findings into a motion, a **debate** argues it to
+  a verdict, and a **vote** ratifies it. Its lesson is the opposite of the first one's: the exotic
+  planners are the easy part, and most of the work is the small adapter agents between them
+  (`CouncilBriefer`, `CouncilNote`) because each pattern expects its input under its own key.
+  Two traps this pattern already paid for, worth knowing before writing a third composite:
+  - **Scope values are passed through, never coerced.** The mapper writes `findings` as a `List`;
+    declaring `@V("findings") String` fails at runtime with a bare `argument type mismatch`.
+  - **Parallel steps invoke the listener from several threads.** Anything collecting those events
+    must be thread-safe — a plain `ArrayList` in a test silently drops them and reads as a flaky
+    "that agent never ran". The SSE path is fine (Mutiny's emitter serialises), and is verified.
 - **`Agents`** — all agent contracts as public nested interfaces (`@Agent` + `@UserMessage`/`@V`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)

@@ -183,7 +183,91 @@ public class PatternCatalog {
                 voting(),
                 debate(),
                 bdi(),
-                kennelDesk());
+                kennelDesk(),
+                packCouncil());
+    }
+
+    // 15 — the second capstone: two zoo patterns carried by simple plumbing
+    private PatternDef packCouncil() {
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "question", "input", 0),
+                        node("scout", "PackScout (per angle)", "agent", 1),
+                        node("briefer", "CouncilBriefer", "join", 2),
+                        node("pro", "DogAdvocate", "agent", 3),
+                        node("con", "HouseholdAdvocate", "agent", 3),
+                        node("judge", "PackJudge", "judge", 4),
+                        node("note", "CouncilNote", "join", 5),
+                        node("a", "MoodSnifferA", "agent", 6),
+                        node("b", "MoodSnifferB", "agent", 6),
+                        node("c", "MoodSnifferC", "agent", 6),
+                        node("tally", "majority()", "join", 7)),
+                List.of(edge("in", "scout", "3 angles"),
+                        edge("scout", "briefer", "findings"),
+                        edge("briefer", "pro", "motion"), edge("briefer", "con"),
+                        edge("pro", "con", "rebut"), edge("con", "pro", "rebut"),
+                        edge("pro", "judge"), edge("con", "judge"),
+                        edge("judge", "note", "verdict"),
+                        edge("note", "a"), edge("note", "b"), edge("note", "c"),
+                        edge("a", "tally"), edge("b", "tally"), edge("c", "tally")));
+
+        Runner runner = (model, input, listener) -> {
+            // 1. Parallel mapper (simple) — the same scout runs over three angles at once.
+            var scout = agent(Agents.PackScout.class, model, "PackScout", "finding");
+            UntypedAgent survey = AgenticServices.parallelMapperBuilder()
+                    .subAgents(scout)
+                    .itemsProvider("angles")
+                    .outputKey("findings")
+                    .build();
+
+            // 2. One plain agent (simple) turns the evidence into something debatable.
+            var briefer = agent(Agents.CouncilBriefer.class, model, "CouncilBriefer", "motion");
+
+            // 3. Debate (advanced) — two sides argue for up to two rounds, the judge rules.
+            var pro = agent(Agents.DogAdvocate.class, model, "DogAdvocate", null);
+            var con = agent(Agents.HouseholdAdvocate.class, model, "HouseholdAdvocate", null);
+            var judge = agent(Agents.PackJudge.class, model, "PackJudge", "verdict");
+            UntypedAgent debate = AgenticServices.plannerBuilder()
+                    .subAgents(pro, con, judge)          // judge LAST
+                    .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
+                    .outputKey("verdict")
+                    .build();
+
+            // 4. Glue (simple): the voters read 'text', the debate wrote 'verdict'.
+            var note = agent(Agents.CouncilNote.class, model, "CouncilNote", "text");
+
+            // 5. Voting (advanced) — three independent reads, majority ratifies.
+            var a = agent(Agents.MoodSnifferA.class, model, "MoodSnifferA", null);
+            var b = agent(Agents.MoodSnifferB.class, model, "MoodSnifferB", null);
+            var c = agent(Agents.MoodSnifferC.class, model, "MoodSnifferC", null);
+            UntypedAgent ratify = AgenticServices.plannerBuilder()
+                    .subAgents(a, b, c)
+                    .planner(() -> new VotingPlanner(VotingStrategy.majority()))
+                    .outputKey("ratified")
+                    .build();
+
+            UntypedAgent app = AgenticServices.sequenceBuilder()
+                    .subAgents(survey, briefer, debate, note, ratify)
+                    .outputKey("verdict")
+                    .listener(listener)
+                    .build();
+            // The angles are derived here rather than by an agent: the mapper needs a real
+            // collection in scope before anything has run.
+            var r = app.invokeWithAgenticScope(Map.of(
+                    "question", input,
+                    "angles", List.of("health and safety — " + input,
+                            "the household's routine — " + input,
+                            "what Zao himself would choose — " + input)));
+            return result(r, "verdict");
+        };
+
+        return new PatternDef("packCouncil", "Pack Council (composite)", "composite",
+                "Settles a contested question: a mapper scouts three angles at once, one agent "
+                        + "turns them into a motion, a debate argues it to a verdict, and a vote "
+                        + "ratifies it. Two zoo patterns carried by simple plumbing.",
+                // caveat: the zoo patterns are the easy part; the adapters between them are not.
+                "Most of this system is glue. Each zoo pattern expects its input under its own key, "
+                        + "so composing them is mostly writing the small steps in between.",
+                topo, "should Zao be allowed on the sofa in the evening?", runner);
     }
 
     // 14 — the capstone: four patterns composed into one system

@@ -1,5 +1,7 @@
 package dev.devoxx.dashboard;
 
+import java.util.List;
+
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -211,6 +213,27 @@ public final class Agents {
         @UserMessage("Rate this care plan from 0.0 to 1.0. Answer with the number only — "
                 + "no words, no explanation, no markdown. Plan: {{plan}}")
         String score(@V("plan") String plan);
+    }
+
+    // 15 — the council's own agents. Both are "glue": each exists to hand one pattern's output
+    // to the next pattern in the shape that one expects. Composites need more of these than you
+    // expect, and they are where the seams show.
+    public interface CouncilBriefer {
+        /**
+         * {@code findings} is a {@code List}, not a String, because that is what the parallel
+         * mapper writes into the scope — declare it as a String and the invocation dies with a
+         * bare "argument type mismatch". Scope values are passed through as-is, never coerced.
+         */
+        @Agent(description = "Turns what the scouts found into the motion the council will weigh")
+        @UserMessage("Write one sentence stating the motion the council should weigh. "
+                + "Question: {{question}} What the scouts found: {{findings}}")
+        String brief(@V("question") String question, @V("findings") List<String> findings);
+    }
+
+    public interface CouncilNote {
+        @Agent(description = "States the council's ruling in one line, ready to be ratified")
+        @UserMessage("State the council's ruling in one sentence: {{verdict}}")
+        String note(@V("verdict") String verdict);
     }
 
     // 13 — BDI (two desires of different priority; unique agent types)

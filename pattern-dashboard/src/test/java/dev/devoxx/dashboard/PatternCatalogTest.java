@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,9 +21,15 @@ import dev.langchain4j.agentic.scope.AgenticScope;
  */
 class PatternCatalogTest {
 
-    /** Runs one pattern on a fresh mock model and returns (result, events). */
+    /**
+     * Runs one pattern on a fresh mock model and returns (result, events).
+     *
+     * <p>The list must be synchronized: parallel and mapper patterns invoke their agents on
+     * several threads, so the listener fires concurrently. A plain ArrayList silently drops
+     * events here, which shows up as a flaky "that agent never ran" failure.
+     */
     private static Run run(PatternCatalog.PatternDef def) {
-        List<RunEvent> events = new ArrayList<>();
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong());
         String result = def.run(new MockChatModel(), def.defaultInput(), listener);
         return new Run(result, events);
@@ -136,6 +143,26 @@ class PatternCatalogTest {
         assertEquals(List.of("a", "b"), PatternCatalog.items("a;\nb"));
         // A single chunk has nothing to fan out over, so fall back to the canned topics.
         assertEquals(3, PatternCatalog.items("one thing only").size());
+    }
+
+    @Test
+    void theCouncilCarriesTwoZooPatternsEndToEnd() {
+        var def = new PatternCatalog().byId("packCouncil").orElseThrow();
+        Run r = run(def);
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+
+        var invoked = r.invoked();
+        // The mapper fans one agent over three angles, so the scout is invoked more than once.
+        assertTrue(invoked.stream().filter(a -> a.startsWith("PackScout")).count() >= 3,
+                "the mapper did not scatter: " + invoked);
+        assertTrue(invoked.contains("CouncilBriefer"), "findings were never turned into a motion");
+        assertTrue(invoked.contains("DogAdvocate") && invoked.contains("HouseholdAdvocate"),
+                "the debate did not happen: " + invoked);
+        assertTrue(invoked.contains("PackJudge"), "nobody ruled: " + invoked);
+        assertTrue(invoked.contains("MoodSnifferA") && invoked.contains("MoodSnifferB")
+                        && invoked.contains("MoodSnifferC"),
+                "the vote did not reach all three voters: " + invoked);
+        assertTrue(r.result() != null && !r.result().isBlank(), "no verdict produced");
     }
 
     /**
