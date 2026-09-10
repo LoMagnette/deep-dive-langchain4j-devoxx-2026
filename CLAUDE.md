@@ -100,7 +100,19 @@ static file.
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
   `Agents.PackCritic` returns one.
-- **`src/main/resources/META-INF/resources/index.html`** — the entire single-page frontend. Layout is
+- **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
+  `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
+  markdown subset, topology layout/drawing — functions of their arguments, which is why the same
+  `layout()` serves both the live diagram and the gallery thumbnails) and `app.js` (routing, the
+  catalogue, SSE runs, the dock, layout chrome). Classic deferred scripts in that order, not ES
+  modules — they share globals and load in sequence. The **theme bootstrap stays inline in
+  `<head>`**: it has to set `data-theme` before first paint or dark users get a white flash, and an
+  external file cannot guarantee that. Two hash routes share the main column: `#/` is the **gallery** (a card grid — one card per pattern with its
+  category, its `useful` line, and a label-free thumbnail of its topology drawn by the same `layout()`
+  the real diagram uses, so a fan-out is recognisable from a chain at a glance), and `#/<id>` is the
+  **tester**. Cards are real `<a href="#/id">` anchors, so Back, keyboard and open-in-new-tab work
+  without JS, and a pattern can be deep-linked straight from a slide. An unknown id falls back to the
+  gallery rather than rendering a blank page. The tester's layout is
   title → run controls → full-width SVG diagram → bottom dock. The dock has four tabs: **Result**
   (rendered markdown), **Scope state** (a debugger-style variables table: name / type / value, with
   the rows an agent just wrote highlighted, and long values clamped until clicked — expansion
