@@ -11,11 +11,24 @@ public record RunEvent(
         String type,
         String agent,
         String message,
-        Map<String, Object> scope,
+        Map<String, ScopeValue> scope,
         Object data) {
 
+    /**
+     * One entry of the agentic scope, shaped for the dashboard's variables table.
+     *
+     * <p>Carries the declared {@code type} and {@code size} alongside the rendered value because
+     * a debugger view without them is just a wall of strings — and here the type is part of the
+     * lesson: {@code score} shows up as a String, not a Double, which is exactly why
+     * {@code Agents.PackCritic} returns one (see its javadoc).
+     *
+     * @param size characters for text, elements for a collection, else null
+     */
+    public record ScopeValue(String type, Integer size, String value) {
+    }
+
     public static RunEvent of(long seq, String type, String agent, String message,
-                              Map<String, Object> scope, Object data) {
+                              Map<String, ScopeValue> scope, Object data) {
         return new RunEvent(seq, type, agent, message, scope, data);
     }
 }

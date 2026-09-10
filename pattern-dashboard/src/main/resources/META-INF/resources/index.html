@@ -42,23 +42,52 @@
   .head h2{margin:0 0 4px;font-size:24px}
   .head .useful{color:var(--muted);font-size:15px}
   .caveat{margin-top:10px;background:color-mix(in srgb,#f59e0b 18%,transparent);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:14px}
-  .stage{flex:1 1 auto;display:flex;min-height:0}
-  .graphwrap{flex:1 1 auto;min-width:0;position:relative}
+  /* The graph now owns the whole stage: result and scope moved into the dock's tabs. */
+  .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative}
   svg{width:100%;height:100%;display:block}
-  .side{width:270px;flex:0 0 auto;border-left:1px solid var(--line);padding:12px;overflow-y:auto;background:var(--panel2)}
-  .side h4{margin:6px 0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-  .kv{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;margin-bottom:8px;word-break:break-word}
-  .kv .k{color:var(--accent2);font-weight:700}
-  .result{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
-  /* controls */
-  .controls{padding:10px 22px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex:0 0 auto}
+  /* Scope pane: a debugger's variables table — name, type, value, and what just changed. */
+  #scope{padding:0}
+  #scope .empty{display:block;padding:10px 14px}
+  table.vars{width:100%;border-collapse:collapse;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  table.vars th{position:sticky;top:0;z-index:1;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--panel2);border-bottom:1px solid var(--line);padding:6px 10px}
+  table.vars td{padding:5px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.vars tr:hover td{background:var(--panel2)}
+  table.vars .name{color:var(--accent2);font-weight:700;white-space:nowrap}
+  table.vars .type{color:var(--muted);white-space:nowrap}
+  table.vars .val{width:100%;word-break:break-word;white-space:pre-wrap}
+  /* Long agent output would swamp the table, so clamp it and let a click open the row. */
+  table.vars .val.clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  table.vars tr.expandable{cursor:pointer}
+  table.vars tr.changed td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+  table.vars tr.changed .name{position:relative}
+  table.vars tr.changed .name::before{content:'';position:absolute;left:-10px;top:-5px;bottom:-5px;width:3px;background:var(--accent)}
+  /* #result holds rendered markdown, so block spacing comes from the elements, not pre-wrap.
+     Prose gets a readable measure rather than stretching the full width of a projector. */
+  #result{overflow-wrap:anywhere}
+  #result .md{max-width:70ch}
+  #result > :first-child, #result .md > :first-child{margin-top:0}
+  #result p{margin:0 0 8px}
+  #result h1,#result h2,#result h3,#result h4,#result h5,#result h6{margin:14px 0 6px;line-height:1.25;font-weight:700}
+  #result h1{font-size:19px} #result h2{font-size:17px} #result h3{font-size:16px}
+  #result h4,#result h5,#result h6{font-size:14px;color:var(--muted)}
+  #result ul,#result ol{margin:0 0 8px;padding-left:22px}
+  #result li{margin:3px 0}
+  #result code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+  #result pre{margin:0 0 8px;padding:8px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow-x:auto}
+  #result pre code{border:0;background:none;padding:0;white-space:pre}
+  #result blockquote{margin:0 0 8px;padding:2px 0 2px 10px;border-left:3px solid var(--board-line);color:var(--muted)}
+  #result hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+  #result a{color:var(--accent2)}
+  /* controls — directly under the title, above the diagram: the run is the first thing you do */
+  .controls{padding:10px 22px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex:0 0 auto;background:var(--panel2)}
   .controls input{flex:1 1 auto;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px}
   .controls button{padding:9px 18px;border-radius:8px;border:none;font-weight:700;font-size:15px;cursor:pointer}
   .btn-run{background:var(--accent);color:#fff}
   .btn-reset{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
   .controls button:disabled{opacity:.5;cursor:not-allowed}
   /* bottom dock: run events + server log */
-  .dock{height:210px;flex:0 0 auto;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  /* Taller than a pure log strip: the result and the scope live in here now. */
+  .dock{height:34vh;min-height:190px;flex:0 0 auto;border-top:1px solid var(--line);display:flex;flex-direction:column}
   .tabs{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel2);border-bottom:1px solid var(--line);flex:0 0 auto}
   .tab{background:none;border:1px solid transparent;color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
   .tab:hover{background:var(--panel)}
@@ -66,8 +95,12 @@
   .tab .dot{color:#f87171;font-size:16px;line-height:0;vertical-align:middle}
   .tabs .spacer{flex:1 1 auto}
   .tabs select,.tabs .mini{font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
-  .pane{flex:1 1 auto;overflow-y:auto;background:#000;padding:8px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;min-height:0}
+  .pane{flex:1 1 auto;overflow-y:auto;padding:10px 14px;min-height:0}
+  /* Streams read as a terminal; result and scope read as a document. */
+  .pane.term{background:#000;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
+  .pane.doc{background:var(--panel);font-size:14px}
   .pane .line{white-space:pre-wrap;word-break:break-word}
+  .empty{color:var(--muted);font-style:italic}
   .seq,.time{color:#6b7280}
   .logger{color:#a78bfa}
   .lvl-ERROR{color:#f87171;font-weight:700}
@@ -98,22 +131,16 @@
       <div class="useful" id="p-useful"></div>
       <div class="caveat" id="p-caveat" style="display:none"></div>
     </div>
-    <div class="stage">
-      <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
-      <aside class="side">
-        <h4>Scope state</h4>
-        <div id="scope"><em style="color:var(--muted)">— empty —</em></div>
-        <h4 style="margin-top:16px">Result</h4>
-        <div class="result" id="result"><em style="color:var(--muted)">no run yet</em></div>
-      </aside>
-    </div>
     <div class="controls">
       <input id="input" placeholder="input for the pattern"/>
       <button class="btn-run" id="run">▶ Run</button>
       <button class="btn-reset" id="reset">Reset</button>
     </div>
+    <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div class="dock">
       <div class="tabs">
+        <button class="tab" data-pane="result">Result <span class="dot" id="result-dot" hidden>•</span></button>
+        <button class="tab" data-pane="scope">Scope state</button>
         <button class="tab active" data-pane="console">Run events</button>
         <button class="tab" data-pane="log">Server log <span class="dot" id="log-dot" hidden>•</span></button>
         <span class="spacer"></span>
@@ -125,8 +152,10 @@
         </select>
         <button class="mini" id="pane-clear">clear</button>
       </div>
-      <div class="pane" id="console"></div>
-      <div class="pane" id="log" hidden></div>
+      <div class="pane doc" id="result" hidden><span class="empty">no run yet</span></div>
+      <div class="pane doc" id="scope" hidden><span class="empty">— empty —</span></div>
+      <div class="pane term" id="console"></div>
+      <div class="pane term" id="log" hidden></div>
     </div>
   </section>
 </div>
@@ -160,13 +189,17 @@ function select(id){
   cav.style.display='block'; cav.innerHTML = '⚠ <b>Caveat:</b> ' + current.caveat;
   document.getElementById('input').value = current.defaultInput || '';
   reset();
+  // Result and scope were just cleared, so land on the tab that has something to show.
+  showPane('console');
   drawGraph(current.topology);
 }
 
 function reset(){
   document.getElementById('console').innerHTML='';
-  document.getElementById('scope').innerHTML='<em style="color:var(--muted)">— empty —</em>';
-  document.getElementById('result').innerHTML='<em style="color:var(--muted)">no run yet</em>';
+  document.getElementById('scope').innerHTML='<span class="empty">— empty —</span>';
+  lastScope={}; expandedVars.clear();
+  document.getElementById('result').innerHTML='<span class="empty">no run yet</span>';
+  document.getElementById('result-dot').hidden=true;
   document.querySelectorAll('.node').forEach(n=>n.classList.remove('active','done'));
 }
 
@@ -188,10 +221,13 @@ function layout(topo){
     const src = nodes.find(n=>n.role==='input')||nodes.find(n=>n.role==='router')||nodes[0];
     const board = nodes.find(n=>n.role==='board');
     const mids = nodes.filter(n=>n!==src&&n!==board);
-    src.x=110; src.y=cy;
+    /* Three columns when something sinks on the right, two when nothing does — otherwise
+       dropping the scope box leaves the whole graph hugging the left edge. */
+    src.x = board ? 110 : W*0.3; src.y = cy;
     if(board){ board.x=W-110; board.y=cy; }
+    const midX = board ? cx : W*0.7;
     const step=H/(mids.length+1);
-    mids.forEach((m,i)=>{ m.x=cx; m.y=step*(i+1); });
+    mids.forEach((m,i)=>{ m.x=midX; m.y=step*(i+1); });
   } else if(lay==='star'){
     const center = nodes.find(n=>n.role==='supervisor')||nodes.find(n=>n.role==='board')||nodes[0];
     const others = nodes.filter(n=>n!==center);
@@ -269,15 +305,112 @@ function log(ev){
 }
 function escapeHtml(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 
+/* ---------- tiny markdown renderer ----------
+   Models answer in markdown — ### headings, **bold**, bullet lists, fenced code — and a wall of
+   raw asterisks is unreadable from the back of a room. A library would have to come off a CDN,
+   which is the one thing guaranteed to fail on conference wifi, so this covers the subset an LLM
+   actually emits and nothing else.
+
+   Order matters for safety: the text is HTML-escaped BEFORE any tag is introduced, so nothing the
+   model returns can inject markup. Only the tags generated below ever reach the DOM. */
+const MD_CODE = ' CODE';
+
+function renderMarkdown(src){
+  const codeBlocks = [];
+  // Fenced code comes out first, so the inline rules below can't rewrite its contents.
+  let s = String(src ?? '').replace(/```[^\n]*\n?([\s\S]*?)```/g, (_, body) => {
+    codeBlocks.push('<pre><code>' + escapeHtml(body.replace(/\n$/, '')) + '</code></pre>');
+    return MD_CODE + (codeBlocks.length - 1) + ' ';
+  });
+  s = escapeHtml(s);
+
+  const out = [];
+  let para = [], quote = [], list = null;
+  const flushPara = () => { if(para.length){ out.push('<p>' + para.join('<br>') + '</p>'); para = []; } };
+  const flushQuote = () => { if(quote.length){ out.push('<blockquote>' + quote.join('<br>') + '</blockquote>'); quote = []; } };
+  const flushList = () => { if(list){ out.push('</' + list + '>'); list = null; } };
+  const flush = () => { flushPara(); flushQuote(); flushList(); };
+  const openList = (kind) => { if(list !== kind){ flushList(); out.push('<' + kind + '>'); list = kind; } };
+
+  for(const line of s.split('\n')){
+    const t = line.trim();
+    let m;
+    if(!t){ flush(); continue; }
+    if(t.includes(MD_CODE)){ flush(); out.push(t); continue; }
+    if(m = t.match(/^(#{1,6})\s+(.*)$/)){
+      flush(); out.push(`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`); continue;
+    }
+    if(/^([-*_])\1{2,}$/.test(t)){ flush(); out.push('<hr>'); continue; }
+    // Escaping already ran, so a quote marker reaches this loop as &gt;, never as >.
+    // Consecutive quoted lines accumulate into one blockquote instead of a stack of boxes.
+    if(m = t.match(/^&gt;\s?(.*)$/)){ flushPara(); flushList(); quote.push(mdInline(m[1])); continue; }
+    if(m = t.match(/^[-*+]\s+(.*)$/)){ flushPara(); flushQuote(); openList('ul'); out.push('<li>' + mdInline(m[1]) + '</li>'); continue; }
+    if(m = t.match(/^\d+[.)]\s+(.*)$/)){ flushPara(); flushQuote(); openList('ol'); out.push('<li>' + mdInline(m[1]) + '</li>'); continue; }
+    flushQuote(); flushList();
+    para.push(mdInline(t));
+  }
+  flush();
+
+  return out.join('').replace(/ CODE(\d+) /g, (_, i) => codeBlocks[+i]);
+}
+
+function mdInline(t){
+  return t
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label, href) => {
+      /* Only schemes that can't execute, and quotes encoded so a URL can't escape the attribute
+         (escapeHtml deliberately leaves quotes alone, which is fine in text but not in href). */
+      if(!/^(https?:|mailto:)/i.test(href)) return whole;
+      const safe = href.replace(/"/g, '%22').replace(/'/g, '%27');
+      return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+}
+
+/* Which rows changed on the last event, so the table reads like a debugger stepping: you can
+   see exactly which variable an agent just wrote. Keyed by name -> value. */
+let lastScope={};
+let expandedVars=new Set();
+
 function updateScope(scope){
-  if(!scope) return; const keys=Object.keys(scope); if(!keys.length) return;
-  const el=document.getElementById('scope'); el.innerHTML='';
-  keys.forEach(k=>{ const d=document.createElement('div'); d.className='kv'; d.innerHTML=`<span class="k">${escapeHtml(k)}</span>: ${escapeHtml(scope[k])}`; el.appendChild(d); });
+  if(!scope) return;
+  const keys=Object.keys(scope); if(!keys.length) return;
+  const el=document.getElementById('scope');
+  const rows=keys.map(k=>{
+    const v=scope[k]||{};
+    const changed = !(k in lastScope) || lastScope[k]!==v.value;
+    const expanded = expandedVars.has(k);
+    const type = v.type + (v.size!=null ? '(' + v.size + ')' : '');
+    return `<tr class="${changed?'changed ':''}expandable" data-var="${escapeHtml(k)}">`
+      + `<td class="name">${escapeHtml(k)}</td>`
+      + `<td class="type">${escapeHtml(type)}</td>`
+      + `<td class="val${expanded?'':' clamped'}">${escapeHtml(v.value)}</td></tr>`;
+  }).join('');
+  el.innerHTML = '<table class="vars"><thead><tr><th>name</th><th>type</th><th>value</th></tr>'
+    + `</thead><tbody>${rows}</tbody></table>`;
+  el.querySelectorAll('tr.expandable').forEach(tr=>tr.onclick=()=>{
+    const k=tr.dataset.var;
+    if(expandedVars.has(k)) expandedVars.delete(k); else expandedVars.add(k);
+    tr.querySelector('.val').classList.toggle('clamped');
+  });
+  lastScope={}; keys.forEach(k=>lastScope[k]=(scope[k]||{}).value);
+}
+
+/* The result is a tab now, so a finished run would otherwise be invisible. Switch to it on
+   completion — unless the viewer picked a tab themselves during this run, in which case leave
+   them where they are and just flag the tab. */
+let tabPinned=false;
+function revealResult(){
+  if(!tabPinned) showPane('result');
+  else if(activePane()!=='result') document.getElementById('result-dot').hidden=false;
 }
 
 function run(){
   if(!current) return;
   reset();
+  tabPinned=false;
   const input=encodeURIComponent(document.getElementById('input').value||'');
   document.getElementById('run').disabled=true;
   es=new EventSource(`/api/patterns/${current.id}/run?input=${input}`);
@@ -287,7 +420,10 @@ function run(){
     if(ev.type==='agent-before') markNode(ev.agent,'active');
     else if(ev.type==='agent-after') markNode(ev.agent,'done');
     else if(ev.type==='run-result'){
-      document.getElementById('result').textContent = ev.data!=null? String(ev.data):'(no output)';
+      document.getElementById('result').innerHTML = ev.data!=null
+        ? '<div class="md">' + renderMarkdown(ev.data) + '</div>'
+        : '<span class="empty">(no output)</span>';
+      revealResult();
     } else if(ev.type==='run-done'){
       es.close(); es=null; document.getElementById('run').disabled=false;
     }
@@ -299,12 +435,16 @@ function run(){
 const LEVEL_RANK={TRACE:0,DEBUG:1,INFO:2,WARN:3,ERROR:4};
 let logLines=[];
 
+const PANES=['result','scope','console','log'];
 function showPane(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.pane===name));
-  document.getElementById('console').hidden = name!=='console';
-  document.getElementById('log').hidden = name!=='log';
+  PANES.forEach(p=>document.getElementById(p).hidden = p!==name);
+  /* Per-tab controls: a level filter only means something for the log, and "clear" would be
+     meaningless on panes that mirror the current run. */
   document.getElementById('log-level').style.display = name==='log' ? '' : 'none';
+  document.getElementById('pane-clear').style.display = (name==='log'||name==='console') ? '' : 'none';
   if(name==='log') document.getElementById('log-dot').hidden = true;
+  if(name==='result') document.getElementById('result-dot').hidden = true;
 }
 function activePane(){ return document.querySelector('.tab.active').dataset.pane; }
 function minLevel(){ return document.getElementById('log-level').value; }
@@ -338,7 +478,7 @@ function connectLogs(){
   src.onmessage=e=>{ let l; try{ l=JSON.parse(e.data); }catch(_){ return; } appendLog(l); };
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showPane(t.dataset.pane));
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tabPinned=true; showPane(t.dataset.pane); });
 document.getElementById('log-level').onchange=renderLog;
 document.getElementById('pane-clear').onclick=()=>{
   if(activePane()==='log'){ logLines=[]; renderLog(); }

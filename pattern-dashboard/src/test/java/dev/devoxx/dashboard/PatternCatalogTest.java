@@ -1,6 +1,7 @@
 package dev.devoxx.dashboard;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -107,6 +108,26 @@ class PatternCatalogTest {
         assertEquals(List.of("a", "b"), PatternCatalog.items("a;\nb"));
         // A single chunk has nothing to fan out over, so fall back to the canned topics.
         assertEquals(3, PatternCatalog.items("one thing only").size());
+    }
+
+    @Test
+    void scopeEntriesCarryAReadableTypeAndSize() {
+        var text = StreamingListener.describe("hello");
+        assertEquals("String", text.type());
+        assertEquals(5, (int) text.size());
+
+        // List.of(...) is really an ImmutableCollections$ListN; the variables table must not
+        // leak that at the audience.
+        var list = StreamingListener.describe(List.of("a", "b", "c"));
+        assertEquals("List", list.type());
+        assertEquals(3, (int) list.size());
+
+        // Sizeless scalars simply have no size, rather than a misleading 0.
+        var number = StreamingListener.describe(42);
+        assertEquals("Integer", number.type());
+        assertNull(number.size());
+
+        assertEquals("null", StreamingListener.describe(null).type());
     }
 
     @Test

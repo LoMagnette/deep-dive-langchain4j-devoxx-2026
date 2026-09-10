@@ -189,9 +189,8 @@ public class PatternCatalog {
     private PatternDef single() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "topic", "input"),
-                        node("writer", "PackChronicler", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "writer"), edge("writer", "scope", "tale")));
+                        node("writer", "PackChronicler", "agent")),
+                List.of(edge("in", "writer")));
         Runner runner = (model, input, listener) -> {
             var writer = agent(Agents.PackChronicler.class, model, "PackChronicler", "tale");
             UntypedAgent app = AgenticServices.sequenceBuilder()
@@ -210,10 +209,8 @@ public class PatternCatalog {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "topic", "input"),
                         node("writer", "PackChronicler", "agent"),
-                        node("editor", "PackEditor", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "writer"), edge("writer", "editor", "tale"),
-                        edge("editor", "scope", "editedTale")));
+                        node("editor", "PackEditor", "agent")),
+                List.of(edge("in", "writer"), edge("writer", "editor", "tale")));
         Runner runner = (model, input, listener) -> {
             var writer = agent(Agents.PackChronicler.class, model, "PackChronicler", "tale");
             var editor = agent(Agents.PackEditor.class, model, "PackEditor", "editedTale");
@@ -233,11 +230,9 @@ public class PatternCatalog {
         Topology.Graph topo = graph("loop",
                 List.of(node("in", "tale", "input"),
                         node("editor", "PackEditor", "agent"),
-                        node("scorer", "PackCritic", "agent"),
-                        node("scope", "AgenticScope", "board")),
+                        node("scorer", "PackCritic", "agent")),
                 List.of(edge("in", "editor"), edge("editor", "scorer", "tale"),
-                        edge("scorer", "editor", "score < 0.8"),
-                        edge("scorer", "scope", "score")));
+                        edge("scorer", "editor", "score < 0.8")));
         Runner runner = (model, input, listener) -> {
             var editor = agent(Agents.PackEditor.class, model, "PackEditor", "tale");
             var scorer = agent(Agents.PackCritic.class, model, "PackCritic", "score");
@@ -264,10 +259,8 @@ public class PatternCatalog {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "mood", "input"),
                         node("walk", "WalkExpert", "agent"),
-                        node("treat", "TreatExpert", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "walk"), edge("in", "treat"),
-                        edge("walk", "scope", "walk"), edge("treat", "scope", "treat")));
+                        node("treat", "TreatExpert", "agent")),
+                List.of(edge("in", "walk"), edge("in", "treat")));
         Runner runner = (model, input, listener) -> {
             var walk = agent(Agents.WalkExpert.class, model, "WalkExpert", "walk");
             var treat = agent(Agents.TreatExpert.class, model, "TreatExpert", "treat");
@@ -289,9 +282,8 @@ public class PatternCatalog {
     private PatternDef parallelMapper() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "topics[3]", "input"),
-                        node("scout", "PackScout (per item)", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "scout"), edge("scout", "scope", "findings")));
+                        node("scout", "PackScout (per item)", "agent")),
+                List.of(edge("in", "scout")));
         Runner runner = (model, input, listener) -> {
             // The mapper collects each per-item invocation under the agent's outputKey.
             var scout = agent(Agents.PackScout.class, model, "PackScout", "finding");
@@ -320,15 +312,11 @@ public class PatternCatalog {
                         node("router", "KennelRouter", "router"),
                         node("behaviour", "BehaviourExpert", "agent"),
                         node("nutrition", "NutritionExpert", "agent"),
-                        node("vet", "VetExpert", "agent"),
-                        node("scope", "AgenticScope", "board")),
+                        node("vet", "VetExpert", "agent")),
                 List.of(edge("in", "router"),
                         edge("router", "behaviour", "behaviour"),
                         edge("router", "nutrition", "nutrition"),
-                        edge("router", "vet", "veterinary"),
-                        edge("behaviour", "scope", "answer"),
-                        edge("nutrition", "scope", "answer"),
-                        edge("vet", "scope", "answer")));
+                        edge("router", "vet", "veterinary")));
         Runner runner = (model, input, listener) -> {
             var router = agent(Agents.KennelRouter.class, model, "KennelRouter", "category");
             var behaviour = agent(Agents.BehaviourExpert.class, model, "BehaviourExpert", "answer");
@@ -362,10 +350,8 @@ public class PatternCatalog {
         Topology.Graph topo = graph("star",
                 List.of(node("supervisor", "Supervisor", "supervisor"),
                         node("activity", "ActivityPlanner", "agent"),
-                        node("meal", "MealPlanner", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("supervisor", "activity"), edge("supervisor", "meal"),
-                        edge("supervisor", "scope")));
+                        node("meal", "MealPlanner", "agent")),
+                List.of(edge("supervisor", "activity"), edge("supervisor", "meal")));
         Runner runner = (model, input, listener) -> {
             var activity = agent(Agents.ActivityPlanner.class, model, "ActivityPlanner", null);
             var meal = agent(Agents.MealPlanner.class, model, "MealPlanner", null);
@@ -390,10 +376,8 @@ public class PatternCatalog {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "prompt", "input"),
                         node("extractor", "DogExtractor", "agent"),
-                        node("bio", "PackBiographer", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "extractor"), edge("extractor", "bio", "dog"),
-                        edge("bio", "scope", "writeup")));
+                        node("bio", "PackBiographer", "agent")),
+                List.of(edge("in", "extractor"), edge("extractor", "bio", "dog")));
         Runner runner = (model, input, listener) -> {
             var extractor = agent(Agents.DogExtractor.class, model, "DogExtractor", "dog");
             var bio = agent(Agents.PackBiographer.class, model, "PackBiographer", "writeup");
@@ -419,12 +403,10 @@ public class PatternCatalog {
         Topology.Graph topo = graph("mesh",
                 List.of(node("in", "issue", "input"),
                         node("negotiator", "PackNegotiator", "agent"),
-                        node("mediator", "PackMediator", "agent"),
-                        node("scope", "AgenticScope", "board")),
+                        node("mediator", "PackMediator", "agent")),
                 List.of(edge("in", "negotiator"),
                         edge("negotiator", "mediator", "proposal"),
-                        edge("mediator", "negotiator", "refine"),
-                        edge("mediator", "scope", "consensus")));
+                        edge("mediator", "negotiator", "refine")));
         Runner runner = (model, input, listener) -> {
             var negotiator = agent(Agents.PackNegotiator.class, model, "PackNegotiator", "proposal");
             var mediator = agent(Agents.PackMediator.class, model, "PackMediator", "consensus");
@@ -447,7 +429,10 @@ public class PatternCatalog {
     // 10 — blackboard (experts contribute until goal state is reached)
     private PatternDef blackboard() {
         Topology.Graph topo = graph("star",
-                List.of(node("scope", "Blackboard (Scope)", "board"),
+                // The only pattern that still draws the shared state: here it is not plumbing,
+                // it is the pattern. Every other topology dropped its AgenticScope sink — it was
+                // the same box in all 13 diagrams, and the scope now has its own tab.
+                List.of(node("scope", "Blackboard", "board"),
                         node("tracker", "Tracker", "agent"),
                         node("analyst", "PackAnalyst", "agent"),
                         node("leader", "PackLeader", "agent")),
@@ -482,10 +467,8 @@ public class PatternCatalog {
                 List.of(node("in", "text", "input"),
                         node("a", "MoodSnifferA", "agent"),
                         node("b", "MoodSnifferB", "agent"),
-                        node("c", "MoodSnifferC", "agent"),
-                        node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "a"), edge("in", "b"), edge("in", "c"),
-                        edge("a", "scope"), edge("b", "scope"), edge("c", "scope", "majority")));
+                        node("c", "MoodSnifferC", "agent")),
+                List.of(edge("in", "a"), edge("in", "b"), edge("in", "c")));
         Runner runner = (model, input, listener) -> {
             var a = agent(Agents.MoodSnifferA.class, model, "MoodSnifferA", null);
             var b = agent(Agents.MoodSnifferB.class, model, "MoodSnifferB", null);
@@ -512,12 +495,10 @@ public class PatternCatalog {
                 List.of(node("in", "motion", "input"),
                         node("a", "DogAdvocate", "agent"),
                         node("b", "HouseholdAdvocate", "agent"),
-                        node("judge", "PackJudge", "judge"),
-                        node("scope", "AgenticScope", "board")),
+                        node("judge", "PackJudge", "judge")),
                 List.of(edge("in", "a"), edge("in", "b"),
                         edge("a", "b", "rebut"), edge("b", "a", "rebut"),
-                        edge("a", "judge"), edge("b", "judge"),
-                        edge("judge", "scope", "verdict")));
+                        edge("a", "judge"), edge("b", "judge")));
         Runner runner = (model, input, listener) -> {
             var a = agent(Agents.DogAdvocate.class, model, "DogAdvocate", null);
             var b = agent(Agents.HouseholdAdvocate.class, model, "HouseholdAdvocate", null);
@@ -543,11 +524,9 @@ public class PatternCatalog {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "goal", "input"),
                         node("gatherer", "CareScout (desire p10)", "agent"),
-                        node("reporter", "CareReporter (desire p5)", "agent"),
-                        node("scope", "AgenticScope", "board")),
+                        node("reporter", "CareReporter (desire p5)", "agent")),
                 List.of(edge("in", "gatherer"),
-                        edge("gatherer", "reporter", "info"),
-                        edge("reporter", "scope", "report")));
+                        edge("gatherer", "reporter", "info")));
         Runner runner = (model, input, listener) -> {
             var gatherer = agent(Agents.CareScout.class, model, "CareScout", "info");
             var reporter = agent(Agents.CareReporter.class, model, "CareReporter", "report");

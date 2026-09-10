@@ -1,9 +1,12 @@
 package dev.devoxx.dashboard;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
+import dev.devoxx.dashboard.RunEvent.ScopeValue;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
@@ -62,8 +65,8 @@ public class StreamingListener implements AgentListener {
      * Keys prefixed {@code __} are LangChain4j's internal planner bookkeeping
      * ({@code __planner_state_*}) — they are noise in a panel meant to teach shared state.
      */
-    static Map<String, Object> snapshot(AgenticScope scope) {
-        Map<String, Object> out = new LinkedHashMap<>();
+    static Map<String, ScopeValue> snapshot(AgenticScope scope) {
+        Map<String, ScopeValue> out = new LinkedHashMap<>();
         if (scope == null) {
             return out;
         }
@@ -72,7 +75,7 @@ public class StreamingListener implements AgentListener {
                 if (e.getKey().startsWith("__")) {
                     continue;
                 }
-                out.put(e.getKey(), truncate(e.getValue()));
+                out.put(e.getKey(), describe(e.getValue()));
             }
         } catch (Exception ignore) {
             // scope may be in an inconsistent state during teardown; ignore.
@@ -80,7 +83,32 @@ public class StreamingListener implements AgentListener {
         return out;
     }
 
-    static Object truncate(Object value) {
+    /** Name the type the way a reader would, not the way the JDK does. */
+    static ScopeValue describe(Object value) {
+        if (value == null) {
+            return new ScopeValue("null", null, "null");
+        }
+        String type;
+        Integer size;
+        // List.of(...) is really an ImmutableCollections$ListN; "List(3)" is what a person wants.
+        if (value instanceof Collection<?> c) {
+            type = value instanceof Set ? "Set" : "List";
+            size = c.size();
+        } else if (value instanceof Map<?, ?> m) {
+            type = "Map";
+            size = m.size();
+        } else if (value instanceof CharSequence s) {
+            type = "String";
+            size = s.length();
+        } else {
+            String simple = value.getClass().getSimpleName();
+            type = simple.isEmpty() ? value.getClass().getName() : simple;
+            size = null;
+        }
+        return new ScopeValue(type, size, truncate(value));
+    }
+
+    static String truncate(Object value) {
         String s = String.valueOf(value);
         return s.length() > 400 ? s.substring(0, 400) + "…" : s;
     }

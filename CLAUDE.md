@@ -95,10 +95,27 @@ static file.
   Two hazards it already handles: emitting a record can itself log (guarded by a thread-local, else
   infinite recursion), and dev-mode reload would otherwise stack a second handler and double every line.
 - **`Topology` / `RunEvent`** — plain records describing the graph and the streamed events.
-- **`src/main/resources/META-INF/resources/index.html`** — the entire single-page frontend: renders the
-  SVG topology, consumes the SSE stream, animates agent activity, shows the live scope-state panel, and
-  hosts the bottom dock with its two tabs ("Run events" from `/api/patterns/{id}/run`, "Server log" from
-  `/api/logs`, with a level filter and a dot that flags a WARN/ERROR you haven't looked at yet).
+  `RunEvent.ScopeValue` (type + size + rendered value) is what makes the Scope tab a variables
+  table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
+  expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
+  bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
+  `Agents.PackCritic` returns one.
+- **`src/main/resources/META-INF/resources/index.html`** — the entire single-page frontend. Layout is
+  title → run controls → full-width SVG diagram → bottom dock. The dock has four tabs: **Result**
+  (rendered markdown), **Scope state** (a debugger-style variables table: name / type / value, with
+  the rows an agent just wrote highlighted, and long values clamped until clicked — expansion
+  survives the next update so a row doesn't collapse mid-run), **Run events**
+  (`/api/patterns/{id}/run`) and
+  **Server log** (`/api/logs`, with a level filter). A dot flags a WARN/ERROR — or a finished result —
+  on a tab you haven't looked at. Finishing a run switches to Result automatically, *unless* the viewer
+  picked a tab themselves during that run (`tabPinned`) — never yank the view out from under someone.
+  `renderMarkdown` is ~40 lines with no dependency (a CDN is the one thing sure to fail on conference
+  wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
+  keep that order if you extend it. Known simplification: nested bullets flatten to one level.
+- **The diagrams deliberately do not draw the AgenticScope.** It was the identical terminal box in all
+  13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
+  is Blackboard, where the shared board *is* the pattern — remove it there and you get three
+  disconnected agents. The graph layout treats a `board` node as optional and re-centres without it.
 
 ### The data flow for one run
 
