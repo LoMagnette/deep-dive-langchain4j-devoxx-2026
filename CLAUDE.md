@@ -119,6 +119,13 @@ static file.
   ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
   talk. Labels stay plain; the names in `Agents` already carry the theme. Two glyphs remain, both
   functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
+  Visually it is a light, card-based shell — floating rounded surfaces with soft elevation on a
+  tinted page — rather than the bordered-box admin look it started as. The primary action is ink,
+  not brand colour; the accent is reserved for identity and selection (a tinted chip, not a
+  saturated slab). Theme is an explicit `data-theme` on `<html>`, resolved by a small script in
+  `<head>` **before first paint** (else dark users get a white flash), so the tokens are declared
+  once each instead of duplicated across a media query. A header toggle overrides the OS and
+  persists with the other layout prefs — on a projector the OS preference is rarely the right one.
   Every colour pair is checked against WCAG 4.5:1 in both themes — the event and log panes are dark
   in *both*, so their text colours are deliberately theme-independent (theme-following inks
   measured 2.8:1 there).

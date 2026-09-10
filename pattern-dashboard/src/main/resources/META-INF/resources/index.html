@@ -5,76 +5,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Zao's Pack — LangChain4j Agentic Patterns</title>
 <!-- The same drawn paw as the header, so the tab and the page share one mark. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23a8461a'%3E%3Cellipse cx='12' cy='16.6' rx='5.2' ry='4.3'/%3E%3Cellipse cx='5.5' cy='10.3' rx='2.3' ry='3'/%3E%3Cellipse cx='9.9' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='14.5' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='18.7' cy='10.4' rx='2.3' ry='3'/%3E%3C/g%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23ad470b'%3E%3Cellipse cx='12' cy='16.6' rx='5.2' ry='4.3'/%3E%3Cellipse cx='5.5' cy='10.3' rx='2.3' ry='3'/%3E%3Cellipse cx='9.9' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='14.5' cy='7.3' rx='2.4' ry='3.2'/%3E%3Cellipse cx='18.7' cy='10.4' rx='2.3' ry='3'/%3E%3C/g%3E%3C/svg%3E"/>
+<script>
+  /* Runs before the body renders. Any failure (no matchMedia, blocked storage) falls back to
+     light rather than leaving the page unthemed. */
+  try{
+    var _p=JSON.parse(localStorage.getItem('dashboard.layout')||'{}');
+    var _d=_p.theme||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+    document.documentElement.setAttribute('data-theme',_d);
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+</script>
 <style>
-  /* Zao's colouring: a Belgian shepherd's fawn coat and black mask, on warm paper rather than
-     the cool grey every dashboard already uses. Contrast is kept projector-strong. */
+  /* Zao's coat on modern surfaces: warm neutrals, one vivid accent, elevation instead of
+     hairline boxes. The theme is resolved to an explicit data-theme by the script in <head>,
+     so the tokens are declared once each instead of duplicated across a media query. */
   :root{
-    --bg:#f6f1e7; --panel:#fffdf8; --panel2:#efe5d5; --ink:#2b2019; --muted:#786451;
-    --line:#dbcbb3; --accent:#a8461a; --accent2:#12695c;
-    --node:#fffdf8; --node-line:#c7b193; --node-active:#f6c667; --node-active-line:#a8461a;
-    --node-done:#cbe0bd; --node-done-line:#4a7c3f; --board:#ecdcbf; --board-line:#a8461a;
-    --term:#1c140e; --on-accent:#fff;
+    color-scheme:light;
+    --bg:#f7f4ef; --panel:#ffffff; --panel2:#f1ede6; --ink:#1c1917; --muted:#6b6058;
+    --line:#e8e1d6; --accent:#ad470b; --accent-soft:#fbe8db; --accent2:#0f766e;
+    --node:#ffffff; --node-line:#e2d8ca; --node-active:#fbd38d; --node-active-line:#ad470b;
+    --node-done:#d3e8c6; --node-done-line:#4d8040; --board:#f2e5d0; --board-line:#ad470b;
+    --btn:#211d1a; --btn-ink:#ffffff; --term:#1b1917;
+    --shadow:0 1px 2px rgba(28,25,23,.05), 0 10px 30px -14px rgba(28,25,23,.22);
   }
-  /* The event/log panes are dark in BOTH themes, so their text colours must NOT follow the
-     theme. Light-mode-dark inks on a near-black pane measured 2.8:1 — invisible from row ten. */
+  /* Deliberately not near-black: a heavy dark theme reads as murky on a projector. These are
+     lifted, warm greys with clear separation between page, card and inset. */
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#191817; --panel:#242221; --panel2:#1f1e1c; --ink:#f4f0eb; --muted:#a89d92;
+    --line:#34302c; --accent:#f4813c; --accent-soft:#3b2618; --accent2:#5eead4;
+    --node:#2b2826; --node-line:#403a35; --node-active:#5c3f14; --node-active-line:#f4b45c;
+    --node-done:#26402a; --node-done-line:#6fbf5f; --board:#3a2c18; --board-line:#f4813c;
+    --btn:#f4f0eb; --btn-ink:#211d1a; --term:#141312;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.75);
+  }
+  /* The event/log panes are dark in BOTH themes, so their inks must not follow the theme. */
   :root{
     --c-start:#ab9781; --c-before:#6fb6de; --c-after:#8ed07f; --c-error:#f08a80;
-    --c-result:#eaa96a; --c-done:#ab9781;
-    /* De-emphasised, but still 5.6:1 — the old cool grey measured 3.8:1 and vanished on a beamer. */
-    --term-dim:#9d8a75;
+    --c-result:#eaa96a; --c-done:#ab9781; --term-dim:#9d8a75;
   }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#15100c; --panel:#221a13; --panel2:#1b1410; --ink:#f2e8db; --muted:#ab9781;
-      --line:#3c2f24; --accent:#e8894a; --accent2:#5fc0ad;
-      --node:#2a2018; --node-line:#4d3c2d; --node-active:#6d4a13; --node-active-line:#f4b45c;
-      --node-done:#27402a; --node-done-line:#6fbf5f; --board:#3a2c18; --board-line:#e8894a;
-      --term:#0e0a07;
-      /* White on a light-orange accent is 2.6:1; the coat colour needs dark ink on it here. */
-      --on-accent:#241608;
-    }
-    /* The paw trail is a data URI, which CSS variables cannot reach into, so the dark coat
-       needs its own copy rather than a recoloured one. */
-    .graphwrap{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23e8894a' fill-opacity='0.045'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
-  }
-  /* Rounded system faces read friendlier than the default UI stack, and cost no download —
-     a webfont from a CDN is exactly what dies on conference wifi. */
   :root{ --display: ui-rounded,"SF Pro Rounded","Segoe UI Variable Display","Nunito",
                     "Trebuchet MS",system-ui,sans-serif; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  /* A collar-stripe under the header: the one flash of Belgium in the chrome. */
-  header.top{padding:13px 20px;border-bottom:3px solid var(--accent);display:flex;align-items:center;gap:14px;flex:0 0 auto;
-    background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%)}
-  header.top h1{font-family:var(--display);font-size:21px;margin:0;font-weight:800;letter-spacing:-.01em}
-  header.top .sub{color:var(--muted);font-size:14px}
+  header.top{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex:0 0 auto;background:var(--panel)}
+  header.top h1{font-family:var(--display);font-size:20px;margin:0;font-weight:800;letter-spacing:-.015em}
+  header.top .sub{color:var(--muted);font-size:13.5px}
+  /* A labelled two-way switch, not a mystery icon: on stage you want to see which mode you are
+     in and click the one you want, without hunting for an unlabelled glyph. */
+  .themeswitch{margin-left:auto;flex:0 0 auto;display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--panel2)}
+  .themeswitch button{display:flex;align-items:center;gap:6px;padding:5px 13px;border:0;border-radius:999px;
+    background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+  .themeswitch button svg{width:15px;height:15px}
+  .themeswitch button:hover{color:var(--ink)}
+  .themeswitch button[aria-pressed="true"]{background:var(--panel);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.10)}
   .railtoggle{flex:0 0 auto;width:34px;height:34px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:15px;line-height:1;cursor:pointer}
   .railtoggle:hover{background:var(--panel2);border-color:var(--accent);color:var(--accent)}
   /* A drawn mark, not an emoji: identity without the novelty-shop register. */
   .mark{flex:0 0 auto;width:23px;height:23px;fill:var(--accent)}
   .layout{display:flex;flex:1 1 auto;min-height:0}
   /* left rail — collapsible, to hand the diagram the full width on a projector */
-  .rail{width:250px;flex:0 0 auto;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel2);padding:10px;transition:width .15s ease}
-  body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;border-right:0;visibility:hidden;
+  .rail{width:250px;flex:0 0 auto;overflow-y:auto;background:transparent;padding:14px 12px;transition:width .15s ease}
+  body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;visibility:hidden;
     /* delay hiding until the slide finishes, so collapsed buttons stop taking focus */
     transition:width .15s ease, visibility 0s linear .15s}
   .rail h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:16px 8px 6px}
   .rail button{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer;font-size:14px;margin-bottom:2px}
-  .rail button:hover{background:var(--panel);border-color:var(--line)}
-  /* The selected pattern wears the collar. The colour is the signal; no badge needed. */
-  .rail button.active{background:var(--accent);color:var(--on-accent);font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,.12)}
+  .rail button:hover{background:var(--panel)}
+  /* The selected pattern wears the collar: a tinted chip reads lighter than a solid slab. */
+  .rail button.active{background:var(--accent-soft);color:var(--accent);font-weight:700}
   /* center */
-  .main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
-  .head{padding:16px 22px;border-bottom:1px solid var(--line);flex:0 0 auto}
-  .head h2{margin:0 0 4px;font-size:24px}
+  .main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0;padding:0 18px 18px;gap:12px}
+  .head{padding:16px 4px 0;flex:0 0 auto}
+  .head h2{margin:0 0 4px;font-size:25px;letter-spacing:-.02em}
   .head .useful{color:var(--muted);font-size:15px}
-  .caveat{margin-top:10px;background:color-mix(in srgb,#f59e0b 18%,transparent);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:14px}
+  .caveat{margin-top:10px;background:var(--accent-soft);border:0;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:8px 12px;font-size:14px}
   /* The graph owns the whole stage: result and scope moved into the dock's tabs. The empty
      canvas is a paw trail rather than blank paper — kept faint so edges stay legible. */
-  .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23a8461a' fill-opacity='0.032'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+  .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative;background-color:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23ad470b' fill-opacity='0.032'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
   svg#graph{width:100%;height:100%;display:block;position:relative}
   /* Scope pane: a debugger's variables table — name, type, value, and what just changed. */
   #scope{padding:0}
@@ -110,34 +120,35 @@
   #result hr{border:0;border-top:1px solid var(--line);margin:12px 0}
   #result a{color:var(--accent2)}
   /* controls — directly under the title, above the diagram: the run is the first thing you do */
-  .controls{padding:10px 22px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex:0 0 auto;background:var(--panel2)}
-  .controls input{flex:1 1 auto;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:15px}
+  .controls{padding:10px 12px;border-radius:16px;display:flex;gap:10px;align-items:center;flex:0 0 auto;background:var(--panel);box-shadow:var(--shadow)}
+  .controls input{flex:1 1 auto;padding:10px 16px;border:1px solid transparent;border-radius:999px;background:var(--panel2);color:var(--ink);font-size:15px}
   .controls input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
   .controls button{padding:9px 20px;border-radius:999px;border:none;font-weight:700;font-size:15px;cursor:pointer}
-  .btn-run{background:var(--accent);color:var(--on-accent);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+  /* Primary action is ink, not brand colour: reads current, and never fights the accent. */
+  .btn-run{background:var(--btn);color:var(--btn-ink)}
   .btn-run:hover:not(:disabled){filter:brightness(1.08)}
-  .btn-run:active:not(:disabled){transform:translateY(1px);box-shadow:none}
-  .btn-reset{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
-  .btn-reset:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-run:active:not(:disabled){transform:translateY(1px)}
+  .btn-reset{background:var(--panel2);color:var(--muted)}
+  .btn-reset:hover{color:var(--accent)}
   .controls button:disabled{opacity:.5;cursor:not-allowed}
   .pale{color:var(--muted);font-weight:600}
   .head h2{font-family:var(--display)}
   /* bottom dock: run events + server log */
   /* Taller than a pure log strip: the result and the scope live in here now. Drag-resizable,
      because how much room the log deserves depends on which pattern is being demoed. */
-  .dock{height:34vh;min-height:120px;flex:0 0 auto;border-top:1px solid var(--line);display:flex;flex-direction:column}
-  .grip{height:7px;flex:0 0 auto;cursor:ns-resize;background:var(--panel2);border-bottom:1px solid var(--line);position:relative}
-  .grip::after{content:'';position:absolute;left:50%;top:3px;width:38px;height:2px;margin-left:-19px;border-radius:2px;background:var(--line)}
+  .dock{height:34vh;min-height:120px;flex:0 0 auto;display:flex;flex-direction:column;background:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+  .grip{height:9px;flex:0 0 auto;cursor:ns-resize;background:var(--panel);position:relative}
+  .grip::after{content:'';position:absolute;left:50%;top:4px;width:40px;height:3px;margin-left:-20px;border-radius:3px;background:var(--line)}
   .grip:hover::after,.grip:focus-visible::after{background:var(--accent)}
   .grip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   body.resizing{cursor:ns-resize;user-select:none}
-  .tabs{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel2);border-bottom:1px solid var(--line);flex:0 0 auto}
+  .tabs{display:flex;align-items:center;gap:4px;padding:2px 10px 8px;background:var(--panel);flex:0 0 auto}
   .tab{background:none;border:1px solid transparent;color:var(--muted);padding:4px 12px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600}
-  .tab:hover{background:var(--panel)}
-  .tab.active{background:var(--panel);color:var(--accent);border-color:var(--accent)}
+  .tab:hover{background:var(--panel2);color:var(--ink)}
+  .tab.active{background:var(--accent-soft);color:var(--accent);border-color:transparent}
   .tab .dot{color:#f87171;font-size:16px;line-height:0;vertical-align:middle}
   .tabs .spacer{flex:1 1 auto}
-  .tabs select,.tabs .mini{font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+  .tabs select,.tabs .mini{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
   .pane{flex:1 1 auto;overflow-y:auto;padding:10px 14px;min-height:0}
   /* Streams read as a terminal; result and scope read as a document. */
   .pane.term{background:var(--term);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
@@ -179,6 +190,15 @@
   </svg>
   <h1>Zao's Pack <span class="pale">· LangChain4j agentic patterns</span></h1>
   <span class="sub">All 13 patterns, running live. From puppy to pack — autonomy is a dial.</span>
+  <div class="themeswitch" role="group" aria-label="Colour theme">
+    <button id="theme-light" data-theme-choice="light" title="Light theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+        <g stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 2.7v2.3M12 19v2.3
+          M21.3 12H19M5 12H2.7M18.6 5.4L17 7M7 17l-1.6 1.6M18.6 18.6L17 17M7 7L5.4 5.4"/></g></svg>Light</button>
+    <button id="theme-dark" data-theme-choice="dark" title="Dark theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor"
+        d="M20.1 14.6A8.5 8.5 0 1 1 9.4 3.9a6.9 6.9 0 0 0 10.7 10.7z"/></svg>Dark</button>
+  </div>
 </header>
 <div class="layout">
   <nav class="rail" id="rail"></nav>
@@ -359,7 +379,7 @@ function drawGraph(topo){
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('class','node '+(n.role==='board'||n.role==='join'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
     const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
-    r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',10);
+    r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',14);
     g.appendChild(r);
     const t=document.createElementNS('http://www.w3.org/2000/svg','text');
     t.setAttribute('x',n.x); t.setAttribute('y',n.y);
@@ -595,6 +615,22 @@ function setDockHeight(px, persist){
   if(persist) savePrefs({dock:h});
   return h;
 }
+function prefersDark(){
+  try{ return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; }
+  catch(_){ return false; }
+}
+function currentTheme(){ return loadPrefs().theme || (prefersDark() ? 'dark' : 'light'); }
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  // aria-pressed doubles as the styling hook, so the switch can never show the wrong side lit.
+  document.querySelectorAll('[data-theme-choice]').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.themeChoice === theme)));
+}
+document.querySelectorAll('[data-theme-choice]').forEach(b => b.onclick = () => {
+  savePrefs({theme:b.dataset.themeChoice});
+  applyTheme(b.dataset.themeChoice);
+});
+
 function setRailHidden(hidden, persist){
   document.body.classList.toggle('rail-hidden', hidden);
   document.getElementById('rail-toggle').setAttribute('aria-expanded', String(!hidden));
@@ -639,6 +675,7 @@ document.getElementById('rail-toggle').onclick = () =>
 
 (function applySavedLayout(){
   const p=loadPrefs();
+  applyTheme(currentTheme());
   if(typeof p.dock === 'number') setDockHeight(p.dock, false);
   setRailHidden(!!p.railHidden, false);
 })();
