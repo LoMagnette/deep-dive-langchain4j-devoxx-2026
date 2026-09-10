@@ -39,16 +39,16 @@ final class Parsing {
         return v;
     }
 
-    /** The desks the night line is allowed to dispatch to. */
-    private static final List<String> CATEGORIES = List.of("emergency", "behaviour", "booking");
+    /** The three people the owner's worry can be sent to. */
+    private static final List<String> CATEGORIES = List.of("emergency", "training", "everyday");
 
     /**
-     * Normalises the router's answer to exactly one known desk. Asked to "return one word", a
-     * real model answers "This call is best categorised as: **medical**." — an exact
+     * Normalises the router's answer to exactly one known destination. Asked to "return one
+     * word", a real model answers "This is best categorised as: **medical**." — an exact
      * {@code equalsIgnoreCase} then matches no branch at all and the run silently produces null.
-     * We take the LAST desk mentioned (models state the conclusion at the end) and fall back to
-     * the first, which is deliberately {@code emergency}: on an out-of-hours line the classifier
-     * must fail towards the desk where being wrong is survivable, not towards the booking desk.
+     * We take the LAST one mentioned (models state the conclusion at the end) and fall back to
+     * the first, which is deliberately {@code emergency}: when the classifier is unsure about a
+     * dog, the tolerable mistake is bothering the vet, not routing a poisoning to the trainer.
      */
     static String category(AgenticScope s) {
         String raw = str(s, "category").toLowerCase(Locale.ROOT);
@@ -66,22 +66,21 @@ final class Parsing {
 
     /**
      * Splits the user's typed input into items for the parallel mapper. A single-chunk input
-     * (nothing to fan out over) falls back to three canned overnight notes.
+     * (nothing to fan out over) falls back to a canned picnic blanket.
      */
     static List<String> items(String input) {
         String text = String.valueOf(input);
-        // Semicolons and newlines win over commas when both are present. One run's overnight
-        // notes are full of commas ("Run 2 — Nero, left his supper, panting at 03:00"), so
-        // splitting on every separator at once turns three runs into nine fragments and the
-        // mapper fans out over shrapnel — with no error, just a watch-list that makes no sense.
+        // Semicolons and newlines win over commas when both are present, because an item can
+        // itself contain a comma ("a bar of dark chocolate, most of it"). Splitting on every
+        // separator at once fans the mapper out over shrapnel — with no error at all, just a
+        // list of answers to half-items.
         String separators = text.matches("(?s).*[;\n].*") ? "[;\n]" : ",";
         List<String> parsed = Arrays.stream(text.split(separators))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
         return parsed.size() > 1 ? parsed
-                : List.of("Run 2 — Nero, left his supper, panting at 03:00",
-                        "Run 5 — Luna, chewed her bedding, no stool overnight",
-                        "Run 7 — Zao, slept through, ate everything");
+                : List.of("a handful of grapes", "a slice of cheddar",
+                        "a square of dark chocolate", "a crust of bread", "half a raw onion");
     }
 }

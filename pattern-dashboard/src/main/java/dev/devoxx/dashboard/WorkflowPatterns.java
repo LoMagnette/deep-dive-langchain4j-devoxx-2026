@@ -12,8 +12,10 @@ import static dev.devoxx.dashboard.Wiring.str;
 import static java.util.stream.Collectors.joining;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 import dev.devoxx.dashboard.PatternDef.Runner;
 import dev.langchain4j.agentic.AgenticServices;
@@ -31,239 +33,247 @@ final class WorkflowPatterns {
         return List.of(single(), sequential(), loop(), parallel(), parallelMapper(), conditional());
     }
 
-    // 1 — single agent: the kennel's front desk, doing one job
+    /** The message every household sends the friend who is watching the dog. */
+    private static final String SITTER_MESSAGE =
+            "hey so thanks again for having zao!! he's the big black belgian shepherd, food's "
+                    + "in the tub by the back door he has two scoops morning and evening, oh and "
+                    + "he CANNOT have the dried liver treats anymore they upset him. don't let "
+                    + "him off the lead in the park he won't come back yet. vet is 061 22 33 44 "
+                    + "if anything happens. he'll cry the first night, ignore it, he's fine!!";
+
+    // 1 — single agent: one call, one job
     private static PatternDef single() {
         Topology.Graph topo = graph("chain",
-                List.of(node("in", "note", "input"),
-                        node("clerk", "IntakeClerk", "agent")),
+                List.of(node("in", "message", "input"),
+                        node("clerk", "SitterCardClerk", "agent")),
                 List.of(edge("in", "clerk")));
         Runner runner = (model, input, listener) -> {
-            var clerk = agent(Agents.IntakeClerk.class, model, "IntakeClerk", "record");
+            var clerk = agent(Agents.SitterCardClerk.class, model, "SitterCardClerk", "card");
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(clerk).outputKey("record").listener(listener).build();
-            var r = app.invokeWithAgenticScope(Map.of("note", input));
-            return result(r, "record");
+                    .subAgents(clerk).outputKey("card").listener(listener).build();
+            var r = app.invokeWithAgenticScope(Map.of("message", input));
+            return result(r, "card");
         };
         return new PatternDef("single", "Single Agent", "workflow",
-                "One LLM call wrapped as an agent — the simplest useful unit. Here it does the "
-                        + "job an LLM is genuinely best at: turning something a human said at a "
-                        + "door into a shape a system can use.",
-                "No decomposition: one agent struggles with multi-step or long tasks — and it "
-                        + "will happily invent a dose that was never in the note.",
+                "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
+                        + "LLM is genuinely best at: turning what a human actually typed into a "
+                        + "shape a system can use.",
+                "No decomposition: one agent struggles with multi-step or long tasks — and watch "
+                        + "the Walks line, because a model would rather invent a walk time than "
+                        + "admit the message never gave one.",
                 topo,
-                // A real drop-off note: abbreviated, out of order, one thing missing on purpose
-                // (nobody said what he eats), so the room can check whether the agent obeys
-                // "write 'not given'" or quietly makes something up.
-                "dropping nero off til tues, big black gsd 40kg, half an antibiotic tablet "
-                        + "morning + night WITH food, hates other males so never past the runs "
-                        + "on the left, back tues after 5",
+                // A real message: no punctuation, out of order, and one field genuinely absent
+                // (nobody said when to walk him), so the room can check whether the agent obeys
+                // "write not given" or quietly makes something up.
+                SITTER_MESSAGE,
                 runner);
     }
 
-    // 2 — sequential: extract, then write for a different reader
+    // 2 — sequential: the same facts, rewritten for a different reader
     private static PatternDef sequential() {
         Topology.Graph topo = graph("chain",
-                List.of(node("in", "note", "input"),
-                        node("clerk", "IntakeClerk", "agent"),
-                        node("sheet", "RunSheetWriter", "agent")),
-                List.of(edge("in", "clerk"), edge("clerk", "sheet", "record")));
+                List.of(node("in", "message", "input"),
+                        node("clerk", "SitterCardClerk", "agent"),
+                        node("list", "FridgeChecklist", "agent")),
+                List.of(edge("in", "clerk"), edge("clerk", "list", "card")));
         Runner runner = (model, input, listener) -> {
-            var clerk = agent(Agents.IntakeClerk.class, model, "IntakeClerk", "record");
-            var sheet = agent(Agents.RunSheetWriter.class, model, "RunSheetWriter", "runSheet");
+            var clerk = agent(Agents.SitterCardClerk.class, model, "SitterCardClerk", "card");
+            var list = agent(Agents.FridgeChecklist.class, model, "FridgeChecklist", "checklist");
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(clerk, sheet).outputKey("runSheet").listener(listener).build();
-            var r = app.invokeWithAgenticScope(Map.of("note", input));
-            return result(r, "runSheet");
+                    .subAgents(clerk, list).outputKey("checklist").listener(listener).build();
+            var r = app.invokeWithAgenticScope(Map.of("message", input));
+            return result(r, "checklist");
         };
         return new PatternDef("sequential", "Sequential", "workflow",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
-                        + "cannot start before the first — it needs the structured record — and "
-                        + "it writes for a different reader, which is why it is a second agent "
-                        + "and not a longer prompt.",
-                "Rigid order; a failure or bad hand-off midway derails the whole chain. Watch the "
-                        + "Scope tab: 'record' is the seam, and everything downstream trusts it.",
-                topo,
-                "dropping nero off til tues, big black gsd 40kg, half an antibiotic tablet "
-                        + "morning + night WITH food, hates other males so never past the runs "
-                        + "on the left, back tues after 5",
-                runner);
+                        + "cannot start before the first — it needs the card — and it writes for "
+                        + "a different reader, someone standing in your kitchen at 07:00. That is "
+                        + "why it is a second agent and not a longer prompt.",
+                "Rigid order; a bad hand-off midway derails the whole chain. Watch the Scope tab: "
+                        + "'card' is the seam, and the second agent trusts it completely.",
+                topo, SITTER_MESSAGE, runner);
     }
 
-    // 3 — loop: refine until FOUR NAMED RULES hold
+    // 3 — loop: refine until four rules the room agrees with are satisfied
     private static PatternDef loop() {
         Topology.Graph topo = graph("loop",
-                List.of(node("in", "draft", "input"),
-                        node("writer", "DischargeWriter", "agent"),
-                        node("checker", "DischargeChecker", "agent")),
-                List.of(edge("in", "writer"), edge("writer", "checker", "draft"),
-                        edge("checker", "writer", "score < 0.8")));
+                List.of(node("in", "note", "input"),
+                        node("writer", "SitterNoteWriter", "agent"),
+                        node("check", "FridgeRuleCheck", "agent")),
+                List.of(edge("in", "writer"), edge("writer", "check", "note"),
+                        edge("check", "writer", "score < 0.8")));
         Runner runner = (model, input, listener) -> {
-            var writer = agent(Agents.DischargeWriter.class, model, "DischargeWriter", "draft");
-            var checker = agent(Agents.DischargeChecker.class, model, "DischargeChecker", "score");
+            var writer = agent(Agents.SitterNoteWriter.class, model, "SitterNoteWriter", "note");
+            var check = agent(Agents.FridgeRuleCheck.class, model, "FridgeRuleCheck", "score");
             Predicate<AgenticScope> good = s -> score(s) >= 0.8;
             UntypedAgent app = AgenticServices.loopBuilder()
-                    .subAgents(writer, checker)
+                    .subAgents(writer, check)
                     .maxIterations(5)
                     .exitCondition(good)
                     .testExitAtLoopEnd(true)
-                    .outputKey("draft")
+                    .outputKey("note")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("draft", input));
-            return result(r, "draft");
+            var r = app.invokeWithAgenticScope(Map.of("note", input));
+            return result(r, "note");
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
-                "Refine until a quality bar is met. The bar is four rules the room can check "
-                        + "too — every medicine named with dose and times, under 90 words, no "
-                        + "jargon, the phone line last — so the score is a fraction of rules "
-                        + "satisfied rather than a taste judgement, and you can see which one "
-                        + "each pass fixes.",
+                "Refine until a quality bar is met. The bar is four rules nobody has to be "
+                        + "persuaded of — every meal with a time and an amount, where the lead "
+                        + "is, the vet's number, short enough for the fridge door — so the score "
+                        + "is a fraction of rules satisfied, and you can see which one each pass "
+                        + "fixes.",
                 "Can spin forever or oscillate — always cap iterations and define a clear exit. A "
-                        + "critic scoring 'quality' out of 1.0 gives you a number nobody can act "
-                        + "on; score against named rules instead.",
+                        + "critic scoring 'quality' out of 1.0 gives you a number nobody in the "
+                        + "room can check; score against named rules instead.",
                 topo,
-                // Deliberately bad on three of the four rules: jargon, no doses, no phone line.
-                // The audience can count the failures before the first agent even runs.
-                "Continue analgesia BID PRN and monitor the surgical site for dehiscence; "
-                        + "maintain NPO after 20:00 and restrict ambulation to lead-only. "
-                        + "Antibiosis as dispensed. Contact the practice should concerns arise.",
+                // Fails three of the four rules on sight, which is the point: the audience can
+                // count the failures before the first agent runs.
+                "just feed him twice like normal and take him out when you can, he knows the "
+                        + "routine. ring me if anything's up!",
                 runner);
     }
 
     // 4 — parallel: two independent checks, and a join that DECIDES
     private static PatternDef parallel() {
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "booking", "input"),
-                        node("capacity", "CapacityCheck", "agent"),
-                        node("health", "HealthCheck", "agent"),
+                List.of(node("in", "right now", "input"),
+                        node("weather", "WeatherCheck", "agent"),
+                        node("dog", "DogCheck", "agent"),
                         // The combiner is the whole second half of "fan out, then join" — and
-                        // here it is a rule, not a concatenation: any FAIL declines the booking.
-                        node("join", "any FAIL declines", "join")),
-                List.of(edge("in", "capacity"), edge("in", "health"),
-                        edge("capacity", "join", "capacity"), edge("health", "join", "health")));
+                        // here it is a rule, not a concatenation: either check can veto the walk.
+                        node("join", "either can veto", "join")),
+                List.of(edge("in", "weather"), edge("in", "dog"),
+                        edge("weather", "join", "weather"), edge("dog", "join", "dog")));
         Runner runner = (model, input, listener) -> {
-            var capacity = agent(Agents.CapacityCheck.class, model, "CapacityCheck", "capacity");
-            var health = agent(Agents.HealthCheck.class, model, "HealthCheck", "health");
+            var weather = agent(Agents.WeatherCheck.class, model, "WeatherCheck", "weather");
+            var dog = agent(Agents.DogCheck.class, model, "DogCheck", "dog");
             UntypedAgent app = AgenticServices.parallelBuilder()
-                    .subAgents(capacity, health)
+                    .subAgents(weather, dog)
                     // The decision is plain Java over what the two agents wrote. Nothing about
-                    // "did both checks pass" needs a model, and putting it in one keeps a demo
-                    // honest about where the judgement actually lives.
+                    // "did both checks pass" needs a model, and putting it in one would be a
+                    // demo lying about where the judgement actually lives.
                     .output(s -> {
-                        String cap = str(s, "capacity");
-                        String hea = str(s, "health");
-                        boolean declined = (cap + " " + hea).toUpperCase(java.util.Locale.ROOT)
-                                .contains("FAIL");
-                        return (declined ? "Booking DECLINED" : "Booking ACCEPTED")
-                                + "\n\n- Capacity: " + cap + "\n- Paperwork and medication: " + hea;
+                        String w = str(s, "weather");
+                        String d = str(s, "dog");
+                        boolean veto = (w + " " + d).toUpperCase(Locale.ROOT).contains("FAIL");
+                        return (veto ? "Not now" : "Fine — get the lead")
+                                + "\n\n- Weather and ground: " + w + "\n- Zao himself: " + d;
                     })
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("booking", input));
+            var r = app.invokeWithAgenticScope(Map.of("walk", input));
             return String.valueOf(r.result());
         };
         return new PatternDef("parallel", "Parallel", "workflow",
-                "Fan out independent work concurrently, then join. Neither check needs the "
-                        + "other's answer, but the kennel cannot reply until both are in — which "
-                        + "is exactly when fan-out-and-join is the right shape.",
+                "Fan out independent work concurrently, then join. The weather does not depend on "
+                        + "the dog and the dog does not depend on the weather, but you cannot put "
+                        + "the lead on until both have answered — which is exactly when "
+                        + "fan-out-and-join is the right shape.",
                 "Only for truly independent sub-tasks; joining is on you — and the join is where "
                         + "the real rule lives, so keep it in Java where you can test it.",
                 topo,
-                // Capacity is fine, paperwork is not: the run declines for a checkable reason
-                // rather than producing two paragraphs nobody can grade.
-                "Nero, 40kg male German shepherd, 12–19 October, rabies booster expired 12 June, "
-                        + "half an antibiotic tablet twice a day",
+                // Everyone in the room already knows the answer: not at two in the afternoon in
+                // July. So they can grade the run instead of taking it on trust.
+                "two o'clock on a July afternoon, 31 degrees, the pavement has been in the sun "
+                        + "all day. Zao is four, he ate an hour ago, nothing else wrong with him",
                 runner);
     }
 
-    // 5 — parallel mapper: the same inspection over every occupied run
+    // 5 — parallel mapper: the same check over everything he got hold of
     private static PatternDef parallelMapper() {
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "runs[3]", "input"),
-                        node("inspector", "RunInspector (per run)", "agent"),
-                        node("gather", "watch-list", "join")),
-                List.of(edge("in", "inspector", "scatter"),
-                        edge("inspector", "gather", "flags")));
+                List.of(node("in", "he ate[5]", "input"),
+                        node("check", "FoodSafetyCheck (per item)", "agent"),
+                        node("gather", "one verdict each", "join")),
+                List.of(edge("in", "check", "scatter"),
+                        edge("check", "gather", "verdicts")));
         Runner runner = (model, input, listener) -> {
             // The mapper collects each per-item invocation under the agent's outputKey, and binds
             // the item itself to the sub-agent's first argument.
-            var inspector = agent(Agents.RunInspector.class, model, "RunInspector", "flag");
+            var check = agent(Agents.FoodSafetyCheck.class, model, "FoodSafetyCheck", "verdict");
             UntypedAgent app = AgenticServices.parallelMapperBuilder()
-                    .subAgents(inspector)
-                    .itemsProvider("runs")
-                    .outputKey("flags")
+                    .subAgents(check)
+                    .itemsProvider("eaten")
+                    .outputKey("verdicts")
                     .listener(listener)
                     .build();
             // The items come from what the user typed (comma- or semicolon-separated), not a
             // hard-coded list — otherwise the input box on the page has no effect here.
-            var r = app.invokeWithAgenticScope(Map.of("runs", items(input)));
-            // Rendered as a list rather than String.valueOf(List): the gathered value really is
-            // the shift's watch-list, and "[a, b, c]" on a projector reads as a Java toString
-            // instead of the artefact the pattern just produced.
-            Object flags = r.agenticScope() == null ? null : r.agenticScope().readState("flags");
-            if (flags instanceof java.util.Collection<?> c) {
-                return c.stream().map(String::valueOf).collect(joining("\n- ", "- ", ""));
+            List<String> eaten = items(input);
+            var r = app.invokeWithAgenticScope(Map.of("eaten", eaten));
+            // Each verdict is paired back with the item it is about. The mapper preserves order,
+            // and String.valueOf(List) would put five unlabelled verdicts on the screen for the
+            // room to match up by counting — which is exactly the moment the demo loses them.
+            Object verdicts = r.agenticScope() == null ? null
+                    : r.agenticScope().readState("verdicts");
+            if (verdicts instanceof java.util.Collection<?> c) {
+                List<String> said = c.stream().map(String::valueOf).toList();
+                return IntStream.range(0, said.size())
+                        .mapToObj(i -> "- **" + (i < eaten.size() ? eaten.get(i) : "item " + i)
+                                + "** — " + said.get(i))
+                        .collect(joining("\n"));
             }
-            return result(r, "flags");
+            return result(r, "verdicts");
         };
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
-                "Map one agent over a collection in parallel (scatter/gather). The morning round: "
-                        + "one inspection per occupied run, gathered into the shift's watch-list. "
-                        + "The width of the fan-out is data, decided at run time.",
-                "Beware fan-out cost and rate limits when the list is large — this is the pattern "
-                        + "where a full kennel quietly becomes thirty concurrent calls.",
+                "Map one agent over a collection in parallel (scatter/gather). Five things off "
+                        + "the picnic blanket, one verdict each. The width of the fan-out is "
+                        + "data, decided at run time — and you already know all five answers, so "
+                        + "you can mark this run yourself.",
+                "Beware fan-out cost and rate limits when the list is long — this is the pattern "
+                        + "where emptying a whole cupboard into the box quietly becomes fifty "
+                        + "concurrent calls.",
                 topo,
-                "Run 2 — Nero, left his supper, panting at 03:00; "
-                        + "Run 5 — Luna, chewed her bedding, no stool overnight; "
-                        + "Run 7 — Zao, slept through, ate everything",
+                "a handful of grapes; a slice of cheddar; a square of dark chocolate; "
+                        + "a crust of bread; half a raw onion",
                 runner);
     }
 
-    // 6 — conditional routing: the out-of-hours line, where mis-routing is dangerous
+    // 6 — conditional routing: where sending it to the wrong person is the disaster
     private static PatternDef conditional() {
         Topology.Graph topo = graph("branch",
-                List.of(node("in", "call", "input"),
-                        node("router", "NightLineRouter", "router"),
-                        node("emergency", "EmergencyVet", "agent"),
-                        node("behaviour", "BehaviourDesk", "agent"),
-                        node("booking", "BookingDesk", "agent")),
+                List.of(node("in", "worry", "input"),
+                        node("router", "WorryRouter", "router"),
+                        node("vet", "EmergencyVet", "agent"),
+                        node("trainer", "DogTrainer", "agent"),
+                        node("care", "EverydayCare", "agent")),
                 List.of(edge("in", "router"),
-                        edge("router", "emergency", "emergency"),
-                        edge("router", "behaviour", "behaviour"),
-                        edge("router", "booking", "booking")));
+                        edge("router", "vet", "emergency"),
+                        edge("router", "trainer", "training"),
+                        edge("router", "care", "everyday")));
         Runner runner = (model, input, listener) -> {
-            var router = agent(Agents.NightLineRouter.class, model, "NightLineRouter", "category");
-            var emergency = agent(Agents.EmergencyVet.class, model, "EmergencyVet", "answer");
-            var behaviour = agent(Agents.BehaviourDesk.class, model, "BehaviourDesk", "answer");
-            var booking = agent(Agents.BookingDesk.class, model, "BookingDesk", "answer");
+            var router = agent(Agents.WorryRouter.class, model, "WorryRouter", "category");
+            var vet = agent(Agents.EmergencyVet.class, model, "EmergencyVet", "answer");
+            var trainer = agent(Agents.DogTrainer.class, model, "DogTrainer", "answer");
+            var care = agent(Agents.EverydayCare.class, model, "EverydayCare", "answer");
             Predicate<AgenticScope> isEmergency = s -> category(s).equals("emergency");
-            Predicate<AgenticScope> isBehaviour = s -> category(s).equals("behaviour");
-            Predicate<AgenticScope> isBooking = s -> category(s).equals("booking");
+            Predicate<AgenticScope> isTraining = s -> category(s).equals("training");
+            Predicate<AgenticScope> isEveryday = s -> category(s).equals("everyday");
             UntypedAgent routed = AgenticServices.conditionalBuilder()
-                    .subAgents(isEmergency, emergency)
-                    .subAgents(isBehaviour, behaviour)
-                    .subAgents(isBooking, booking)
+                    .subAgents(isEmergency, vet)
+                    .subAgents(isTraining, trainer)
+                    .subAgents(isEveryday, care)
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, routed)
                     .outputKey("answer")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("call", input));
+            var r = app.invokeWithAgenticScope(Map.of("worry", input));
             return result(r, "answer");
         };
         return new PatternDef("conditional", "Conditional Routing", "workflow",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
-                        + "when mis-routing is expensive: this is the out-of-hours line, and a "
-                        + "dog with bloat sent to the booking desk is dead by morning.",
-                "Only as good as the classifier, and unseen categories fall through the cracks — "
-                        + "so choose which way it falls. The fallback here is the emergency desk, "
-                        + "because that is the mistake you can survive.",
+                        + "when mis-routing is expensive: everyone in this room knows a dog that "
+                        + "has eaten chocolate needs a vet and not a training tip, so everyone "
+                        + "can see whether the classifier got it right.",
+                "Only as good as the classifier, and unseen inputs fall through the cracks — so "
+                        + "choose which way it falls. The fallback here is the vet, because that "
+                        + "is the mistake you can live with.",
                 topo,
-                // Textbook bloat (GDV). Anyone in the room who owns a large dog knows the right
-                // answer, which is what makes the classifier's choice judgeable on stage.
-                "Nero's belly has gone swollen and tight and he keeps trying to be sick but "
-                        + "nothing comes up",
+                "he's just eaten a whole bar of dark chocolate off the coffee table, the wrapper "
+                        + "is on the floor",
                 runner);
     }
 }

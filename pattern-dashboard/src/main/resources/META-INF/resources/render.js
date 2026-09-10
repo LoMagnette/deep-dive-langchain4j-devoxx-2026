@@ -197,7 +197,7 @@ function drawGraph(topo){
 
 function markNode(agent, cls){
   if(!agent) return;
-  /* Fan-out agents report indexed names (RunInspector_0, CaseScout$1); the topology
+  /* Fan-out agents report indexed names (FoodSafetyCheck_0, AngleScout$1); the topology
      node is labelled with the bare type, so strip the index before matching. */
   const base=String(agent).replace(/[_$]\d+$/,'');
   document.querySelectorAll('.node').forEach(g=>{

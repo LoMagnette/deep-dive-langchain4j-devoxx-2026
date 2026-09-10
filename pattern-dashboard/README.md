@@ -1,17 +1,22 @@
 # LangChain4j Agentic Patterns — Zao Dashboard
 
-A Quarkus web app that visualizes and **live-runs** all 13 LangChain4j agentic patterns plus
-two composite systems. Each pattern is streamed over Server-Sent Events and animated on an SVG
+A Quarkus web app that visualizes and **live-runs** all 13 LangChain4j agentic patterns plus two
+composite systems. Each pattern is streamed over Server-Sent Events and animated on an SVG
 topology graph, with a live scope-state panel and an event console.
 
-The setting is a working Ardennes boarding kennel and rescue, where the Belgian shepherd **Zao**
-is the resident dog — and the setting is load-bearing rather than decorative. Every demo problem
-is picked so that **removing the pattern visibly degrades the answer**: the kennel has hard
-constraints (capacity, vaccination rules, medication times), competing interests (a full kennel
-versus welfare rules, two families wanting the same rescue dog), and artefacts that can be wrong
-in ways an audience can check for itself. A bloat call belongs at the emergency desk; a booking
-with an expired rabies booster must be declined; a discharge note either names every dose or it
-does not.
+The setting is **Zao**, a Belgian shepherd, and the household he runs. Every demo problem has to
+pass two tests at once, and both are load-bearing:
+
+1. **The pattern must be load-bearing** — take it away and the answer visibly degrades. The vote
+   can genuinely split, the critic has named rules to check, the planner has an order to discover.
+2. **The audience must not need the domain explained** — the constraint each demo turns on is one
+   everybody already holds. Grapes are dangerous and cheddar is not. Hot pavement burns paws. A
+   puppy goes to the garden before he gets a training session. Recall works in the garden before
+   it works at the park. Neither half of a couple outranks the other about the bed.
+
+The second test is the one that is easy to fail: a scenario that needs a sentence of setup needs
+it fifteen times over, and then the room spends the talk learning the domain instead of the
+patterns.
 
 Open <http://localhost:8080> after starting.
 
@@ -75,21 +80,21 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 
 | Pattern | The problem it is shown on |
 |---|---|
-| `single` | A hurried drop-off note becomes a structured boarding record |
-| `sequential` | …and then the run sheet the kennel hand carries — a different reader, so a second agent |
-| `loop` | A jargon-filled discharge note refined until four named rules hold |
-| `parallel` | Capacity and paperwork checked at once; **any FAIL declines the booking** |
-| `parallelMapper` | The morning round: one inspection per occupied run, gathered into a watch-list |
-| `conditional` | The out-of-hours line: emergency / behaviour / booking, where mis-routing is fatal |
-| `supervisor` | "Sort out his week" — you cannot enumerate which specialists that needs |
-| `goap` | A boarding quote: audit → allocate → price, **registered backwards on purpose** |
-| `p2p` | An overbooked bank holiday: foreman vs. welfare officer, neither outranks the other |
-| `blackboard` | Why has the dog stopped eating? Medical, behaviour and feeding notes on one board |
-| `voting` | Is this rescue dog safe with a toddler? Three rubrics over a self-contradicting dossier |
-| `debate` | Two homes, one dog: the counter-case has to be stated before the panel rules |
-| `bdi` | The morning shift, ordered by desire **priority** rather than declaration order |
-| `nightHandover` | *Composite:* routing + parallel + merge + refinement loop → the night handover sheet |
-| `placementCouncil` | *Composite:* mapper + debate + vote, and the glue agents between them |
+| `single` | A rambling "thanks for having Zao!!" message becomes a structured sitter card |
+| `sequential` | …then the timed checklist for the fridge door — a different reader, so a second agent |
+| `loop` | A useless note ("just feed him twice, he knows the routine") refined until four rules hold |
+| `parallel` | Walk him now? Weather and dog checked at once; **either can veto** |
+| `parallelMapper` | Five things off the picnic blanket, one verdict each — and you know all five answers |
+| `conditional` | He ate a bar of dark chocolate: vet, trainer, or everyday care? |
+| `supervisor` | "A baby is due in three months" — you cannot enumerate what that needs |
+| `goap` | Recall: indoors → garden → park, **registered backwards on purpose** |
+| `p2p` | Should the dog sleep on the bed? Neither half of the household outranks the other |
+| `blackboard` | He has started barking all day: exercise, what changed, or what he can see? |
+| `voting` | A second dog? Three criteria over one household — money says yes, the other two say later |
+| `debate` | Two weeks in Tuscany: take him, or leave him with a sitter? |
+| `bdi` | The puppy's first hour, ordered by desire **priority** rather than declaration order |
+| `sitterNote` | *Composite:* routing + parallel + merge + refinement loop → the note on the fridge |
+| `secondDogCouncil` | *Composite:* mapper + debate + vote, and the glue agents between them |
 
 `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the claims above, so
 a prompt change that turns a pattern back into decoration fails the build rather than the talk.

@@ -27,19 +27,19 @@ final class PureAgentPatterns {
     private static PatternDef supervisor() {
         Topology.Graph topo = graph("star",
                 List.of(node("supervisor", "Supervisor", "supervisor"),
-                        node("rota", "RotaPlanner", "agent"),
-                        node("feed", "FeedPlanner", "agent")),
+                        node("routine", "RoutinePlanner", "agent"),
+                        node("training", "TrainingPlanner", "agent")),
                 // Both directions: the supervisor invokes, reads the result, then decides again.
                 // One-way arrows would draw a static fan-out instead of a planning loop.
-                List.of(edge("supervisor", "rota", "invoke"),
-                        edge("rota", "supervisor", "result"),
-                        edge("supervisor", "feed", "invoke"),
-                        edge("feed", "supervisor", "result")));
+                List.of(edge("supervisor", "routine", "invoke"),
+                        edge("routine", "supervisor", "result"),
+                        edge("supervisor", "training", "invoke"),
+                        edge("training", "supervisor", "result")));
         Runner runner = (model, input, listener) -> {
-            var rota = agent(Agents.RotaPlanner.class, model, "RotaPlanner", null);
-            var feed = agent(Agents.FeedPlanner.class, model, "FeedPlanner", null);
+            var routine = agent(Agents.RoutinePlanner.class, model, "RoutinePlanner", null);
+            var training = agent(Agents.TrainingPlanner.class, model, "TrainingPlanner", null);
             SupervisorAgent sup = AgenticServices.supervisorBuilder()
-                    .subAgents(rota, feed)
+                    .subAgents(routine, training)
                     .chatModel(model)                 // planner LLM lives on the supervisor
                     .responseStrategy(SupervisorResponseStrategy.LAST)
                     .maxAgentsInvocations(3)
@@ -50,15 +50,15 @@ final class PureAgentPatterns {
         };
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
                 "An LLM supervisor dynamically decides which specialist to invoke, and when to "
-                        + "stop. The right shape when the request does not say what it needs: an "
-                        + "owner phoning about a dog off his food may need the feed plan, the "
-                        + "rota, or both, and you cannot enumerate that in advance.",
+                        + "stop. The right shape when the request does not say what it needs: a "
+                        + "baby arriving might mean changing the routine, teaching him new "
+                        + "things, or both, and no amount of thinking up front tells you which.",
                 "Non-deterministic and needs a capable planner LLM; bound invocations to stay "
-                        + "safe. Ask yourself first whether you could have written the two steps "
+                        + "safe. Ask yourself first whether you could have written the steps "
                         + "down — if you could, a sequence is cheaper and debuggable.",
                 topo,
-                "Nero is with us for eight days on antibiotics twice a day, he has stopped "
-                        + "eating, and he cannot be walked past the other males — sort out his week",
+                "our first baby is due in three months and Zao has never been near one — he's "
+                        + "four, he sleeps on our bed and he barges through doorways ahead of us",
                 runner);
     }
 }

@@ -7,79 +7,85 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 /**
- * All agent contracts used by the dashboard. The setting is a working boarding kennel and rescue
- * in the Ardennes, where the Belgian shepherd <b>Zao</b> is the resident dog — so the talk's
- * "From Puppy to Pack" thread still holds, but every demo now has an operation behind it.
+ * All agent contracts used by the dashboard. The setting is <b>Zao</b>, a Belgian shepherd, and
+ * the household he runs — so the talk's "From Puppy to Pack" thread holds from the puppy's first
+ * hour to the question of whether to get a second dog.
  *
- * <p>The setting is doing real work, not decoration. A kennel has <b>hard constraints</b>
- * (capacity, vaccination rules, medication times), <b>competing interests</b> (revenue vs.
- * welfare, two families wanting the same rescue dog) and <b>artefacts that can be wrong in ways
- * the room can see</b> (a discharge note that forgets a dose, a call routed to the booking desk
- * when the dog has bloat). That is what makes each pattern load-bearing: take the pattern away
- * and the answer visibly degrades, which a "write me a story about a dog" demo can never show.
+ * <p>Two rules decide every scenario in here, and they pull against each other:
  *
- * <p>The names are part of the demo: a room reading {@code NightLineRouter → EmergencyVet}
- * understands conditional routing before the speaker explains it, in a way {@code Router →
- * ExpertB} never manages.
+ * <p><b>1. The pattern must be load-bearing.</b> Take it away and the answer visibly degrades:
+ * the vote must be able to split, the critic must have rules to check, the planner must have an
+ * order to discover. A demo where one plain prompt would do as well teaches the wiring and
+ * nothing else.
+ *
+ * <p><b>2. The audience must not need the domain explained.</b> Everyone knows chocolate is bad
+ * for dogs, that hot pavement burns paws, that a puppy needs the garden before he needs a
+ * training session, and that neither half of a couple outranks the other about the bed. Nobody
+ * knows what a 21-day rabies clearance is. A scenario that costs a sentence of setup costs it
+ * fifteen times over, and the room spends the talk learning the domain instead of the patterns.
+ *
+ * <p>So the constraints these agents are checked against are ones the room already holds:
+ * grapes are dangerous and cheddar is not, a fridge note needs the vet's number on it, you
+ * practise recall in the garden before the park.
  *
  * <p>The {@code @UserMessage} prompts are worded so the deterministic {@link MockChatModel}
  * returns parseable output (scores, labels, PASS/FAIL lines, votes). Change the wording and check
- * the mock: its branches key off words like "0.0", "classify", "PLACE or HOLD", "vaccination".
+ * the rule that matched it — the mock's table keys off phrases like "0.0", "classify this worry",
+ * "YES or LATER".
  */
 public final class Agents {
 
     private Agents() {
     }
 
-    // ---------------------------------------------------------------- 1 / 2 — intake
-    // The kennel's first job of the day, and the one everything downstream is built on: turn a
-    // hurried hand-over at the door into a record the night shift can act on.
+    // ---------------------------------------------------------------- 1 / 2 — the sitter note
+    // Everyone has either written this note or wished the owner had. It is the perfect first
+    // demo: a rambling message in, something structured out, and the room grades it instantly —
+    // did it keep the vet's number, did it invent a feeding time nobody mentioned?
 
-    public interface IntakeClerk {
-        @Agent(description = "Turns a hurried drop-off note into a structured boarding record")
+    public interface SitterCardClerk {
+        @Agent(description = "Turns a rambling message about the dog into a structured sitter card")
         @UserMessage("""
-                You are on the desk of an Ardennes boarding kennel. Turn this drop-off note into a
-                boarding record with exactly these five lines, and invent nothing that is not in
-                the note — write "not given" instead:
+                Turn this message into a sitter card with exactly these five lines. Invent
+                nothing — if the message does not say, write "not given":
                 Dog:
-                Stay:
-                Medication:
-                Feeding:
-                Flags:
+                Meals:
+                Walks:
+                Watch out for:
+                Vet:
 
-                Note: {{note}}""")
-        String record(@V("note") String note);
+                Message: {{message}}""")
+        String card(@V("message") String message);
     }
 
-    public interface RunSheetWriter {
-        @Agent(description = "Turns a boarding record into the run sheet the kennel hand carries")
+    public interface FridgeChecklist {
+        @Agent(description = "Turns a sitter card into the timed checklist that goes on the fridge")
         @UserMessage("""
-                Turn this boarding record into the run sheet a kennel hand carries on the round.
-                Give the handling instruction first, then the timed tasks in order. Keep it under
-                60 words and use no abbreviations.
+                Turn this sitter card into the checklist that goes on the fridge door: the times
+                of day in order, one line each, nothing the sitter has to work out for themselves.
 
-                Record: {{record}}""")
-        String write(@V("record") String record);
+                Sitter card: {{card}}""")
+        String checklist(@V("card") String card);
     }
 
     // ---------------------------------------------------------------- 3 — the refinement loop
-    // The critic scores against FOUR NAMED RULES rather than taste. That is the whole point: the
-    // room can check the draft against the same four rules and watch the loop fix the one it
-    // missed. A critic scoring "quality" out of 1.0 teaches nothing, because nobody watching can
-    // tell 0.6 from 0.9.
+    // The critic scores against FOUR RULES THE ROOM AGREES WITH ON SIGHT. That is the whole
+    // point: a critic scoring "quality" out of 1.0 gives a number nobody watching can check, so
+    // the loop becomes a light show. Here the audience can hold the draft against the same four
+    // rules and see which one each pass fixes.
 
-    public interface DischargeWriter {
-        @Agent(description = "Rewrites go-home instructions until they satisfy the kennel's rules")
+    public interface SitterNoteWriter {
+        @Agent(description = "Rewrites a note for the dog sitter until it is actually usable")
         @UserMessage("""
-                Rewrite these go-home instructions so an owner with no medical training can follow
-                them. All four rules must hold:
-                1. every medicine is named with its dose and the times of day it is given
-                2. under 90 words
-                3. no clinical jargon
-                4. the last line is exactly: Call the kennel on 061 22 33 44 if anything worries you.
+                Rewrite this note so someone who has never met the dog could follow it. All four
+                rules must hold:
+                1. every meal has a time and an amount
+                2. it says where the lead and the poo bags are
+                3. it gives the vet's telephone number
+                4. under 100 words, so it fits on the fridge door
 
-                Instructions: {{draft}}""")
-        String rewrite(@V("draft") String draft);
+                Note: {{note}}""")
+        String rewrite(@V("note") String note);
     }
 
     /**
@@ -88,430 +94,427 @@ public final class Agents {
      * blows up the whole loop with an OutputParsingException. The caller extracts the number
      * defensively — see {@link Parsing#score}.
      */
-    public interface DischargeChecker {
-        @Agent(description = "Checks go-home instructions against the kennel's four rules")
+    public interface FridgeRuleCheck {
+        @Agent(description = "Checks a sitter note against the four fridge-door rules")
         @UserMessage("""
-                Check these instructions against the four rules: every medicine named with dose
-                and times, under 90 words, no clinical jargon, and the last line is exactly
-                "Call the kennel on 061 22 33 44 if anything worries you." Give the fraction of
-                rules that hold as a number from 0.0 to 1.0 — the number only, no words, no
-                explanation, no markdown.
+                Check this note against four rules: every meal has a time and an amount, it says
+                where the lead and poo bags are, it gives the vet's telephone number, and it is
+                under 100 words. Give the fraction of rules that hold as a number from 0.0 to
+                1.0 — the number only, no words, no explanation, no markdown.
 
-                Instructions: {{draft}}""")
-        String check(@V("draft") String draft);
+                Note: {{note}}""")
+        String check(@V("note") String note);
     }
 
-    // ---------------------------------------------------------------- 4 — the parallel checks
-    // Two checks that genuinely do not need each other, and both of which must finish before the
-    // kennel can answer at all. That is fan-out and join, not two things that happen to be
-    // convenient to run together — and the join is a DECISION (any FAIL declines the booking),
+    // ---------------------------------------------------------------- 4 — "walk him now?"
+    // Two checks that plainly do not need each other, and both of which must pass before you put
+    // the lead on. That is fan-out and join — and the join is a DECISION (either check can veto),
     // not a string concatenation.
 
-    public interface CapacityCheck {
-        @Agent(description = "Says whether a free kennel run of the right size exists for the dates")
+    public interface WeatherCheck {
+        @Agent(description = "Says whether the weather and the ground are safe for a walk now")
         @UserMessage("""
-                The kennel has 11 runs: 4 large, 5 medium, 2 small. Decide whether a suitable run
-                is free for this booking. Answer with one line starting PASS or FAIL, then the
-                reason — which run, or what clashes.
+                Judge only the weather and the ground for a walk right now — heat, the pavement
+                under a bare paw, ice, storms. Answer with one line starting PASS or FAIL, then
+                the reason in a few words.
 
-                Booking: {{booking}}""")
-        String check(@V("booking") String booking);
+                Right now: {{walk}}""")
+        String check(@V("walk") String walk);
     }
 
-    public interface HealthCheck {
-        @Agent(description = "Says whether the paperwork and medication are within house rules")
+    public interface DogCheck {
+        @Agent(description = "Says whether the dog himself is fit for a walk right now")
         @UserMessage("""
-                House rules: rabies and kennel-cough vaccination must be valid and given at least
-                21 days before arrival; staff may give tablets and liquids but never injections.
-                Decide whether this booking is admissible. Answer with one line starting PASS or
-                FAIL, then the reason.
+                Judge only the dog himself for a walk right now — has he just eaten, his age, any
+                limp, anything he had done at the vet today. Answer with one line starting PASS or
+                FAIL, then the reason in a few words.
 
-                Booking: {{booking}}""")
-        String check(@V("booking") String booking);
+                Right now: {{walk}}""")
+        String check(@V("walk") String walk);
     }
 
-    // ---------------------------------------------------------------- 5 — the morning round
-    // The same inspection over every occupied run. The list is data, so the fan-out width is
-    // decided at run time — which is also where the cost caveat bites: 30 runs is 30 calls.
+    // ---------------------------------------------------------------- 5 — the picnic blanket
+    // The best kind of scatter/gather demo: the room already knows every answer. Grapes and
+    // chocolate are dangerous, cheddar and bread are not. The width of the fan-out is data, and
+    // the cost caveat needs no explaining either — a shopping list is fifty calls.
 
-    public interface RunInspector {
-        @Agent(description = "Reads one run's overnight notes and flags what the shift must act on")
+    public interface FoodSafetyCheck {
+        @Agent(description = "Says whether one thing the dog ate is dangerous, and what to do")
         @UserMessage("""
-                Read one kennel run's overnight notes and give a single line for the shift's
-                watch-list: the run, then either "no action" or what to do first. Treat not eating,
-                not passing stool, retching, or a swollen belly as urgent.
+                The dog ate this off the picnic blanket. In one line: is it dangerous for a dog,
+                and what should the owner do — nothing, watch him, or ring the vet now?
 
-                Overnight notes: {{notes}}""")
-        String inspect(@V("notes") String notes);
+                He ate: {{food}}""")
+        String check(@V("food") String food);
     }
 
-    // ---------------------------------------------------------------- 6 — the night line
-    // Routing where mis-routing is dangerous, which is the only kind worth a router. A swollen,
-    // retching dog is bloat: routed to the booking desk it dies overnight. The room knows the
-    // right answer, so it can judge the classifier — and the caveat about unseen categories
-    // stops being abstract.
+    // ---------------------------------------------------------------- 6 — triage the worry
+    // Routing where mis-routing is obviously expensive, which is the only kind worth a router.
+    // "He ate a bar of dark chocolate" must not reach the trainer, and the room knows that
+    // without being told — so it can judge the classifier itself.
 
-    public interface NightLineRouter {
-        @Agent(description = "Triages an out-of-hours call to the desk that can answer it")
+    public interface WorryRouter {
+        @Agent(description = "Sends the owner's worry to the one who can actually answer it")
         @UserMessage("""
-                You triage the out-of-hours line of a boarding kennel. Classify this call into one
-                of: emergency, behaviour, booking. A dog in physical distress is always emergency.
-                Return one word only.
+                Classify this worry about a dog into one of: emergency, training, everyday.
+                Anything the dog has eaten that could poison him, and anything about breathing,
+                bleeding or collapse, is always emergency. Return one word only.
 
-                Call: {{call}}""")
-        String classify(@V("call") String call);
+                Worry: {{worry}}""")
+        String classify(@V("worry") String worry);
     }
 
     public interface EmergencyVet {
-        @Agent(description = "Handles calls where the dog may be in physical danger")
+        @Agent(description = "Answers when the dog may be in danger right now")
         @UserMessage("""
-                You are the on-call vet for a boarding kennel. Say what the handler must do in the
-                next ten minutes, and whether this is a drive-to-the-clinic-now case. Be brief.
+                You are the emergency vet on the telephone. Say what the owner must do in the next
+                ten minutes, and whether this is a get-in-the-car-now case. Be brief.
 
-                Call: {{call}}""")
-        String handle(@V("call") String call);
+                Worry: {{worry}}""")
+        String handle(@V("worry") String worry);
     }
 
-    public interface BehaviourDesk {
-        @Agent(description = "Handles calls about how a boarded dog is coping or behaving")
+    public interface DogTrainer {
+        @Agent(description = "Answers questions about behaviour and training")
         @UserMessage("""
-                You run the behaviour desk of a boarding kennel. Give the handler one thing to
-                change tonight and one thing to write in the record. Be brief.
+                You are the dog trainer. Give the owner one thing to change this week and one
+                thing to stop doing. Be brief.
 
-                Call: {{call}}""")
-        String handle(@V("call") String call);
+                Worry: {{worry}}""")
+        String handle(@V("worry") String worry);
     }
 
-    public interface BookingDesk {
-        @Agent(description = "Handles calls about dates, prices and paperwork")
+    public interface EverydayCare {
+        @Agent(description = "Answers the ordinary questions about living with a dog")
         @UserMessage("""
-                You run the booking desk of a boarding kennel. Answer the question and name any
-                paperwork the owner must bring. Be brief.
+                You answer everyday dog questions — food, grooming, kit, routine. Give a short,
+                practical answer.
 
-                Call: {{call}}""")
-        String handle(@V("call") String call);
+                Worry: {{worry}}""")
+        String handle(@V("worry") String worry);
     }
 
     // ---------------------------------------------------------------- 7 — supervisor sub-agents
     // Keep both names: MockChatModel's canned plan calls them literally.
-    // The supervisor earns its place here because the request does not say which of these is
-    // needed — an owner phoning about a dog off his food may need the feed plan, the rota, or
-    // both, and enumerating that in advance is exactly what you cannot do.
+    // The supervisor earns its place because the request does not say what it needs. "A baby
+    // arrives in three months and the dog has never met one" might need the routine changed, the
+    // training changed, or both — and no amount of thinking up front tells you which.
 
-    public interface RotaPlanner {
-        @Agent(description = "Plans a boarded dog's exercise and handling slots for the week")
+    public interface RoutinePlanner {
+        @Agent(description = "Changes the dog's daily routine to fit what is coming")
         @UserMessage("""
-                Plan the exercise and handling slots for one boarded dog's week at the kennel,
-                taking any handling restriction into account. Be brief.
+                Plan the changes to the dog's daily routine — walks, feeding, where he sleeps,
+                where he is when the house is busy. Be brief.
 
                 Request: {{request}}""")
         String plan(@V("request") String request);
     }
 
-    public interface FeedPlanner {
-        @Agent(description = "Plans a boarded dog's feeding and medication times for the week")
+    public interface TrainingPlanner {
+        @Agent(description = "Plans what the dog needs to be taught before then")
         @UserMessage("""
-                Plan the feeding and medication times for one boarded dog's week at the kennel,
-                keeping medicines with or away from food as required. Be brief.
+                Plan what the dog needs to be taught, and in what order, before this happens. Be
+                brief.
 
                 Request: {{request}}""")
         String plan(@V("request") String request);
     }
 
-    // ---------------------------------------------------------------- 8 — the quote chain (GOAP)
-    // A real precondition chain: you cannot price a stay before a run is allocated, and you
-    // cannot allocate a run before the vaccination status is known. Three agents whose I/O keys
-    // only fit together one way — which is why the planner has something to discover. They are
-    // deliberately registered in the WRONG order in the wiring; GOAP still runs them correctly.
+    // ---------------------------------------------------------------- 8 — recall, in three steps
+    // A precondition chain nobody has to be told about: you cannot practise recall at the park
+    // before it works in the garden, and it will not work in the garden before it works indoors.
+    // Three agents whose I/O keys only fit together one way — which is why the planner has
+    // something to discover. They are deliberately registered in the WRONG order in the wiring.
 
-    public interface VaccinationAuditor {
-        @Agent(description = "Establishes the vaccination status of a booking request")
+    public interface IndoorRecall {
+        @Agent(description = "The first step: recall indoors, with no distractions at all")
         @UserMessage("""
-                State the vaccination status for this booking in one line: valid, expired, or not
-                given, with the date if there is one. House rule: shots must be at least 21 days
-                before arrival.
+                Give the indoor step for teaching this: what the owner does, for how long, and how
+                they know it is working. Two or three lines.
 
-                Request: {{request}}""")
-        String audit(@V("request") String request);
+                Goal: {{goal}}""")
+        String step(@V("goal") String goal);
     }
 
-    public interface RunAllocator {
-        @Agent(description = "Allocates a kennel run, once the vaccination status is known")
+    public interface GardenRecall {
+        @Agent(description = "The second step: recall in the garden, once indoors is solid")
         @UserMessage("""
-                The kennel has 11 runs: 4 large, 5 medium, 2 small. Allocate a run for this
-                booking in one line, or refuse it. A dog whose vaccination is not valid may not be
-                allocated a run at all.
+                Give the garden step, which comes after the indoor step and must build on it. Say
+                what changes and what to do if he ignores the call. Two or three lines.
 
-                Vaccination status: {{vaccination}}
-                Request: {{request}}""")
-        String allocate(@V("vaccination") String vaccination, @V("request") String request);
+                Indoor step already done: {{indoor}}
+                Goal: {{goal}}""")
+        String step(@V("indoor") String indoor, @V("goal") String goal);
     }
 
-    public interface QuotePricer {
-        @Agent(description = "Works out what the stay costs, once a run has been allocated")
+    public interface ParkRecall {
+        @Agent(description = "The last step: recall at the park, once the garden is solid")
         @UserMessage("""
-                Work out the total cost of this stay: a large run is 28 euro a night, medium 24,
-                small 20, plus 5 euro a day when staff give medication. Show the arithmetic in one
-                line. If no run was allocated, say the stay cannot be quoted and why.
+                Give the park step, which comes last because it is the hardest. Say what the long
+                line is for and when the owner can finally drop it. Two or three lines.
 
-                Allocated run: {{run}}
-                Request: {{request}}""")
-        String quote(@V("run") String run, @V("request") String request);
+                Garden step already done: {{garden}}
+                Goal: {{goal}}""")
+        String step(@V("garden") String garden, @V("goal") String goal);
     }
 
-    // ---------------------------------------------------------------- 9 — peer negotiation (P2P)
-    // Two peers with genuinely opposed mandates and NO authority over each other — which is the
-    // one situation where peer-to-peer beats a supervisor. Nobody can be told to give way, so
-    // the only way out is a plan both can sign.
+    // ---------------------------------------------------------------- 9 — the household argument
+    // Two peers with opposed positions and NO authority over each other, which is the one
+    // situation where peer-to-peer beats a supervisor: nobody can be told to give way, so the
+    // only way out is a rule both will actually keep. Every household has had this argument.
 
-    public interface KennelForeman {
-        @Agent(description = "Speaks for keeping the kennel full and the bookings honoured")
+    public interface TeamOnTheBed {
+        @Agent(description = "Argues the dog should be allowed on the bed, and will not just fold")
         @UserMessage("""
-                You are the kennel foreman. You are judged on honouring every booking you took.
-                Propose how to handle this, in one short paragraph, and say what you will not give
-                up.
+                You are the half of the household that wants the dog on the bed. Say why, in a
+                short paragraph, and say the one thing you will not give up.
 
-                Problem: {{issue}}""")
-        String propose(@V("issue") String issue);
+                Question: {{question}}""")
+        String propose(@V("question") String question);
     }
 
-    public interface WelfareOfficer {
-        @Agent(description = "Speaks for the dogs' welfare and can settle or counter a proposal")
+    public interface TeamOnTheFloor {
+        @Agent(description = "Argues for the dog's own bed, and can settle or counter a proposal")
         @UserMessage("""
-                You are the welfare officer. Dogs may not be doubled up unless they already live
-                together, and no dog goes more than four hours without a check. If the foreman's
-                proposal is acceptable, write the agreed plan and end with the word AGREED. If it
-                is not, counter it and say which rule it breaks.
+                You are the half of the household that wants the dog in his own bed. If the other
+                half's proposal is one you could actually live with, write the house rule you both
+                keep and end with the word AGREED. If it is not, counter it and say why it will
+                not last a week.
 
-                Proposal: {{plan}}""")
-        String settle(@V("plan") String plan);
+                Their proposal: {{proposal}}""")
+        String settle(@V("proposal") String proposal);
     }
 
-    // ---------------------------------------------------------------- 10 — the blackboard
-    // Three note-takers who each read ONLY the problem, so any of them can go first and the board
-    // accumulates three different KINDS of knowledge. That is a blackboard. The earlier version
-    // chained facts → analysis → solution, which is a sequence wearing a blackboard's coat.
+    // ---------------------------------------------------------------- 10 — the barking problem
+    // Debugging, which is what a blackboard is for. Three note-takers who each read ONLY the
+    // problem, so any of them can go first and the board collects three different KINDS of
+    // knowledge. Chain them instead and you have a sequence wearing a blackboard's coat.
 
-    public interface MedicalNotes {
-        @Agent(description = "Adds what the medical file says about the dog")
+    public interface WalkNotes {
+        @Agent(description = "Adds what the dog's exercise explains about the problem")
         @UserMessage("""
-                Add the medical angle to the case board: temperature, wounds, medicines and their
-                side effects, and what you would check next. Two or three lines, medical only —
-                another expert covers behaviour.
+                Add the exercise angle to the board: how much he actually gets, whether it is
+                enough for his breed and age, and what you would try next. Two or three lines,
+                exercise only — other people cover the rest.
 
-                Case: {{problem}}""")
+                Problem: {{problem}}""")
         String add(@V("problem") String problem);
     }
 
-    public interface BehaviourNotes {
-        @Agent(description = "Adds what kennel stress and the dog's neighbours explain")
+    public interface RoutineNotes {
+        @Agent(description = "Adds what changed in the household recently")
         @UserMessage("""
-                Add the behaviour angle to the case board: kennel stress, the neighbouring dogs,
-                noise, routine change, and what you would check next. Two or three lines,
-                behaviour only — another expert covers the medical side.
+                Add the "what changed" angle to the board: new working hours, someone moved out, a
+                different feeding time, a moved bed — and what you would try next. Two or three
+                lines, changes only.
 
-                Case: {{problem}}""")
+                Problem: {{problem}}""")
         String add(@V("problem") String problem);
     }
 
-    public interface FeedNotes {
-        @Agent(description = "Adds what the feeding log explains")
+    public interface HomeNotes {
+        @Agent(description = "Adds what the dog can see and hear from inside the house")
         @UserMessage("""
-                Add the feeding angle to the case board: food change, portion, timing, who feeds
-                and whether the bowl is guarded, and what you would check next. Two or three
-                lines, feeding only.
+                Add the angle of what he can see and hear from indoors: the window onto the
+                street, the post, next door's cat, deliveries — and what you would try next. Two
+                or three lines, the house only.
 
-                Case: {{problem}}""")
+                Problem: {{problem}}""")
         String add(@V("problem") String problem);
     }
 
-    public interface VetLead {
-        @Agent(description = "Reads the whole board and writes the ranked differential")
+    public interface TrainerLead {
+        @Agent(description = "Reads the whole board and ranks the likely causes")
         @UserMessage("""
-                You are the kennel's lead vet. From everything on the case board, rank the two or
-                three most likely causes, most likely first, and give the single next check for
-                each.
+                You are the trainer. From everything on the board, give the two or three most
+                likely causes, most likely first, and the one thing to try for each.
 
-                Medical: {{medical}}
-                Behaviour: {{behaviour}}
-                Feeding: {{feed}}""")
-        String conclude(@V("medical") String medical, @V("behaviour") String behaviour,
-                        @V("feed") String feed);
+                Exercise: {{walks}}
+                What changed: {{routine}}
+                What he sees and hears: {{home}}""")
+        String conclude(@V("walks") String walks, @V("routine") String routine,
+                        @V("home") String home);
     }
 
-    // ---------------------------------------------------------------- 11 — the placement vote
-    // Three assessors reading the SAME dossier against DELIBERATELY DIFFERENT criteria, so they
-    // can genuinely split — which is the only way a majority vote means anything. Three copies of
-    // one prompt (the earlier MoodSnifferA/B/C) always agree, so the tally was decoration.
+    // ---------------------------------------------------------------- 11 — a second dog?
+    // Three voters with DELIBERATELY DIFFERENT criteria over the same household, so they can
+    // genuinely split — which is the only way a majority means anything. Three copies of one
+    // prompt always agree, and then the tally is decoration.
     //
-    // Each answers with one word, because that is what a voting strategy can actually tally: a
-    // one-line reason per voter would make every answer unique and no majority could ever form.
-    // The disagreement is still visible — the Run events show what each assessor was asked.
+    // Each answers in one word, because that is what a voting strategy can tally: a one-line
+    // reason per voter would make every answer unique and no majority could ever form. The
+    // reasoning is still visible — the result pane shows all three votes side by side.
 
-    public interface TemperamentAssessor {
-        @Agent(description = "Votes on a placement from the temperament test alone")
+    public interface SpaceAndTime {
+        @Agent(description = "Votes on a second dog on space and hours alone")
         @UserMessage("""
-                You assess rescue dogs for placement in a home with a small child. Judge ONLY the
-                temperament test in this dossier and ignore every other source. Answer with one
-                word: PLACE or HOLD.
+                Should this household get a second dog? Judge ONLY the space they have and the
+                hours the dogs would be alone. Ignore money and ignore the dog they already have.
+                Answer with one word: YES or LATER.
 
-                Dossier: {{dossier}}""")
-        String vote(@V("dossier") String dossier);
+                Household: {{household}}""")
+        String vote(@V("household") String household);
     }
 
-    public interface FosterAssessor {
-        @Agent(description = "Votes on a placement from the foster carer's diary alone")
+    public interface MoneyAndVet {
+        @Agent(description = "Votes on a second dog on what two dogs cost")
         @UserMessage("""
-                You assess rescue dogs for placement in a home with a small child. Judge ONLY the
-                foster carer's diary in this dossier — how the dog behaves over weeks in a real
-                house — and ignore every other source. Answer with one word: PLACE or HOLD.
+                Should this household get a second dog? Judge ONLY what a second dog costs —
+                food, insurance, vet bills, boarding when they travel. Ignore everything else.
+                Answer with one word: YES or LATER.
 
-                Dossier: {{dossier}}""")
-        String vote(@V("dossier") String dossier);
+                Household: {{household}}""")
+        String vote(@V("household") String household);
     }
 
-    public interface MedicalAssessor {
-        @Agent(description = "Votes on a placement from the medical file alone")
+    public interface AskZaoHimself {
+        @Agent(description = "Votes on a second dog from the point of view of the dog they have")
         @UserMessage("""
-                You assess rescue dogs for placement in a home with a small child. Judge ONLY the
-                medical file in this dossier, on the principle that a dog in pain is a dog that
-                may bite. Ignore every other source. Answer with one word: PLACE or HOLD.
+                Should this household get a second dog? Judge ONLY from the point of view of the
+                dog they already have — does he actually like other dogs? Ignore everything else.
+                Answer with one word: YES or LATER.
 
-                Dossier: {{dossier}}""")
-        String vote(@V("dossier") String dossier);
+                Household: {{household}}""")
+        String vote(@V("household") String household);
     }
 
-    // ---------------------------------------------------------------- 12 — the placement debate
-    // Two homes have applied for the same rescue dog and only one can have him, so the two sides
-    // are not a rhetorical exercise — each advocate has real facts on its side and real problems
-    // to explain away. A single prompt would pick one home and rationalise it; the debate forces
-    // the counter-case to be stated out loud, which is the whole value. And the panel's verdict
-    // is checkable: the room has the same constraints in front of it.
+    // ---------------------------------------------------------------- 12 — take him, or not?
+    // Both sides are genuinely strong, which is what makes a debate worth its tokens: a single
+    // prompt picks one and then rationalises it, whereas a debate forces the case against the
+    // winner to be said out loud before anyone rules. And the room can check the ruling, because
+    // it has the same two lists of tradeoffs the panel does.
 
-    public interface HomeOneAdvocate {
-        @Agent(description = "Argues for placing the dog with the first applicant home")
+    public interface TakeHimAdvocate {
+        @Agent(description = "Argues for taking the dog on the holiday")
         @UserMessage("""
-                You are the case worker for the FIRST home in this placement decision. Argue why
-                the dog should go to them, and answer the strongest objection to them honestly.
-                Two or three sentences.
+                Argue for taking the dog along. Make your best case, then answer the strongest
+                objection to taking him honestly rather than dodging it. Two or three sentences.
 
                 Motion: {{motion}}""")
         String argue(@V("motion") String motion);
     }
 
-    public interface HomeTwoAdvocate {
-        @Agent(description = "Argues for placing the dog with the second applicant home")
+    public interface LeaveHimAdvocate {
+        @Agent(description = "Argues for leaving the dog at home with a sitter")
         @UserMessage("""
-                You are the case worker for the SECOND home in this placement decision. Argue why
-                the dog should go to them, and answer the strongest objection to them honestly.
-                Two or three sentences.
+                Argue for leaving the dog at home with a sitter. Make your best case, then answer
+                the strongest objection to leaving him honestly rather than dodging it. Two or
+                three sentences.
 
                 Motion: {{motion}}""")
         String argue(@V("motion") String motion);
     }
 
-    public interface PlacementPanel {
-        @Agent(description = "Rules which home the dog is placed with, and on what condition")
+    public interface HolidayVerdict {
+        @Agent(description = "Settles whether the dog comes on the holiday, and on what condition")
         @UserMessage("""
-                You chair the placement panel. Having heard both case workers, rule which home the
-                dog goes to, name the one fact that decided it, and set one condition on the
-                placement.
+                Having heard both sides, rule whether the dog comes or stays. Name the one fact
+                that decided it, and set one condition on the decision.
 
                 Motion: {{motion}}""")
         String rule(@V("motion") String motion);
     }
 
-    // ---------------------------------------------------------------- 13 — the morning shift (BDI)
-    // Three desires whose PRIORITIES, not their declaration order, decide what happens: the
-    // safety round outranks everything, medication is only achievable once every dog has been
-    // looked at, and the report is only achievable once both are done. Shuffle the declarations
-    // and the behaviour does not change — which is the point of BDI and impossible to show with
-    // two agents in the only order they could ever run.
+    // ---------------------------------------------------------------- 13 — the puppy's first hour
+    // Three desires whose PRIORITIES, not their declaration order, decide what happens. Nobody
+    // needs to be told that a puppy goes to the garden before he gets a training session, or that
+    // you feed him before you teach him anything — so the room can see the planner making the
+    // right call rather than taking it on trust. Shuffle the declarations and nothing changes,
+    // which is the point of BDI and impossible to show with two agents in the only order they
+    // could ever have run.
 
-    public interface SafetyRound {
-        @Agent(description = "Walks every occupied run and flags anything wrong (top priority)")
+    public interface ToiletTrip {
+        @Agent(description = "Takes the puppy to the garden — before anything else, always")
         @UserMessage("""
-                Walk every occupied run and report, in one line each, any dog that needs attention
-                before anything else happens this shift.
+                The puppy has just arrived. Take him out to the garden first. Say what the owner
+                does, and what they do when he gets it right. Two or three lines.
 
-                Shift: {{shift}}""")
-        String walk(@V("shift") String shift);
+                First hour: {{hour}}""")
+        String take(@V("hour") String hour);
     }
 
-    public interface MedsRound {
-        @Agent(description = "Gives the morning medication, but only after the safety round")
+    public interface FirstMeal {
+        @Agent(description = "Gives the puppy his first meal, once he has been out")
         @UserMessage("""
-                Give the morning medication round, taking the safety round into account: a dog
-                flagged as unwell is not medicated before the vet is called. One line per dog.
+                Now he has been out, give him his first meal in the new house: how much, where,
+                and what the owner should not do while he eats. Two or three lines.
 
-                Safety round: {{round}}""")
-        String give(@V("round") String round);
+                Already been out: {{out}}""")
+        String feed(@V("out") String out);
     }
 
-    public interface ShiftReport {
-        @Agent(description = "Writes the shift report, once the rounds are done")
+    public interface FirstTraining {
+        @Agent(description = "The first tiny training session, once he is out and fed")
         @UserMessage("""
-                Write the shift report in under 70 words: what was found, what was given, and what
-                the next shift must pick up.
+                He has been out and he has eaten. Give the first tiny training session — one
+                thing, two minutes, ending well. Two or three lines.
 
-                Safety round: {{round}}
-                Medication round: {{meds}}""")
-        String write(@V("round") String round, @V("meds") String meds);
+                Been out: {{out}}
+                Eaten: {{fed}}""")
+        String teach(@V("out") String out, @V("fed") String fed);
     }
 
-    // ---------------------------------------------------------------- 14 — the night handover
-    // The capstone's own agents. The artefact is the thing a kennel really does produce at the
-    // end of a call: one handover sheet for the night hand, checked against rules before it is
-    // handed over.
+    // ---------------------------------------------------------------- 14 — the weekend away
+    // The capstone's own agents. The artefact is the one a household really does produce: a
+    // single note on the fridge door that a sitter can follow without ringing you.
 
-    public interface HandoverWriter {
-        @Agent(description = "Merges the desk's answer and the day's plans into one handover sheet")
+    public interface MealPlanner {
+        @Agent(description = "Plans the dog's meals for the days the owners are away")
         @UserMessage("""
-                Write the night handover sheet for the kennel hand coming on shift. Put what to do
-                first at the top.
+                Plan the dog's meals for the days the owners are away: times, amounts, and
+                anything he must not be given. Be brief.
 
-                What the desk advised: {{answer}}
-                Exercise and handling: {{rota}}
-                Feeding and medication: {{feed}}""")
-        String write(@V("answer") String answer, @V("rota") String rota, @V("feed") String feed);
+                The stay: {{stay}}""")
+        String plan(@V("stay") String stay);
     }
 
-    public interface HandoverEditor {
-        @Agent(description = "Tightens a handover sheet without dropping any instruction")
+    public interface WalkPlanner {
+        @Agent(description = "Plans the dog's walks for the days the owners are away")
         @UserMessage("""
-                Tighten this handover sheet so it satisfies all three rules, without dropping any
-                instruction:
-                1. it names the dog and its run
-                2. every medicine appears with its dose and time
-                3. it says who to telephone, and when
+                Plan the dog's walks for the days the owners are away: when, how long, on or off
+                the lead, and anywhere to avoid. Be brief.
 
-                Sheet: {{sheet}}""")
-        String edit(@V("sheet") String sheet);
+                The stay: {{stay}}""")
+        String plan(@V("stay") String stay);
     }
 
-    /** Returns a String for the same reason {@link DischargeChecker} does — see its javadoc. */
-    public interface HandoverChecker {
-        @Agent(description = "Checks a handover sheet against the kennel's three rules")
+    public interface SitterNoteMerger {
+        @Agent(description = "Merges the answer and the two plans into one note for the sitter")
         @UserMessage("""
-                Check this handover sheet against three rules: it names the dog and its run, every
-                medicine appears with dose and time, and it says who to telephone and when. Give
-                the fraction of rules that hold as a number from 0.0 to 1.0 — the number only, no
-                words, no explanation, no markdown.
+                Write the note that goes on the fridge for the dog sitter. Put the thing that
+                matters most at the top.
 
-                Sheet: {{sheet}}""")
-        String check(@V("sheet") String sheet);
+                What the expert said: {{answer}}
+                Meals: {{meals}}
+                Walks: {{walks}}""")
+        String write(@V("answer") String answer, @V("meals") String meals,
+                     @V("walks") String walks);
     }
 
-    // ---------------------------------------------------------------- 15 — the placement council
-    // Both of these are "glue": each exists to hand one pattern's output to the next in the shape
-    // that one expects. Composites need more of these than you expect, and they are where the
-    // seams show.
-
-    public interface CaseScout {
-        @Agent(description = "Digs out what one angle of a rescue dossier actually says")
+    public interface NoteTightener {
+        @Agent(description = "Tightens a sitter note without dropping any instruction")
         @UserMessage("""
-                Pull out what this dossier says on one angle only, and what is missing on it. Two
-                sentences.
+                Tighten this note so it satisfies all four rules, without dropping any
+                instruction: every meal has a time and an amount, it says where the lead and poo
+                bags are, it gives the vet's telephone number, and it is under 100 words so it
+                fits on the fridge door.
+
+                Note: {{note}}""")
+        String tighten(@V("note") String note);
+    }
+
+    // ---------------------------------------------------------------- 15 — the second-dog council
+    // The same question the voting demo asks, but put through a whole council — so the room has
+    // already met the three assessors and can watch them ratify a debated motion instead of
+    // voting cold. Both agents below are "glue": each exists to hand one pattern's output to the
+    // next in the shape that one expects. Composites need more of these than you expect, and they
+    // are where the seams show.
+
+    public interface AngleScout {
+        @Agent(description = "Digs out what one angle of the household really says")
+        @UserMessage("""
+                Look at this household from one angle only. Say what it tells you and what is
+                still unknown on it. Two sentences.
 
                 Angle: {{angle}}""")
         String scout(@V("angle") String angle);
@@ -525,19 +528,49 @@ public final class Agents {
          */
         @Agent(description = "Turns what the scouts found into the motion the council will weigh")
         @UserMessage("""
-                Write the motion the placement council should vote on, as one sentence naming the
-                home you propose and the condition attached.
+                Write the motion this household should decide on, as one sentence: a second dog or
+                not, and if so what kind and when.
 
                 Question: {{question}}
                 What the scouts found: {{findings}}""")
         String brief(@V("question") String question, @V("findings") List<String> findings);
     }
 
-    public interface CouncilNote {
-        @Agent(description = "Restates the panel's ruling as the dossier line to be ratified")
+    public interface SecondDogFor {
+        @Agent(description = "Argues for the motion in front of the council")
         @UserMessage("""
-                Restate the panel's ruling as one dossier line for the assessors to ratify, naming
-                the home and the condition.
+                Argue for this motion, and answer the strongest objection to it honestly. Two or
+                three sentences.
+
+                Motion: {{motion}}""")
+        String argue(@V("motion") String motion);
+    }
+
+    public interface SecondDogAgainst {
+        @Agent(description = "Argues against the motion in front of the council")
+        @UserMessage("""
+                Argue against this motion, and answer the strongest point in its favour honestly.
+                Two or three sentences.
+
+                Motion: {{motion}}""")
+        String argue(@V("motion") String motion);
+    }
+
+    public interface HouseholdVerdict {
+        @Agent(description = "Rules on the council's motion, and on what condition")
+        @UserMessage("""
+                You chair the household council. Rule on the motion, name the one fact that
+                decided it, and set one condition.
+
+                Motion: {{motion}}""")
+        String rule(@V("motion") String motion);
+    }
+
+    public interface CouncilNote {
+        @Agent(description = "Restates the ruling as the household line the assessors will ratify")
+        @UserMessage("""
+                Restate this ruling as one line describing the household as it would be if the
+                ruling is carried out, so the assessors can vote on it.
 
                 Ruling: {{verdict}}""")
         String note(@V("verdict") String verdict);

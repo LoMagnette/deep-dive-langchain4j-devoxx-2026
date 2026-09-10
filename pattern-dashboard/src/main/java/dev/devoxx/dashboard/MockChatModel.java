@@ -5,7 +5,6 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -18,36 +17,48 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Deterministic, no-API-key chat model. It inspects the last user prompt and returns a short,
- * PARSEABLE answer so every agentic pattern can run on stage without a real LLM — which is also
- * what {@code mvn test} runs against.
+ * PARSEABLE answer so every pattern can run on stage without a real LLM — which is also what
+ * {@code mvn test} runs against.
  *
- * <p>The rules are an ORDERED table on purpose. Kennel prompts overlap a lot (three different
- * agents mention "handover sheet"; two mention "vaccination status"), so the specific rule has to
- * be listed before the general one, and putting them in one list makes that ordering visible
- * instead of hiding it in a ladder of ifs. Each rule's comment says what it is standing in front
- * of.
+ * <p>The rules are an ORDERED table on purpose. Prompts overlap a lot (three agents mention the
+ * sitter note; the park step quotes the garden step), so the specific rule has to be listed
+ * before the general one, and putting them all in one list makes that ordering visible instead of
+ * hiding it in a ladder of ifs. Each rule's comment says what it is standing in front of.
  *
- * <p>The replies are deliberately good demo content rather than filler: run the dashboard with
- * {@code -Ddashboard.model=mock} and the discharge loop really does produce a compliant note, the
- * booking really is declined for an expired rabies booster, and the morning round really does
- * flag a different thing per run. If you change a prompt in {@link Agents}, check the rule that
- * matched it — {@code mvn test} will tell you if nothing does.
+ * <p>Three hazards this table already pays for, each of which produced a wrong demo with no error
+ * at all:
+ * <ul>
+ *   <li><b>Whitespace is collapsed before matching.</b> The prompts are text blocks, so
+ *       "PASS or FAIL" is one phrase to a reader and {@code "PASS or\nFAIL"} to
+ *       {@code String.contains} — a rule that looks obviously right silently never fires.</li>
+ *   <li><b>Rules matching quoted content go BELOW rules matching an instruction.</b> A
+ *       refinement loop feeds the note it just wrote back into the next prompt, so a rule keyed
+ *       on a word that appears in the note hijacks the loop's second pass and the composite
+ *       returns the wrong stage's answer.</li>
+ *   <li><b>Trigger words must not be ordinary English.</b> The score rule used to fire on the
+ *       word "number", which quietly claimed every agent whose rules mention "the vet's
+ *       telephone number" — so they answered "0.60" instead of writing a note.</li>
+ * </ul>
+ *
+ * <p>The replies are deliberately good demo content rather than filler: run with
+ * {@code -Ddashboard.model=mock} and the picnic-blanket mapper really does clear the cheddar and
+ * condemn the grapes, the walk really is vetoed by the hot pavement, and the second-dog vote
+ * really does split two to one.
  */
 public class MockChatModel implements ChatModel {
 
     private final AtomicInteger scoreCounter = new AtomicInteger();
     private final AtomicInteger lineCounter = new AtomicInteger();
-    /** Which step of the supervisor's canned plan we're on (1 = rota, 2 = feed, 3+ = done). */
+    /** Which step of the supervisor's canned plan we're on (1 = routine, 2 = training, 3+ = done). */
     private final AtomicInteger plannerStep = new AtomicInteger();
 
     /** Filler for prompts no rule claims — themed, so an unmatched prompt still looks alive. */
-    private static final String[] KENNEL_LINES = {
-            "Noted on the board: run 2 checked, water topped up, no change since the last round.",
-            "Zao does the evening walk-round with the handler, nose to every door as usual.",
-            "Kennel is quiet; the Ardennes rain has all nine dogs curled up and dry.",
-            "Logged in the day book and initialled by the handler coming off shift.",
-            "Passed to the morning shift with nothing outstanding.",
-            "Zao settles by the office door once the last run is bolted for the night."
+    private static final String[] HOUSE_LINES = {
+            "Zao settles in the hall where he can see both doors, one ear up.",
+            "Noted, and stuck on the fridge with the others.",
+            "Nothing else to change this week — keep everything as boring as possible.",
+            "Zao takes this as his cue to bring you the lead, just in case.",
+            "Written in the notebook by the back door where you will both see it."
     };
 
     @Override
@@ -89,222 +100,254 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("planner expert") || p.contains("agent invocation"),
                         this::supervisorPlan),
 
-                // --- 1. Anything asking for a number from 0.0 to 1.0 (both loop critics).
-                // Alternates 0.60 then 0.95 so a loop visibly runs a second pass and then
-                // reliably crosses the 0.8 bar rather than spinning to maxIterations.
-                new Rule(p -> p.contains("0.0") || has(p, "score", "rate", "number"),
+                // --- 1. The loop critic. Keyed on "0.0 to 1.0" and NOT on the word "number":
+                // three agents' rules mention "the vet's telephone number", and they must write
+                // notes, not scores. Alternates 0.60 then 0.95 so a loop visibly runs a second
+                // pass and then reliably crosses the 0.8 bar instead of spinning to maxIterations.
+                new Rule(p -> p.contains("0.0 to 1.0") || has(p, "score", "rate"),
                         p -> String.format(Locale.US, "%.2f",
                                 scoreCounter.getAndIncrement() % 2 == 0 ? 0.60 : 0.95)),
 
-                // --- 2. The placement vote. ONE WORD, identical for all three assessors, so
-                // VotingStrategy.majority() has something it can actually tally.
-                new Rule(p -> p.contains("place or hold"), p -> "PLACE"),
+                // --- 2. The second-dog vote. ONE WORD, and deliberately NOT the same word for
+                // all three: the money is fine, the flat and Zao are not. That is a real 2-1
+                // majority rather than three agents agreeing because they were asked the same
+                // thing, which is the only reason to run a vote at all.
+                new Rule(p -> p.contains("what a second dog costs"), p -> "YES"),
+                new Rule(p -> p.contains("yes or later"), p -> "LATER"),
 
-                // --- 3. The night line's router. Must stay in step with Parsing.CATEGORIES, or
-                // the router picks a branch that does not exist. Returns the first desk named in
-                // the prompt, which for the shipped call is also the RIGHT desk: emergency.
-                new Rule(p -> p.contains("classify this call"), p -> {
-                    for (String desk : new String[] {"emergency", "behaviour", "booking"}) {
-                        if (has(p, desk)) {
-                            return desk;
+                // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or the
+                // router picks a branch that does not exist. Returns the first destination named
+                // in the prompt, which for the shipped worry is also the RIGHT one: emergency.
+                new Rule(p -> p.contains("classify this worry"), p -> {
+                    for (String who : new String[] {"emergency", "training", "everyday"}) {
+                        if (has(p, who)) {
+                            return who;
                         }
                     }
                     return "emergency";
                 }),
 
-                // --- 4. Admissions. Both checks say "PASS or FAIL", so the vaccination one is
-                // separated by its own word — and it FAILS, which is the point of the demo: the
-                // booking is declined for a reason the room can check.
-                new Rule(p -> p.contains("pass or fail") && has(p, "vaccination"),
-                        p -> "FAIL — the rabies booster expired on 12 June, so it is neither "
-                                + "valid nor 21 days clear of arrival. Tablets twice a day are "
-                                + "fine for staff to give."),
-                new Rule(p -> p.contains("pass or fail"),
-                        p -> "PASS — run 4 (large) is free for the whole of 12–19 October, and a "
-                                + "40kg shepherd fits a large run."),
+                // --- 4. "Walk him now?" Both checks say "PASS or FAIL", so they are separated by
+                // what each one is told to judge — and the weather one FAILS, which is the point
+                // of the demo: the join vetoes a walk the room already knew was a bad idea.
+                new Rule(p -> p.contains("weather and the ground"),
+                        p -> "FAIL — 31 degrees and the pavement has been in the sun all "
+                                + "afternoon. Press the back of your hand to it for five seconds; "
+                                + "if you cannot hold it there, neither can he."),
+                new Rule(p -> p.contains("the dog himself for a walk"),
+                        p -> "PASS — four years old, sound, and an hour past his meal."),
 
-                // --- 5. The morning round, one run at a time. Item-aware, so the mapper's
-                // gathered watch-list differs per run instead of repeating one line three times.
-                new Rule(p -> p.contains("watch-list"), MockChatModel::inspectRun),
+                // --- 5. The picnic blanket, one item at a time. Item-aware, so the gathered
+                // verdicts differ per item — five identical lines would run the pattern perfectly
+                // and demonstrate nothing.
+                new Rule(p -> p.contains("picnic blanket"), MockChatModel::foodVerdict),
 
-                // --- 6. The two intake artefacts. The run sheet is listed FIRST because its
-                // prompt also contains the words "boarding record".
-                new Rule(p -> p.contains("run sheet"),
+                // --- 6. The sitter note, narrowest first. All three of these prompts talk about
+                // notes and cards, and the checklist's prompt quotes the words "sitter card".
+                new Rule(p -> p.contains("times of day in order"),
                         p -> """
-                                Handle alone — do not take him past the runs on the left.
-
-                                07:30  half an antibiotic tablet, given with breakfast
-                                08:00  yard, on the lead, on his own
-                                17:30  supper, then half an antibiotic tablet with it
-                                19:00  last yard visit
-                                Collection Tuesday after five."""),
-                new Rule(p -> p.contains("boarding record"),
+                                07:30  two scoops, in the tub by the back door
+                                08:00  out for a walk, lead on the whole time
+                                13:00  quick garden visit
+                                18:00  two scoops
+                                19:00  last walk of the day
+                                Never: the dried liver treats. Never: off the lead in the park."""),
+                new Rule(p -> p.contains("sitter card with exactly"),
                         p -> """
-                                Dog: Nero, German shepherd, 40kg
-                                Stay: until Tuesday, collection after 17:00
-                                Medication: half an antibiotic tablet morning and night, with food
-                                Feeding: not given
-                                Flags: reactive to other males — never walk past the left-hand runs"""),
+                                Dog: Zao, Belgian shepherd
+                                Meals: two scoops morning and evening, food in the tub by the back door
+                                Walks: not given
+                                Watch out for: no dried liver treats; never off the lead in the park
+                                Vet: 061 22 33 44"""),
 
-                // --- 7. The discharge loop. The rewrite satisfies all four rules, so the room
-                // can hold it against the draft it started from and see what the loop fixed.
-                new Rule(p -> p.contains("go-home instructions"),
+                // --- 7. The refinement loop's rewrite. Satisfies all four rules, so the room can
+                // hold it against the note it started from and see what the loop fixed.
+                new Rule(p -> p.contains("never met the dog"),
                         p -> """
-                                Give Nero half a white antibiotic tablet with his breakfast and \
-                                half with his supper, every day until they run out.
+                                Zao eats twice a day: two scoops at 07:30 and two at 18:00. Food \
+                                is in the tub by the back door. No dried liver treats — they \
+                                upset him.
 
-                                Give one painkiller tablet at 08:00 and one at 20:00, only if he \
-                                seems sore.
+                                Walk him at 08:00 and again at 19:00. His lead and the poo bags \
+                                are on the hook by the back door. Keep him on the lead in the \
+                                park; he will not come back yet.
 
-                                Keep him on the lead for a week. No food after 8pm tonight. Look \
-                                at his stitches each morning: they should be dry and closed.
+                                He may cry the first night. He settles.
 
-                                Call the kennel on 061 22 33 44 if anything worries you."""),
+                                Vet: 061 22 33 44."""),
 
-                // --- 8. The week's plans (supervisor sub-agents, reused by the composite).
-                // The handover rules come FIRST: that prompt quotes both planners' subject lines.
-                new Rule(p -> has(p, "tighten") && p.contains("handover sheet"),
+                // --- 8. The weekend-away composite, narrowest first. The tightener's prompt is
+                // the loop's second pass, so it quotes the note it just wrote — see the class
+                // note about rules that match quoted content.
+                new Rule(p -> p.contains("tighten this note"),
                         p -> """
-                                NERO — RUN 2. Do this first: he has not eaten since yesterday, so \
-                                telephone the vet on 061 22 33 44 before his 20:00 dose.
+                                ZAO — Friday to Sunday.
 
-                                20:00  half an antibiotic tablet, with food if he will take it
-                                22:00  last yard visit, alone, lead on
-                                Overnight: check him every two hours and write down what he does.
-                                Do not walk him past the left-hand runs."""),
-                new Rule(p -> p.contains("handover sheet"),
+                                07:30  two scoops. 18:00  two scoops. Food: tub by the back door.
+                                Walks 08:00 and 19:00. Lead and poo bags: hook by the back door. \
+                                Lead stays on — he pulls, plant your feet and wait.
+                                Fireworks both nights: curtains shut, radio on, stay in with him. \
+                                Do not take him out after dark.
+
+                                Vet 061 22 33 44. Ring us any time."""),
+                new Rule(p -> p.contains("goes on the fridge for the dog sitter"),
                         p -> """
-                                Nero, run 2 — not eating, retching. Ring the vet before the 20:00 \
-                                dose. Antibiotic half tablet at 20:00 with food. Yard alone at \
-                                22:00. Two-hourly checks overnight. Never past the left-hand runs."""),
-                new Rule(p -> p.contains("exercise and handling"),
-                        p -> "Yard alone at 08:00 and 17:00, ten minutes each, lead on. No "
-                                + "corridor passes while the other males are out. One quiet "
-                                + "grooming session mid-week to keep him handled."),
-                new Rule(p -> p.contains("feeding and medication"),
-                        p -> "Half an antibiotic tablet with breakfast at 07:30 and with supper "
-                                + "at 17:30 — this one goes WITH food. If he refuses two meals in "
-                                + "a row, stop and telephone the vet before the next dose."),
+                                Fireworks are the thing to plan for: shut the curtains, put the \
+                                radio on and keep him in after dark both nights.
+                                Meals 07:30 and 18:00, two scoops. Walks 08:00 and 19:00, lead on \
+                                throughout. Vet 061 22 33 44."""),
+                new Rule(p -> p.contains("meals for the days"),
+                        p -> "Two scoops at 07:30 and two at 18:00, from the tub by the back "
+                                + "door. Nothing off the table, and no dried liver treats."),
+                new Rule(p -> p.contains("walks for the days"),
+                        p -> "08:00 for half an hour and 19:00 for twenty minutes, lead on the "
+                                + "whole time. Avoid the park after dark while the fireworks are "
+                                + "going."),
 
-                // --- 9. The night line's desks. These are listed AFTER the handover rules
-                // and not before, which is not cosmetic: the refinement loop feeds the sheet it
-                // just wrote back into the next prompt, so a desk rule matching a word that
-                // appears in the SHEET hijacks the second pass of the loop and the composite
-                // quietly returns the desk's answer instead of the handover. Keep rules that
-                // match on quoted content below the rules that match on an instruction.
-                new Rule(p -> p.contains("on-call vet"),
-                        p -> "Do not let him eat or drink and do not walk him. A tight, swollen "
-                                + "belly with unproductive retching is a suspected bloat: this is "
-                                + "a drive-to-the-clinic-now case. Telephone the clinic while you "
-                                + "load him and take his paperwork."),
-                new Rule(p -> p.contains("behaviour desk"),
-                        p -> "Tonight: move him to run 7, away from the barker, and leave the "
-                                + "corridor light on low. For the record: third night of "
-                                + "disturbed sleep, settles when the neighbour is quiet."),
-                new Rule(p -> p.contains("booking desk"),
-                        p -> "Those dates are open and a medium run is free. Bring the "
-                                + "vaccination card showing rabies and kennel cough at least 21 "
-                                + "days old, and any medication in its original box."),
+                // --- 9. The three people a worry can reach. Listed AFTER the composite's rules
+                // because the merger's prompt quotes whichever of these answered.
+                new Rule(p -> p.contains("emergency vet"),
+                        p -> "Ring the practice now and tell them his weight and how much he ate — "
+                                + "dark chocolate is the worst kind. Take the wrapper with you so "
+                                + "they can read the cocoa percentage. Do not wait to see whether "
+                                + "he is sick, and do not try to make him sick yourself."),
+                new Rule(p -> p.contains("the dog trainer"),
+                        p -> "This week: stop the walk dead every time the lead goes tight, and "
+                                + "only move off when it slackens. Stop: yanking him back, which "
+                                + "teaches him that pulling is how walks feel."),
+                new Rule(p -> p.contains("everyday dog questions"),
+                        p -> "Keep it boring and keep it the same: same food, same times, same "
+                                + "route. Most of what looks like a problem in week one is just "
+                                + "a change of routine."),
 
-                // --- 10. The quote chain. Ordered narrowest first: the pricer's prompt quotes
-                // the allocated run, and the allocator's prompt quotes the vaccination status.
-                new Rule(p -> has(p, "cost"),
-                        p -> "7 nights × 28 euro (large run) = 196 euro, plus 7 × 5 euro for "
-                                + "giving medication = 231 euro total."),
-                new Rule(p -> has(p, "allocate"),
-                        p -> "Run 3 (large) allocated for the seven nights from 12 October."),
-                new Rule(p -> has(p, "vaccination"),
-                        p -> "Valid — rabies and kennel cough given 2 September, forty days "
-                                + "before arrival."),
+                // --- 10. The supervisor's two specialists.
+                new Rule(p -> p.contains("daily routine"),
+                        p -> "Start now, not in month three: move his bed off your room and into "
+                                + "the hall this month, so it is not something the baby did to "
+                                + "him. Keep the 08:00 and 19:00 walks exactly as they are — they "
+                                + "are the two things that will not change in March."),
+                new Rule(p -> p.contains("needs to be taught"),
+                        p -> "In this order: a settle on a mat while you are busy in the room; "
+                                + "waiting at doorways instead of barging through; and off the "
+                                + "furniture on a word. Three months is enough for all three if "
+                                + "you start with the mat."),
 
-                // --- 11. The two peers. The welfare rule is FIRST because its prompt quotes the
-                // foreman ("if the foreman's proposal is acceptable"), so the foreman's own rule
-                // would otherwise claim it and the two peers would say the same thing. Its reply
-                // ends with AGREED, which is what writes 'consensus' and lets P2P exit.
-                new Rule(p -> p.contains("welfare officer"),
-                        p -> "The spaniels may share, they live together. The barn stalls are "
-                                + "not runs and the three males cannot be doubled at all, so two "
-                                + "bookings move to the Thursday. Eleven runs, twelve dogs, "
-                                + "four-hourly checks on the shared pair. AGREED."),
-                new Rule(p -> has(p, "foreman"),
-                        p -> "Take all fourteen. I will not turn away a booking I have already "
-                                + "confirmed — three of them are regulars and it is the bank "
-                                + "holiday. Double up the two spaniels that live together and "
-                                + "put the quietest three in the barn stalls."),
+                // --- 11. Recall in three steps. The park rule is FIRST because the park prompt
+                // quotes "garden step already done", and the garden prompt quotes the indoor step.
+                new Rule(p -> p.contains("park step"),
+                        p -> "At the park, on a fifteen-metre line, when there are dogs in the "
+                                + "distance but not near him. The line is there so he can never "
+                                + "learn that ignoring you works. Drop it when he has come back "
+                                + "ten times out of ten with a dog in sight."),
+                new Rule(p -> p.contains("garden step"),
+                        p -> "Same word, same reward, now in the garden with the smells and the "
+                                + "birds. If he ignores you, do not repeat it — walk to him, take "
+                                + "his collar, and make the next one easier."),
+                new Rule(p -> p.contains("indoor step for"),
+                        p -> "In the hall, two metres away, nothing else going on. Say his name "
+                                + "once, then the word, and pay him the moment he turns. Five "
+                                + "goes, twice a day. It is working when he turns on the word "
+                                + "before he has thought about it."),
 
-                // --- 12. The case board. Three genuinely different KINDS of note, so the board
-                // is worth reading; the lead's rule is listed before them because its prompt
-                // quotes all three subject lines.
-                new Rule(p -> p.contains("lead vet"),
+                // --- 12. The household argument. The floor rule is FIRST because its prompt
+                // quotes the other half's proposal.
+                new Rule(p -> p.contains("wants the dog in his own bed"),
+                        p -> "I can live with that, but not the whole bed and not every night. "
+                                + "House rule: his own bed in our room, and he is invited up in "
+                                + "the morning once we are awake — never during the night, and "
+                                + "never when he is wet. AGREED."),
+                new Rule(p -> p.contains("wants the dog on the bed"),
+                        p -> "He has slept up there since he was a puppy and he settles better "
+                                + "for it, and so do I. What I will not give up is the mornings — "
+                                + "if he has to be off it at night, fine, but he comes up when "
+                                + "the alarm goes."),
+
+                // --- 13. The barking board. The trainer's rule is FIRST because its prompt
+                // quotes all three contributors' headings.
+                new Rule(p -> p.contains("most likely first"),
                         p -> """
-                                1. Food refusal after the Monday diet change — most likely. \
-                                Next check: offer the original food alongside the new one and \
-                                weigh what he eats.
-                                2. Kennel stress from the barking neighbour. Next check: move him \
-                                to run 7 for two nights and see if he eats.
-                                3. Early dental or throat pain, despite the normal temperature. \
-                                Next check: look in his mouth under sedation if he still refuses \
-                                by Thursday."""),
-                new Rule(p -> p.contains("medical angle"),
-                        p -> "Temperature normal and he is bright, which argues against sepsis "
-                                + "or an obstruction. No wound, no vomiting. Next check: weigh "
-                                + "him and look in his mouth — dental pain hides behind a normal "
-                                + "temperature."),
-                new Rule(p -> p.contains("behaviour angle"),
-                        p -> "The dog in the next run barks most of the night, and this is his "
-                                + "third kennel stay. Dogs that will not eat in a noisy row will "
-                                + "often eat in a quiet one. Next check: move him to run 7 for "
-                                + "two nights."),
-                new Rule(p -> p.contains("feeding angle"),
-                        p -> "He came off his usual food on Monday, which is exactly when he "
-                                + "stopped eating. Fed at 07:30 and 17:30 by whoever is on the "
-                                + "round. Next check: offer the old food beside the new."),
+                                1. The bed under the front window — most likely. He now has a \
+                                job: watching the street all day. Try moving the bed to the back \
+                                room and see if it stops within a week.
+                                2. The new shift. His day changed shape and nobody told him. Try \
+                                a fixed 07:00 walk whatever time you leave.
+                                3. Not enough exercise before he is left. Try forty minutes off \
+                                the lead before you go, not ten on it."""),
+                new Rule(p -> p.contains("exercise angle"),
+                        p -> "A four-year-old shepherd needs more than a lead walk round the "
+                                + "block, and a bored shepherd invents work. Next: forty minutes "
+                                + "of real exercise before he is left, and see what changes."),
+                new Rule(p -> p.contains("new working hours"),
+                        p -> "The new shift is the change nobody has accounted for — he is left "
+                                + "at a different hour, for longer, with no warning cue. Next: "
+                                + "keep one thing fixed, the morning walk, whatever your shift."),
+                new Rule(p -> p.contains("see and hear from indoors")
+                                || p.contains("what he can see and hear"),
+                        p -> "His bed was moved under the front window, so he now watches the "
+                                + "street, the post and next door's cat all day. Next: move the "
+                                + "bed out of sight of the window before you try anything else."),
 
-                // --- 13. The morning shift's three desires. Report first: its prompt quotes
-                // both round headings.
-                new Rule(p -> p.contains("shift report"),
-                        p -> "Nine dogs in. Nero (run 2) left his supper and was panting at "
-                                + "03:00 — flagged, not medicated, vet telephoned. Luna (run 5) "
-                                + "passed no stool overnight — watching. The other seven are on "
-                                + "routine and had their 08:00 medication. Next shift: Nero's "
-                                + "vet call-back at 11:00, and check Luna again after her walk."),
-                new Rule(p -> p.contains("occupied run"),
-                        p -> """
-                                Run 2 — Nero: left his supper, panting at 03:00. Needs the vet \
-                                before anything else this shift.
-                                Run 5 — Luna: no stool overnight. Watch, and check again after \
-                                her walk.
-                                Runs 1, 3, 4, 6, 7, 8, 9: bright, ate up, nothing to report."""),
-                new Rule(p -> p.contains("medication round"),
-                        p -> "Nero (run 2): held back — flagged unwell, vet called first. Luna "
-                                + "(run 5): nothing due. Runs 3, 4, 6 and 8: 08:00 tablets given "
-                                + "with breakfast and swallowed. Run 9: ear drops, both ears."),
+                // --- 14. The puppy's first hour, three desires.
+                new Rule(p -> p.contains("first tiny training session"),
+                        p -> "One thing only: his name. Say it once, pay him when he looks, five "
+                                + "goes, then stop while he still wants more. Two minutes is a "
+                                + "long session for an eight-week-old puppy."),
+                new Rule(p -> p.contains("first meal in the new house"),
+                        p -> "The amount on the breeder's sheet, not more, in a quiet corner "
+                                + "where nobody walks past. Put it down, walk away, and leave him "
+                                + "alone with it — do not stroke him or take the bowl to check."),
+                new Rule(p -> p.contains("out to the garden first"),
+                        p -> "Straight out of the car and onto the grass, before he comes "
+                                + "indoors at all. Stand still and say nothing until he goes, "
+                                + "then tell him he is wonderful the second he finishes."),
 
-                // --- 14. The placement council. Narrowest first — the advocates' prompts and
-                // the briefer's prompt all contain the word "motion".
-                new Rule(p -> p.contains("placement council"),
-                        p -> "Motion: place Bruno with Home Two, on condition that a behaviourist "
-                                + "visits in the first fortnight to work on the food guarding."),
-                new Rule(p -> p.contains("placement panel"),
-                        p -> "Bruno goes to Home Two. The fact that decided it: he guards his "
-                                + "bowl and has never met a cat, and Home One has two cats and an "
-                                + "empty house nine to six. Condition: a behaviourist visit "
-                                + "within the first fortnight, and feeding behind a closed door."),
-                new Rule(p -> p.contains("restate"),
-                        p -> "Ruling: Bruno to Home Two, with a behaviourist visit in the first "
-                                + "fortnight and feeding behind a closed door."),
-                new Rule(p -> p.contains("one angle"),
-                        p -> "On this angle the dossier is clear that Bruno guards his food and "
-                                + "has never lived with a cat. What is missing: nobody has "
-                                + "recorded how he is with a child at mealtimes."),
-                // Both advocates get the identical line, so ConvergenceStrategy.unanimous()
-                // (all responses equal) fires after the first round instead of burning both.
+                // --- 15. The council. The chair and the glue are listed before the two
+                // advocates, because all three prompts talk about a motion.
+                new Rule(p -> p.contains("chair the household council"),
+                        p -> "The motion is carried, but not yet. The fact that decided it: Zao "
+                                + "stiffens and growls at dogs that come at him, and a flat with "
+                                + "no garden gives him nowhere to get away from one. Condition: "
+                                + "not before he can meet a strange dog calmly on neutral ground."),
+                new Rule(p -> p.contains("restate this ruling"),
+                        p -> "A two-bedroom flat with no garden, both owners out eight to six, "
+                                + "and a second dog brought in later once Zao can meet other "
+                                + "dogs calmly."),
+                new Rule(p -> p.contains("write the motion"),
+                        p -> "Motion: get a second dog, but not this year — an older, calm "
+                                + "female, and only after Zao can meet a strange dog on neutral "
+                                + "ground without stiffening."),
+                new Rule(p -> p.contains("one angle only"),
+                        p -> "On this angle it points one way: the flat is small, the days are "
+                                + "long and the dog they have does not enjoy other dogs. What is "
+                                + "unknown: whether that is every dog, or just the ones that run "
+                                + "straight at him."),
+                // The two council advocates answer DIFFERENTLY, so unanimous() does not converge
+                // and the debate runs its full two rounds before the chair rules — the opposite
+                // of the holiday debate below, which converges in one. Both are worth seeing.
+                new Rule(p -> p.contains("argue for this motion"),
+                        p -> "A second dog would give him company for the nine hours nobody is "
+                                + "home, which is the real problem here. The objection is fair: "
+                                + "he does not like strange dogs — which is why the motion says "
+                                + "an older calm female, and says later, not now."),
+                new Rule(p -> p.contains("argue against this motion"),
+                        p -> "Two dogs in a flat with no garden and nobody home for nine hours "
+                                + "is two bored dogs instead of one. The point in favour is real "
+                                + "— he is lonely — but the answer to a lonely dog is a dog "
+                                + "walker, not another dog."),
+
+                // --- 16. The holiday debate. Both advocates get the IDENTICAL line, so
+                // ConvergenceStrategy.unanimous() (all responses equal) fires after round one.
+                new Rule(p -> p.contains("comes or stays"),
+                        p -> "He stays, with the sitter. The fact that decided it: a house with "
+                                + "no shade in Tuscany in August is dangerous for a black "
+                                + "double-coated shepherd, and the twelve-hour drive is on top of "
+                                + "that. Condition: the sitter stays in our house, not hers, and "
+                                + "does two overnight trial stays before August."),
                 new Rule(p -> has(p, "argue"),
-                        p -> "The garden matters less than who is in the house. A dog that guards "
-                                + "his bowl needs someone present to manage mealtimes, and a "
-                                + "household that has raised two mastiffs already knows what "
-                                + "that takes. The absent objection is the cats, and they are "
-                                + "not a risk that can be trained away in a fortnight."));
+                        p -> "The twelve hours in the car and a house with no shade are the whole "
+                                + "argument, and August in Tuscany is not survivable for a black "
+                                + "double-coated dog. Two weeks with a sitter he knows costs him "
+                                + "a fortnight of missing you; the alternative could cost more."));
     }
 
     private String respond(String prompt) {
@@ -317,7 +360,7 @@ public class MockChatModel implements ChatModel {
                 return r.reply().apply(prompt);
             }
         }
-        return KENNEL_LINES[Math.floorMod(lineCounter.getAndIncrement(), KENNEL_LINES.length)];
+        return HOUSE_LINES[Math.floorMod(lineCounter.getAndIncrement(), HOUSE_LINES.length)];
     }
 
     /**
@@ -339,50 +382,60 @@ public class MockChatModel implements ChatModel {
         String req = jsonEscape(between(prompt, "The user request is: '", "'."));
         // Both names are supervisor sub-agents; each takes a single @V("request") argument.
         if (step == 1) {
-            return "{\"agentName\":\"RotaPlanner\",\"arguments\":{\"request\":\"" + req + "\"}}";
+            return "{\"agentName\":\"RoutinePlanner\",\"arguments\":{\"request\":\"" + req + "\"}}";
         }
         if (step == 2) {
-            return "{\"agentName\":\"FeedPlanner\",\"arguments\":{\"request\":\"" + req + "\"}}";
+            return "{\"agentName\":\"TrainingPlanner\",\"arguments\":{\"request\":\"" + req
+                    + "\"}}";
         }
-        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Nero's week is planned: "
-                + "solo yard slots away from the other males, and his antibiotic with both "
-                + "meals — stop and call the vet if he refuses two in a row.\"}}";
+        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Two things to start now: "
+                + "move his bed out of your room this month, and teach a settle on a mat. Keep "
+                + "the walks exactly as they are.\"}}";
     }
 
-    private static final Pattern RUN_NUMBER = Pattern.compile("run\\s+(\\d+)");
-    private static final String[] URGENT = {
-            "ate nothing", "left his supper", "left her supper", "no stool", "retch",
-            "swollen", "panting", "not eating", "blood"
+    /** What the room already knows, in a table: the dangerous ones and the harmless ones. */
+    private static final String[][] FOODS = {
+            {"grape,raisin,sultana", "Dangerous — grapes and raisins can shut a dog's kidneys "
+                    + "down and there is no known safe amount. Ring the vet now."},
+            {"chocolate,cocoa", "Dangerous — and dark is the worst kind. Ring the vet now with "
+                    + "his weight and how much he ate; keep the wrapper."},
+            {"onion,garlic,leek,shallot", "Dangerous — onions damage red blood cells, and raw is "
+                    + "worse. Ring the vet, even if he seems fine today."},
+            {"xylitol,sweetener,sugar-free", "Dangerous — xylitol drops a dog's blood sugar "
+                    + "within minutes. Ring the vet now."},
+            {"macadamia", "Dangerous — macadamias cause weakness and tremors. Ring the vet."},
+            {"cheese,cheddar", "Fine — a slice of cheese is fat and salt, nothing worse. Nothing "
+                    + "to do."},
+            {"bread,crust,toast", "Fine — plain baked bread does nothing. Nothing to do (raw "
+                    + "dough would be a different answer)."},
+            {"carrot,apple,banana", "Fine — nothing to do. Take the apple core off him though."}
     };
 
     /**
-     * One line for the shift's watch-list, from one run's notes. It reads the run number and
-     * looks for the words the prompt calls urgent, so the mapper's gathered output actually
-     * differs per item — three identical lines would hide the whole point of a scatter/gather.
+     * One verdict for one thing off the blanket. Reads ONLY the item, never the instruction: the
+     * prompt itself uses the words "dangerous" and "ring the vet", so matching the whole text
+     * would give every item the same answer and hide the entire point of a scatter/gather.
      */
-    private static String inspectRun(String prompt) {
-        // Only the notes, never the instruction: the prompt itself lists the urgent signs
-        // ("treat not eating, ... as urgent"), so matching the whole text flags every run and
-        // the gathered watch-list goes back to being three identical lines.
-        String full = prompt.toLowerCase(Locale.ROOT);
-        int notesAt = full.indexOf("overnight notes:");
-        String p = notesAt < 0 ? full : full.substring(notesAt + "overnight notes:".length());
-        Matcher m = RUN_NUMBER.matcher(p);
-        String run = m.find() ? "Run " + m.group(1) : "This run";
-        for (String u : URGENT) {
-            if (p.contains(u)) {
-                return run + " — urgent: not right overnight. Take his temperature, offer food by "
-                        + "hand and telephone the vet before the next medication round.";
+    private static String foodVerdict(String prompt) {
+        String item = prompt.toLowerCase(Locale.ROOT);
+        int at = item.indexOf("he ate:");
+        item = at < 0 ? item : item.substring(at + "he ate:".length());
+        for (String[] food : FOODS) {
+            for (String name : food[0].split(",")) {
+                if (item.contains(name)) {
+                    return food[1];
+                }
             }
         }
-        return run + " — no action. Ate up, settled, nothing to pass on.";
+        return "Probably nothing, but watch him for a few hours and ring the vet if he is sick "
+                + "more than once.";
     }
 
     /** Substring between two markers, or a themed fallback if the markers aren't found. */
     private static String between(String text, String start, String end) {
         int i = text.indexOf(start);
         if (i < 0) {
-            return "sort out the week for a boarded dog";
+            return "get the dog ready for what is coming";
         }
         i += start.length();
         int j = text.indexOf(end, i);
@@ -397,8 +450,7 @@ public class MockChatModel implements ChatModel {
 
     /**
      * True if any word appears as a whole word in the (lowercased) text. Word boundaries matter:
-     * matching "rate" as a substring fires on "celeb-RATE-s" in a sheet being edited, and
-     * matching "allocate" as one fires on "allocated run" in the pricer's prompt.
+     * matching "rate" as a substring fires on "celeb-RATE-s" in a note being edited.
      */
     private static boolean has(String text, String... words) {
         for (String w : words) {

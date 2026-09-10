@@ -20,7 +20,7 @@ public record RunEvent(
      * <p>Carries the declared {@code type} and {@code size} alongside the rendered value because
      * a debugger view without them is just a wall of strings — and here the type is part of the
      * lesson: {@code score} shows up as a String, not a Double, which is exactly why
-     * {@code Agents.DischargeChecker} returns one (see its javadoc).
+     * {@code Agents.FridgeRuleCheck} returns one (see its javadoc).
      *
      * @param size characters for text, elements for a collection, else null
      */

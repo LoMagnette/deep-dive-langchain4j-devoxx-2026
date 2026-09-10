@@ -38,85 +38,89 @@ final class ZooPatterns {
         return List.of(goap(), p2p(), blackboard(), voting(), debate(), bdi());
     }
 
+    /** The household the three assessors and the council both judge. */
+    static final String HOUSEHOLD =
+            "two-bedroom flat, no garden, both of us out from eight until six, we can afford a "
+                    + "second one comfortably. Zao is four and he stiffens up and growls when "
+                    + "another dog comes at him in the park.";
+
     // 8 — GOAP: the planner works out the order from the declared inputs and outputs
     private static PatternDef goap() {
         Topology.Graph topo = graph("dag",
-                List.of(node("in", "request", "input"),
-                        node("audit", "VaccinationAuditor", "agent"),
-                        node("allocate", "RunAllocator", "agent"),
-                        node("price", "QuotePricer", "agent")),
-                List.of(edge("in", "audit"),
-                        edge("audit", "allocate", "vaccination"),
-                        edge("allocate", "price", "run")));
+                List.of(node("in", "goal", "input"),
+                        node("indoor", "IndoorRecall", "agent"),
+                        node("garden", "GardenRecall", "agent"),
+                        node("park", "ParkRecall", "agent")),
+                List.of(edge("in", "indoor"),
+                        edge("indoor", "garden", "indoor"),
+                        edge("garden", "park", "garden")));
         Runner runner = (model, input, listener) -> {
-            var audit = agent(Agents.VaccinationAuditor.class, model, "VaccinationAuditor",
-                    "vaccination");
-            var allocate = agent(Agents.RunAllocator.class, model, "RunAllocator", "run");
-            var price = agent(Agents.QuotePricer.class, model, "QuotePricer", "quote");
+            var indoor = agent(Agents.IndoorRecall.class, model, "IndoorRecall", "indoor");
+            var garden = agent(Agents.GardenRecall.class, model, "GardenRecall", "garden");
+            var park = agent(Agents.ParkRecall.class, model, "ParkRecall", "park");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    // Registered BACKWARDS on purpose, and it still runs audit → allocate →
-                    // price. That is the whole pattern: the order comes from the I/O keys
-                    // (QuotePricer needs 'run', RunAllocator needs 'vaccination'), not from the
-                    // order you happened to type. Say this out loud on stage — it is the one
-                    // moment where GOAP is visibly not a sequence with extra steps.
-                    .subAgents(price, allocate, audit)
+                    // Registered BACKWARDS on purpose, and it still runs indoor → garden → park.
+                    // That is the whole pattern: the order comes from the I/O keys (ParkRecall
+                    // needs 'garden', GardenRecall needs 'indoor'), not from the order you
+                    // happened to type. Say this out loud on stage — it is the one moment where
+                    // GOAP is visibly not a sequence with extra ceremony.
+                    .subAgents(park, garden, indoor)
                     .planner(GoalOrientedPlanner::new)
-                    .outputKey("quote")
+                    .outputKey("park")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("request", input));
-            return result(r, "quote");
+            var r = app.invokeWithAgenticScope(Map.of("goal", input));
+            return "**Indoors** — " + str(r.agenticScope(), "indoor")
+                    + "\n\n**Garden** — " + str(r.agenticScope(), "garden")
+                    + "\n\n**Park** — " + str(r.agenticScope(), "park");
         };
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 "The planner orders agents automatically by matching each output to the next "
-                        + "input. A real precondition chain: you cannot price a stay before a run "
-                        + "is allocated, and you cannot allocate one before the vaccination "
-                        + "status is known — so there is genuinely an order to discover.",
+                        + "input. Nobody has to be told this order: recall works indoors before "
+                        + "it works in the garden, and in the garden before it works at the park. "
+                        + "So there is genuinely an order to discover, and you can see it was "
+                        + "discovered rather than typed.",
                 // caveat: planning is only as good as the declared pre/post-conditions (I/O keys).
                 "Needs well-declared I/O keys; a missing link means the goal is unreachable — and "
                         + "the failure is silence, not an error.",
                 topo,
-                // The booster is deliberately well clear of the 21-day rule, so the chain runs to
-                // a real number instead of stopping at "cannot be quoted".
-                "Nero, 40kg German shepherd, seven nights from 12 October, needs half an "
-                        + "antibiotic tablet twice a day, rabies booster done 2 September",
+                "teach Zao to come back when he's called, even at the park with other dogs about",
                 runner);
     }
 
-    // 9 — P2P: two peers with opposed mandates and no authority over each other
+    // 9 — P2P: two peers who cannot overrule each other
     private static PatternDef p2p() {
         Topology.Graph topo = graph("mesh",
-                List.of(node("in", "issue", "input"),
-                        node("foreman", "KennelForeman", "agent"),
-                        node("welfare", "WelfareOfficer", "agent")),
-                List.of(edge("in", "foreman"),
-                        edge("foreman", "welfare", "proposal"),
-                        edge("welfare", "foreman", "counter")));
+                List.of(node("in", "question", "input"),
+                        node("bed", "TeamOnTheBed", "agent"),
+                        node("floor", "TeamOnTheFloor", "agent")),
+                List.of(edge("in", "bed"),
+                        edge("bed", "floor", "proposal"),
+                        edge("floor", "bed", "counter")));
         Runner runner = (model, input, listener) -> {
-            var foreman = agent(Agents.KennelForeman.class, model, "KennelForeman", "plan");
-            var welfare = agent(Agents.WelfareOfficer.class, model, "WelfareOfficer", "consensus");
+            var bed = agent(Agents.TeamOnTheBed.class, model, "TeamOnTheBed", "proposal");
+            var floor = agent(Agents.TeamOnTheFloor.class, model, "TeamOnTheFloor", "agreement");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(foreman, welfare)
-                    // The exit predicate is the only thing that ends this: neither peer can
+                    .subAgents(bed, floor)
+                    // The exit predicate is the only thing that ends this: neither side can
                     // overrule the other, so without it they counter each other forever.
-                    .planner(() -> new P2PPlanner(10, s -> s.hasState("consensus")))
-                    .outputKey("consensus")
+                    .planner(() -> new P2PPlanner(10, s -> s.hasState("agreement")))
+                    .outputKey("agreement")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("issue", input));
-            return result(r, "consensus");
+            var r = app.invokeWithAgenticScope(Map.of("question", input));
+            return result(r, "agreement");
         };
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
-                "Peers iteratively refine a shared blackboard until an exit condition holds. The "
-                        + "case for it: these two have genuinely opposed mandates — full runs "
-                        + "versus welfare rules — and neither outranks the other, so there is no "
-                        + "supervisor to hand it to.",
+                "Peers refine a shared state until an exit condition holds. The case for it: "
+                        + "every household has had this argument, and the reason it is not a "
+                        + "supervisor is that neither half can overrule the other — so the only "
+                        + "way out is a rule both will actually keep.",
                 // caveat: without a firm exit predicate peers can ping-pong indefinitely.
-                "No fixed hierarchy — needs a solid exit predicate or it never terminates, and "
-                        + "'they'll converge' is not one.",
+                "No hierarchy — needs a solid exit predicate or it never terminates, and "
+                        + "\"they'll converge eventually\" is not one.",
                 topo,
-                "the bank holiday is overbooked: 14 dogs are booked into 11 runs, and three of "
-                        + "them cannot be housed next to another male",
+                "should Zao be allowed to sleep on the bed?",
                 runner);
     }
 
@@ -126,130 +130,122 @@ final class ZooPatterns {
                 // The only pattern that still draws the shared state: here it is not plumbing,
                 // it is the pattern. Every other topology dropped its AgenticScope sink — it was
                 // the same box in all 13 diagrams, and the scope now has its own tab.
-                List.of(node("board", "Case board", "board"),
-                        node("medical", "MedicalNotes", "agent"),
-                        node("behaviour", "BehaviourNotes", "agent"),
-                        node("feed", "FeedNotes", "agent"),
-                        node("lead", "VetLead", "agent")),
-                // Experts read the board as well as write to it — that mutual dependency is why
-                // the pattern needs a conflict-resolution strategy at all.
-                List.of(edge("medical", "board", "medical"), edge("board", "medical"),
-                        edge("behaviour", "board", "behaviour"), edge("board", "behaviour"),
-                        edge("feed", "board", "feed"), edge("board", "feed"),
-                        edge("lead", "board", "differential"), edge("board", "lead")));
+                List.of(node("board", "The board", "board"),
+                        node("walks", "WalkNotes", "agent"),
+                        node("routine", "RoutineNotes", "agent"),
+                        node("home", "HomeNotes", "agent"),
+                        node("lead", "TrainerLead", "agent")),
+                // Contributors read the board as well as write to it — that mutual dependency is
+                // why the pattern needs a conflict-resolution strategy at all.
+                List.of(edge("walks", "board", "exercise"), edge("board", "walks"),
+                        edge("routine", "board", "changes"), edge("board", "routine"),
+                        edge("home", "board", "the house"), edge("board", "home"),
+                        edge("lead", "board", "ranked causes"), edge("board", "lead")));
         Runner runner = (model, input, listener) -> {
             // The three note-takers read ONLY 'problem', so any of them can go first and the
             // board accumulates three different KINDS of knowledge. Chain them instead — each
             // reading the last one's output — and you have written a sequence wearing a
             // blackboard's coat, which is what this demo used to be.
-            var medical = agent(Agents.MedicalNotes.class, model, "MedicalNotes", "medical");
-            var behaviour = agent(Agents.BehaviourNotes.class, model, "BehaviourNotes", "behaviour");
-            var feed = agent(Agents.FeedNotes.class, model, "FeedNotes", "feed");
-            var lead = agent(Agents.VetLead.class, model, "VetLead", "differential");
-            Predicate<AgenticScope> goal = s -> s.hasState("differential");
+            var walks = agent(Agents.WalkNotes.class, model, "WalkNotes", "walks");
+            var routine = agent(Agents.RoutineNotes.class, model, "RoutineNotes", "routine");
+            var home = agent(Agents.HomeNotes.class, model, "HomeNotes", "home");
+            var lead = agent(Agents.TrainerLead.class, model, "TrainerLead", "causes");
+            Predicate<AgenticScope> goal = s -> s.hasState("causes");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(medical, behaviour, feed, lead)
+                    .subAgents(walks, routine, home, lead)
                     .planner(() -> new BlackboardPlanner(goal,
                             ConflictResolutionStrategy.declarationOrder()))
-                    .outputKey("differential")
+                    .outputKey("causes")
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("problem", input));
-            return result(r, "differential");
+            return result(r, "causes");
         };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
-                "Experts read and write a shared board, contributing until a goal state exists. "
-                        + "Right when the answer needs several kinds of knowledge and you do not "
-                        + "know which one cracks it: a dog off his food is a medical question, a "
-                        + "behaviour question and a feeding question until the board says which.",
+                "Contributors read and write a shared board until a goal state exists. This is "
+                        + "debugging, which is what a blackboard is for: barking while you are "
+                        + "out is an exercise question, a what-changed question and a "
+                        + "what-can-he-see question until the board says which one it is.",
                 // caveat: concurrent writers need a conflict-resolution strategy.
                 "Shared mutable state invites conflicts; pick a conflict-resolution strategy. And "
-                        + "be honest about whether your experts really are order-independent.",
+                        + "be honest about whether your contributors really are order-independent.",
                 topo,
-                "Nero has eaten nothing for two days. He is bright and his temperature is "
-                        + "normal, he came off his usual food on Monday, and the dog in the next "
-                        + "run barks most of the night",
+                "he's started barking all day while we're at work and the neighbour has "
+                        + "complained twice. He never used to. Nothing has changed except my new "
+                        + "shift and we moved his bed under the front window.",
                 runner);
     }
 
-    // 11 — voting: three assessors, different criteria, genuine disagreement
+    // 11 — voting: three criteria that can genuinely disagree
     private static PatternDef voting() {
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "dossier", "input"),
-                        node("temperament", "TemperamentAssessor", "agent"),
-                        node("foster", "FosterAssessor", "agent"),
-                        node("medical", "MedicalAssessor", "agent"),
+                List.of(node("in", "household", "input"),
+                        node("space", "SpaceAndTime", "agent"),
+                        node("money", "MoneyAndVet", "agent"),
+                        node("zao", "AskZaoHimself", "agent"),
                         // Without the tally this is just a fan-out; the tally IS the pattern.
                         node("vote", "majority()", "join")),
-                List.of(edge("in", "temperament"), edge("in", "foster"), edge("in", "medical"),
-                        edge("temperament", "vote", "PLACE / HOLD"),
-                        edge("foster", "vote"), edge("medical", "vote")));
+                List.of(edge("in", "space"), edge("in", "money"), edge("in", "zao"),
+                        edge("space", "vote", "YES / LATER"),
+                        edge("money", "vote"), edge("zao", "vote")));
         Runner runner = (model, input, listener) -> {
-            // Three DIFFERENT rubrics over the same dossier — the temperament test, the foster
-            // diary, the medical file. Three copies of one prompt (what this demo used to be)
-            // always agree, so the tally was decoration. Here they can split 2-1, which is the
-            // only situation in which a majority means anything.
+            // Three DIFFERENT criteria over the same household — space and hours, money, and
+            // what the dog you already have would say. Three copies of one prompt (what this
+            // demo used to be) always agree, so the tally was decoration. Here money says yes
+            // while the other two say later, which is the only situation where a majority means
+            // anything.
+            //
             // Each voter also writes its own key. The strategy does not need them — it tallies
-            // what the agents returned — but the result pane does: "PLACE" on its own hides the
-            // one thing worth seeing, which is whether the three of them actually split.
-            var temperament = agent(Agents.TemperamentAssessor.class, model,
-                    "TemperamentAssessor", "temperamentVote");
-            var foster = agent(Agents.FosterAssessor.class, model, "FosterAssessor", "fosterVote");
-            var medical = agent(Agents.MedicalAssessor.class, model, "MedicalAssessor",
-                    "medicalVote");
+            // what the agents returned — but the result pane does: one word on its own hides the
+            // only interesting thing, which is whether they split.
+            var space = agent(Agents.SpaceAndTime.class, model, "SpaceAndTime", "spaceVote");
+            var money = agent(Agents.MoneyAndVet.class, model, "MoneyAndVet", "moneyVote");
+            var zao = agent(Agents.AskZaoHimself.class, model, "AskZaoHimself", "zaoVote");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(temperament, foster, medical)
+                    .subAgents(space, money, zao)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
                     .outputKey("decision")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("dossier", input));
+            var r = app.invokeWithAgenticScope(Map.of("household", input));
             var scope = r.agenticScope();
             if (scope == null) {
                 return result(r, "decision");
             }
             return "**Majority: " + str(scope, "decision") + "**\n\n"
-                    + "- Temperament test: " + str(scope, "temperamentVote") + "\n"
-                    + "- Foster diary: " + str(scope, "fosterVote") + "\n"
-                    + "- Medical file: " + str(scope, "medicalVote");
+                    + "- Space and hours alone: " + str(scope, "spaceVote") + "\n"
+                    + "- Money: " + str(scope, "moneyVote") + "\n"
+                    + "- Zao himself: " + str(scope, "zaoVote");
         };
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
                 "Several agents answer independently; a strategy aggregates (majority, average, "
                         + "highest). Worth the tokens when one judgement is not trustworthy "
-                        + "enough to act on — and this dossier contradicts itself, so the three "
-                        + "assessors can legitimately disagree.",
+                        + "enough to act on — and this household is a genuine split, because the "
+                        + "money is fine and everything else is not.",
                 // caveat: correlated models vote alike, so an ensemble can be confidently wrong.
-                "Correlated voters agree on the same mistake — diversity of evidence or rubric is "
-                        + "what buys robustness, not running the same prompt three times. Note "
-                        + "the price: each voter answers in ONE word, because a strategy can only "
+                "Correlated voters agree on the same mistake — diversity of criteria is what "
+                        + "buys robustness, not running the same prompt three times. Note the "
+                        + "price: each voter answers in ONE word, because a strategy can only "
                         + "tally answers that can be equal.",
-                topo,
-                // The contradiction is the point: a clean test, a bowl-guarding note, and pain
-                // on the medical file. A single prompt would average this away silently.
-                "Rescue 7 'Bruno', five-year-old mastiff cross, for a home with a three-year-old. "
-                        + "Temperament test: passed all handling, no reactivity to children. "
-                        + "Foster diary: growled twice when approached at his bowl, otherwise "
-                        + "gentle with the foster's teenager. Medical file: chronic ear "
-                        + "infection, on painkillers for it.",
-                runner);
+                topo, HOUSEHOLD, runner);
     }
 
-    // 12 — debate: two homes, one dog, checkable constraints
+    // 12 — debate: two strong cases, and a ruling the room can check
     private static PatternDef debate() {
         Topology.Graph topo = graph("mesh",
                 List.of(node("in", "motion", "input"),
-                        node("one", "HomeOneAdvocate", "agent"),
-                        node("two", "HomeTwoAdvocate", "agent"),
-                        node("panel", "PlacementPanel", "judge")),
-                List.of(edge("in", "one"), edge("in", "two"),
-                        edge("one", "two", "rebut"), edge("two", "one", "rebut"),
-                        edge("one", "panel"), edge("two", "panel")));
+                        node("take", "TakeHimAdvocate", "agent"),
+                        node("leave", "LeaveHimAdvocate", "agent"),
+                        node("verdict", "HolidayVerdict", "judge")),
+                List.of(edge("in", "take"), edge("in", "leave"),
+                        edge("take", "leave", "rebut"), edge("leave", "take", "rebut"),
+                        edge("take", "verdict"), edge("leave", "verdict")));
         Runner runner = (model, input, listener) -> {
-            var one = agent(Agents.HomeOneAdvocate.class, model, "HomeOneAdvocate", null);
-            var two = agent(Agents.HomeTwoAdvocate.class, model, "HomeTwoAdvocate", null);
-            var panel = agent(Agents.PlacementPanel.class, model, "PlacementPanel", "verdict");
+            var take = agent(Agents.TakeHimAdvocate.class, model, "TakeHimAdvocate", null);
+            var leave = agent(Agents.LeaveHimAdvocate.class, model, "LeaveHimAdvocate", null);
+            var verdict = agent(Agents.HolidayVerdict.class, model, "HolidayVerdict", "verdict");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(one, two, panel) // last sub-agent is the judge
+                    .subAgents(take, leave, verdict) // last sub-agent is the judge
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
                     .outputKey("verdict")
                     .listener(listener)
@@ -258,75 +254,79 @@ final class ZooPatterns {
             return result(r, "verdict");
         };
         return new PatternDef("debate", "Debate", "pattern-zoo",
-                "Agents argue opposing sides for N rounds; a judge renders the verdict. The value "
-                        + "is not the drama: a single prompt picks one home and then rationalises "
-                        + "it, whereas a debate forces the case against the winner to be stated "
-                        + "out loud before the panel rules.",
+                "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
+                        + "drama: ask one agent and it picks a side and then rationalises it, "
+                        + "whereas a debate forces the case against the winner to be said out "
+                        + "loud first. Both sides here are genuinely strong, which is the only "
+                        + "time it is worth the tokens.",
                 // caveat: eloquence can beat correctness; more rounds cost more tokens.
                 "The most persuasive agent may win over the most correct one — and it is "
-                        + "token-hungry. Check the verdict against the constraints yourself; that "
-                        + "is why this motion states them.",
+                        + "token-hungry. Check the ruling against the facts yourself; that is why "
+                        + "the motion states them.",
                 topo,
-                // Both homes fail a different requirement, so the verdict is arguable but
-                // checkable — the room has the same facts the panel does.
-                "Bruno needs placing and both homes want him. Home One: large garden, but two "
-                        + "cats and nobody in the house from nine to six. Home Two: first-floor "
-                        + "flat with no garden, but someone home all day and two mastiffs raised "
-                        + "before. Bruno guards his bowl and has never met a cat.",
+                "two weeks in Tuscany in August: take Zao, or leave him with a sitter? It is a "
+                        + "twelve-hour drive, the house has no shade, and he has never been left "
+                        + "for more than two nights.",
                 runner);
     }
 
     // 13 — BDI: priorities and preconditions decide the order, not the declaration order
     private static PatternDef bdi() {
         Topology.Graph topo = graph("dag",
-                List.of(node("in", "shift", "input"),
-                        node("safety", "SafetyRound (p30)", "agent"),
-                        node("meds", "MedsRound (p20)", "agent"),
-                        node("report", "ShiftReport (p5)", "agent")),
-                // The report is gated on BOTH rounds, which is what makes this a DAG of desires
-                // rather than a chain: 'needs' labels are preconditions, not hand-offs.
-                List.of(edge("in", "safety"),
-                        edge("safety", "meds", "needs round"),
-                        edge("safety", "report", "needs round"),
-                        edge("meds", "report", "needs meds")));
+                List.of(node("in", "first hour", "input"),
+                        node("out", "ToiletTrip (p30)", "agent"),
+                        node("fed", "FirstMeal (p20)", "agent"),
+                        node("train", "FirstTraining (p5)", "agent")),
+                // The training session is gated on BOTH of the others, which is what makes this a
+                // DAG of desires rather than a chain: 'needs' labels are preconditions, not
+                // hand-offs.
+                List.of(edge("in", "out"),
+                        edge("out", "fed", "needs been out"),
+                        edge("out", "train", "needs been out"),
+                        edge("fed", "train", "needs fed")));
         Runner runner = (model, input, listener) -> {
-            var safety = agent(Agents.SafetyRound.class, model, "SafetyRound", "round");
-            var meds = agent(Agents.MedsRound.class, model, "MedsRound", "meds");
-            var report = agent(Agents.ShiftReport.class, model, "ShiftReport", "report");
-            // Priorities, not order. The safety round outranks everything; medication is only
-            // achievable once every dog has been looked at; the report only once both are done.
-            // Shuffle these three declarations and the behaviour does not change — which is the
-            // point of BDI, and impossible to show with two agents in the only order they could
-            // ever have run.
+            var out = agent(Agents.ToiletTrip.class, model, "ToiletTrip", "out");
+            var fed = agent(Agents.FirstMeal.class, model, "FirstMeal", "fed");
+            var train = agent(Agents.FirstTraining.class, model, "FirstTraining", "session");
+            // Priorities, not order. Nobody needs telling that a puppy goes out before he is fed
+            // and long before he is taught anything — so the room can see the planner making the
+            // right call instead of taking it on trust. Shuffle these three declarations and the
+            // behaviour does not change, which is the point of BDI and impossible to show with
+            // two agents in the only order they could ever have run.
             List<Desire> desires = List.of(
-                    Desire.of("safety-round", 30, s -> true, s -> s.hasState("round"),
-                            Agents.SafetyRound.class),
-                    Desire.of("meds-round", 20, s -> s.hasState("round"), s -> s.hasState("meds"),
-                            Agents.MedsRound.class),
-                    Desire.of("shift-report", 5,
-                            s -> s.hasState("round") && s.hasState("meds"),
-                            s -> s.hasState("report"), Agents.ShiftReport.class));
+                    Desire.of("out-first", 30, s -> true, s -> s.hasState("out"),
+                            Agents.ToiletTrip.class),
+                    Desire.of("then-feed", 20, s -> s.hasState("out"), s -> s.hasState("fed"),
+                            Agents.FirstMeal.class),
+                    Desire.of("then-teach", 5,
+                            s -> s.hasState("out") && s.hasState("fed"),
+                            s -> s.hasState("session"), Agents.FirstTraining.class));
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(safety, meds, report)
+                    .subAgents(out, fed, train)
                     .planner(() -> new BDIPlanner(desires))
-                    .outputKey("report")
+                    .outputKey("session")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("shift", input));
-            return result(r, "report");
+            var r = app.invokeWithAgenticScope(Map.of("hour", input));
+            var scope = r.agenticScope();
+            if (scope == null) {
+                return result(r, "session");
+            }
+            return "**Out first** — " + str(scope, "out")
+                    + "\n\n**Then fed** — " + str(scope, "fed")
+                    + "\n\n**Then taught** — " + str(scope, "session");
         };
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
                 "The agent pursues prioritised desires, always acting on the highest-priority one "
-                        + "that is achievable and not yet met. The morning shift: the safety "
-                        + "round outranks the medication round, which outranks the paperwork — "
-                        + "and that is declared as priority, not wired as an order.",
+                        + "that is achievable and not yet met. The puppy's first hour: out ranks "
+                        + "food, food ranks training — and that is declared as a priority, not "
+                        + "wired as an order.",
                 // caveat: designing achievable/satisfied predicates is subtle and easy to get wrong.
                 "Powerful but fiddly: the achievable and satisfied predicates are hard to get "
-                        + "right, and a desire that is never satisfiable stalls the whole plan.",
+                        + "right, and a desire that can never be satisfied stalls the whole plan.",
                 topo,
-                "morning shift, nine dogs in: Nero in run 2 left his supper and was panting at "
-                        + "03:00, Luna in run 5 has no stool overnight, the other seven are on "
-                        + "their usual routine and four of them have medication due at 08:00",
+                "the puppy has just come home — eight weeks old, first hour in the house, "
+                        + "he's been in the car for forty minutes",
                 runner);
     }
 }
