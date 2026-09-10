@@ -259,8 +259,11 @@ public class PatternCatalog {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "mood", "input"),
                         node("walk", "WalkExpert", "agent"),
-                        node("treat", "TreatExpert", "agent")),
-                List.of(edge("in", "walk"), edge("in", "treat")));
+                        node("treat", "TreatExpert", "agent"),
+                        // The combiner is the whole second half of "fan out, then join".
+                        node("join", "combine", "join")),
+                List.of(edge("in", "walk"), edge("in", "treat"),
+                        edge("walk", "join", "walk"), edge("treat", "join", "treat")));
         Runner runner = (model, input, listener) -> {
             var walk = agent(Agents.WalkExpert.class, model, "WalkExpert", "walk");
             var treat = agent(Agents.TreatExpert.class, model, "TreatExpert", "treat");
@@ -282,8 +285,9 @@ public class PatternCatalog {
     private PatternDef parallelMapper() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "topics[3]", "input"),
-                        node("scout", "PackScout (per item)", "agent")),
-                List.of(edge("in", "scout")));
+                        node("scout", "PackScout (per item)", "agent"),
+                        node("gather", "gather", "join")),
+                List.of(edge("in", "scout", "scatter"), edge("scout", "gather", "findings")));
         Runner runner = (model, input, listener) -> {
             // The mapper collects each per-item invocation under the agent's outputKey.
             var scout = agent(Agents.PackScout.class, model, "PackScout", "finding");
@@ -351,7 +355,12 @@ public class PatternCatalog {
                 List.of(node("supervisor", "Supervisor", "supervisor"),
                         node("activity", "ActivityPlanner", "agent"),
                         node("meal", "MealPlanner", "agent")),
-                List.of(edge("supervisor", "activity"), edge("supervisor", "meal")));
+                // Both directions: the supervisor invokes, reads the result, then decides again.
+                // One-way arrows would draw a static fan-out instead of a planning loop.
+                List.of(edge("supervisor", "activity", "invoke"),
+                        edge("activity", "supervisor", "result"),
+                        edge("supervisor", "meal", "invoke"),
+                        edge("meal", "supervisor", "result")));
         Runner runner = (model, input, listener) -> {
             var activity = agent(Agents.ActivityPlanner.class, model, "ActivityPlanner", null);
             var meal = agent(Agents.MealPlanner.class, model, "MealPlanner", null);
@@ -436,9 +445,11 @@ public class PatternCatalog {
                         node("tracker", "Tracker", "agent"),
                         node("analyst", "PackAnalyst", "agent"),
                         node("leader", "PackLeader", "agent")),
-                List.of(edge("tracker", "scope", "facts"),
-                        edge("analyst", "scope", "analysis"),
-                        edge("leader", "scope", "solution")));
+                // Experts read the board as well as write to it — that mutual dependency is why
+                // the pattern needs a conflict-resolution strategy at all.
+                List.of(edge("tracker", "scope", "facts"), edge("scope", "tracker"),
+                        edge("analyst", "scope", "analysis"), edge("scope", "analyst"),
+                        edge("leader", "scope", "solution"), edge("scope", "leader")));
         Runner runner = (model, input, listener) -> {
             var tracker = agent(Agents.Tracker.class, model, "Tracker", "facts");
             var analyst = agent(Agents.PackAnalyst.class, model, "PackAnalyst", "analysis");
@@ -467,8 +478,11 @@ public class PatternCatalog {
                 List.of(node("in", "text", "input"),
                         node("a", "MoodSnifferA", "agent"),
                         node("b", "MoodSnifferB", "agent"),
-                        node("c", "MoodSnifferC", "agent")),
-                List.of(edge("in", "a"), edge("in", "b"), edge("in", "c")));
+                        node("c", "MoodSnifferC", "agent"),
+                        // Without the tally this is just a fan-out; the tally IS the pattern.
+                        node("vote", "majority()", "join")),
+                List.of(edge("in", "a"), edge("in", "b"), edge("in", "c"),
+                        edge("a", "vote"), edge("b", "vote"), edge("c", "vote")));
         Runner runner = (model, input, listener) -> {
             var a = agent(Agents.MoodSnifferA.class, model, "MoodSnifferA", null);
             var b = agent(Agents.MoodSnifferB.class, model, "MoodSnifferB", null);

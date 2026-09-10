@@ -8,7 +8,14 @@ public final class Topology {
     private Topology() {
     }
 
-    /** role: "input" | "agent" | "board" | "supervisor" | "router" | "judge" | "output". */
+    /**
+     * role: "input" | "agent" | "board" | "supervisor" | "router" | "judge" | "join".
+     *
+     * <p>"join" is not an agent — it is the step that merges concurrent work (a parallel
+     * builder's {@code output(...)}, a voting strategy, a mapper's gather). Drawing it matters:
+     * without it a fan-out diagram shows work being split and never brought back together,
+     * which is half the pattern.
+     */
     public record Node(String id, String label, String role) {
     }
 

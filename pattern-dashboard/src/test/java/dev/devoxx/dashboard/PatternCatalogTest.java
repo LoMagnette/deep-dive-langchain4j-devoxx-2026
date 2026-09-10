@@ -1,5 +1,6 @@
 package dev.devoxx.dashboard;
 
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,6 +109,75 @@ class PatternCatalogTest {
         assertEquals(List.of("a", "b"), PatternCatalog.items("a;\nb"));
         // A single chunk has nothing to fan out over, so fall back to the canned topics.
         assertEquals(3, PatternCatalog.items("one thing only").size());
+    }
+
+    /**
+     * A topology has to show the mechanism, not just the cast. These are the structural claims
+     * each diagram makes; the geometry that renders them lives in the frontend.
+     */
+    @Test
+    void everyTopologyShowsWhatItsPatternActuallyDoes() {
+        var catalog = new PatternCatalog();
+        var problems = new ArrayList<String>();
+
+        for (var info : catalog.infos()) {
+            var ids = info.topology().nodes().stream().map(Topology.Node::id).collect(toSet());
+            var touched = new java.util.HashSet<String>();
+            for (var e : info.topology().edges()) {
+                if (!ids.contains(e.from()) || !ids.contains(e.to())) {
+                    problems.add(info.id() + ": edge " + e.from() + "->" + e.to() + " goes nowhere");
+                }
+                touched.add(e.from());
+                touched.add(e.to());
+            }
+            ids.stream().filter(id -> !touched.contains(id))
+                    .forEach(id -> problems.add(info.id() + ": '" + id + "' is drawn unconnected"));
+        }
+        assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
+
+        // Fan-out without a join draws work being split and never brought back together.
+        assertEquals(2, inDegree(catalog, "parallel", role(catalog, "parallel", "join")),
+                "both branches must feed the parallel combiner");
+        assertEquals(3, inDegree(catalog, "voting", role(catalog, "voting", "join")),
+                "every voter must feed the tally");
+        assertEquals(1, inDegree(catalog, "parallelMapper",
+                role(catalog, "parallelMapper", "join")), "mapped work must be gathered");
+
+        // Routing: one router, one edge per labelled alternative, and no join — only one runs.
+        String router = role(catalog, "conditional", "router");
+        var routed = edges(catalog, "conditional").stream()
+                .filter(e -> e.from().equals(router)).toList();
+        assertEquals(3, routed.size(), "router should offer three alternatives");
+        assertTrue(routed.stream().allMatch(e -> e.label() != null && !e.label().isBlank()),
+                "each branch must say which category picks it");
+        assertNull(role(catalog, "conditional", "join"),
+                "only one branch runs, so a join would misrepresent it");
+
+        // Supervisor and blackboard are loops, not one-way arrows.
+        assertTrue(mutual(catalog, "supervisor", "supervisor", "activity"),
+                "supervisor invokes the planner and reads its result back");
+        assertTrue(mutual(catalog, "blackboard", "tracker", "scope"),
+                "blackboard experts read as well as write");
+    }
+
+    private static List<Topology.Edge> edges(PatternCatalog c, String id) {
+        return c.byId(id).orElseThrow().topology().edges();
+    }
+
+    /** Id of the single node with this role, or null when the pattern has none. */
+    private static String role(PatternCatalog c, String id, String role) {
+        return c.byId(id).orElseThrow().topology().nodes().stream()
+                .filter(n -> n.role().equals(role)).map(Topology.Node::id).findFirst().orElse(null);
+    }
+
+    private static long inDegree(PatternCatalog c, String id, String node) {
+        return edges(c, id).stream().filter(e -> e.to().equals(node)).count();
+    }
+
+    private static boolean mutual(PatternCatalog c, String id, String a, String b) {
+        var es = edges(c, id);
+        return es.stream().anyMatch(e -> e.from().equals(a) && e.to().equals(b))
+                && es.stream().anyMatch(e -> e.from().equals(b) && e.to().equals(a));
     }
 
     @Test

@@ -120,6 +120,20 @@ static file.
   13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
   is Blackboard, where the shared board *is* the pattern — remove it there and you get three
   disconnected agents. The graph layout treats a `board` node as optional and re-centres without it.
+- **A topology must show what the pattern actually does, not just who is involved.** The test for a
+  diagram is whether someone who can't hear the speaker would infer the mechanism. Concretely:
+  - fan-out patterns need their **join** (`role: "join"` — parallel's `combine`, voting's
+    `majority()`, the mapper's `gather`). Without it the picture splits work and never merges it,
+    which is half the pattern missing.
+  - Conditional routing gets its own `branch` layout — three columns, input → router → alternatives.
+    A router sharing a column with its branches doesn't read as routing. It has **no** join: only one
+    branch runs, so merging them would be a lie.
+  - Mutual relationships (debate rebuttals, supervisor invoke/result, blackboard read/write) are
+    drawn as two bowed curves. Straight lines for `A→B` and `B→A` land exactly on top of each other,
+    so the picture silently loses one direction. Chain-like layouts are exempt: they already arc the
+    return edge overhead, which is how the loop's exit condition reads.
+  `PatternCatalogTest.everyTopologyShowsWhatItsPatternActuallyDoes` asserts these claims (plus: no
+  edge to a missing node, no node left unconnected). Extend it when you add a pattern.
 
 ### The data flow for one run
 
