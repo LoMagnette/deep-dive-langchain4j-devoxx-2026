@@ -28,7 +28,7 @@ class PatternCatalogTest {
      * several threads, so the listener fires concurrently. A plain ArrayList silently drops
      * events here, which shows up as a flaky "that agent never ran" failure.
      */
-    private static Run run(PatternCatalog.PatternDef def) {
+    private static Run run(PatternDef def) {
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong());
         String result = def.run(new MockChatModel(), def.defaultInput(), listener);
@@ -115,34 +115,34 @@ class PatternCatalogTest {
 
     @Test
     void scoreSurvivesAChattyModel() {
-        assertEquals(0.85, PatternCatalog.score(scope("score", "0.85")), 1e-9);
-        assertEquals(0.85, PatternCatalog.score(scope("score", "I'd rate this **0.85** out of 1.0")), 1e-9);
-        assertEquals(0.85, PatternCatalog.score(scope("score", "8.5 out of 10")), 1e-9);
-        assertEquals(0.9, PatternCatalog.score(scope("score", "A solid 9/10.")), 1e-9);
+        assertEquals(0.85, Parsing.score(scope("score", "0.85")), 1e-9);
+        assertEquals(0.85, Parsing.score(scope("score", "I'd rate this **0.85** out of 1.0")), 1e-9);
+        assertEquals(0.85, Parsing.score(scope("score", "8.5 out of 10")), 1e-9);
+        assertEquals(0.9, Parsing.score(scope("score", "A solid 9/10.")), 1e-9);
         // No number at all must score 0 (keep iterating), never crash.
-        assertEquals(0.0, PatternCatalog.score(scope("score", "pretty good, honestly")), 1e-9);
-        assertEquals(0.0, PatternCatalog.score(scope("nothing", "")), 1e-9);
+        assertEquals(0.0, Parsing.score(scope("score", "pretty good, honestly")), 1e-9);
+        assertEquals(0.0, Parsing.score(scope("nothing", "")), 1e-9);
     }
 
     @Test
     void categorySurvivesAChattyRouter() {
-        assertEquals("veterinary", PatternCatalog.category(scope("category", "veterinary")));
-        assertEquals("veterinary", PatternCatalog.category(
+        assertEquals("veterinary", Parsing.category(scope("category", "veterinary")));
+        assertEquals("veterinary", Parsing.category(
                 scope("category", "This request is best categorised as: **veterinary**.")));
-        assertEquals("nutrition", PatternCatalog.category(scope("category", "Nutrition")));
+        assertEquals("nutrition", Parsing.category(scope("category", "Nutrition")));
         // The conclusion comes last, so the last label mentioned wins.
-        assertEquals("veterinary", PatternCatalog.category(
+        assertEquals("veterinary", Parsing.category(
                 scope("category", "Not a behaviour question — this is veterinary.")));
         // Unknown answers must still pick a branch rather than silently routing nowhere.
-        assertEquals("behaviour", PatternCatalog.category(scope("category", "no idea")));
+        assertEquals("behaviour", Parsing.category(scope("category", "no idea")));
     }
 
     @Test
     void mapperItemsComeFromTheTypedInput() {
-        assertEquals(List.of("a", "b", "c"), PatternCatalog.items("a, b, c"));
-        assertEquals(List.of("a", "b"), PatternCatalog.items("a;\nb"));
+        assertEquals(List.of("a", "b", "c"), Parsing.items("a, b, c"));
+        assertEquals(List.of("a", "b"), Parsing.items("a;\nb"));
         // A single chunk has nothing to fan out over, so fall back to the canned topics.
-        assertEquals(3, PatternCatalog.items("one thing only").size());
+        assertEquals(3, Parsing.items("one thing only").size());
     }
 
     @Test

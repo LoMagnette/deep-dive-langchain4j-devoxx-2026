@@ -8,8 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.jboss.resteasy.reactive.RestStreamElementType;
 
-import dev.devoxx.dashboard.PatternCatalog.PatternDef;
-import dev.devoxx.dashboard.PatternCatalog.PatternInfo;
+import dev.devoxx.dashboard.PatternDef.PatternInfo;
 import dev.langchain4j.model.chat.ChatModel;
 import io.smallrye.mutiny.Multi;
 import jakarta.annotation.PreDestroy;

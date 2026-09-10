@@ -59,14 +59,19 @@ before `java -jar` (e.g. `cp -r target/quarkus-app /tmp/app && java -jar /tmp/ap
 Backend is a handful of small classes in `src/main/java/dev/devoxx/dashboard/`; the frontend is four
 static files (no build step).
 
-- **`PatternCatalog`** — the heart. A `@ApplicationScoped` registry of the 13 patterns **plus one
-  composite** (`kennelDesk`, category `composite`), built in `build()`.
-  Each pattern is a `PatternDef` = display metadata (name, category, `useful`, `caveat`) + a static
-  `Topology.Graph` (for the SVG) + a `Runner` lambda that wires and invokes the agents live. **This is
-  where you add or change a pattern** — every wiring here is deliberately written to double as readable
-  demo code for the talk. Categories: `workflow` (single, sequential, loop, parallel, parallelMapper,
-  conditional), `pure-agent` (supervisor), `pattern-zoo` (goap, p2p, blackboard, voting, debate, bdi),
-  `composite` (kennelDesk).
+- **The catalogue is one file per rail category**, so the source layout mirrors the talk's arc and
+  "where does this pattern go?" has one answer:
+  - `PatternCatalog` — registry only (~40 lines): what is in the catalogue and in what order.
+  - `PatternDef` — the entry type, with nested `Runner` (the live wiring) and `PatternInfo` (the
+    JSON the page gets: the same thing minus the runnable part).
+  - `Wiring` — `agent()`, `str()`, `result()`: the lines every pattern repeats.
+  - `Parsing` — `score()`, `category()`, `items()`: defensive readers for what a model *actually*
+    returns. Every one exists because a real model broke a pattern with no error at all.
+  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (6) · `CompositePatterns` (2).
+  **To add a pattern:** write it in the group matching its category and list it in that group's
+  `all()`. `PatternCatalog` does not change. Every wiring is deliberately written to double as
+  readable demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the
+  way they did when it was all one class.
 - **`kennelDesk` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
   pattern: conditional routing picks a specialist, a parallel step plans the day, a sequence merges
   both into a care plan, and a loop refines it until a critic passes. It exists to show that the
@@ -98,7 +103,7 @@ static files (no build step).
   then exit; "POSITIVE" for sentiment so voting converges; a line ending "AGREE" so debate/consensus
   fires; a 3-step supervisor plan activity→meal→done). If you change an agent prompt in `Agents`, keep
   these heuristics in mind or the mock run will break — `mvn test` will tell you. Its care-category
-  branch must stay in step with `PatternCatalog.CATEGORIES`, and its canned supervisor plan names
+  branch must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan names
   `ActivityPlanner`/`MealPlanner` literally — renaming those two agents breaks the supervisor demo.
 - **`Errors`** — flattens a throwable's cause chain for display. LangChain4j reports every agent failure
   as `AgentInvocationException: Failed to invoke agent method`, so surfacing only `getMessage()` makes a
