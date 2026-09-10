@@ -112,6 +112,10 @@ static file.
   `renderMarkdown` is ~40 lines with no dependency (a CDN is the one thing sure to fail on conference
   wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
   keep that order if you extend it. Known simplification: nested bullets flatten to one level.
+  The rail collapses (header ☰) and the dock is drag-resizable by its grip (arrow keys too,
+  double-click to reset); both sizes persist in `localStorage` under `dashboard.layout`, so a reload
+  or a dev-mode restart mid-talk doesn't undo how the room's view was set up. Every storage access is
+  wrapped — a private-mode browser where `localStorage` throws must still boot the page.
 - **The diagrams deliberately do not draw the AgenticScope.** It was the identical terminal box in all
   13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
   is Blackboard, where the shared board *is* the pattern — remove it there and you get three

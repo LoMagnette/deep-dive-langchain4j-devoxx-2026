@@ -26,12 +26,17 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  header.top{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex:0 0 auto}
+  header.top{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;flex:0 0 auto}
   header.top h1{font-size:20px;margin:0;font-weight:700}
   header.top .sub{color:var(--muted);font-size:14px}
+  .railtoggle{flex:0 0 auto;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px;line-height:1;cursor:pointer}
+  .railtoggle:hover{background:var(--panel2);border-color:var(--accent)}
   .layout{display:flex;flex:1 1 auto;min-height:0}
-  /* left rail */
-  .rail{width:250px;flex:0 0 auto;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel2);padding:10px}
+  /* left rail — collapsible, to hand the diagram the full width on a projector */
+  .rail{width:250px;flex:0 0 auto;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel2);padding:10px;transition:width .15s ease}
+  body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;border-right:0;visibility:hidden;
+    /* delay hiding until the slide finishes, so collapsed buttons stop taking focus */
+    transition:width .15s ease, visibility 0s linear .15s}
   .rail h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 8px 6px}
   .rail button{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:2px}
   .rail button:hover{background:var(--panel)}
@@ -86,8 +91,14 @@
   .btn-reset{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
   .controls button:disabled{opacity:.5;cursor:not-allowed}
   /* bottom dock: run events + server log */
-  /* Taller than a pure log strip: the result and the scope live in here now. */
-  .dock{height:34vh;min-height:190px;flex:0 0 auto;border-top:1px solid var(--line);display:flex;flex-direction:column}
+  /* Taller than a pure log strip: the result and the scope live in here now. Drag-resizable,
+     because how much room the log deserves depends on which pattern is being demoed. */
+  .dock{height:34vh;min-height:120px;flex:0 0 auto;border-top:1px solid var(--line);display:flex;flex-direction:column}
+  .grip{height:7px;flex:0 0 auto;cursor:ns-resize;background:var(--panel2);border-bottom:1px solid var(--line);position:relative}
+  .grip::after{content:'';position:absolute;left:50%;top:3px;width:38px;height:2px;margin-left:-19px;border-radius:2px;background:var(--line)}
+  .grip:hover::after,.grip:focus-visible::after{background:var(--accent)}
+  .grip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  body.resizing{cursor:ns-resize;user-select:none}
   .tabs{display:flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel2);border-bottom:1px solid var(--line);flex:0 0 auto}
   .tab{background:none;border:1px solid transparent;color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
   .tab:hover{background:var(--panel)}
@@ -120,6 +131,7 @@
 </head>
 <body>
 <header class="top">
+  <button class="railtoggle" id="rail-toggle" aria-expanded="true" aria-controls="rail" title="Show/hide the pattern list">☰</button>
   <h1>🐕 LangChain4j Agentic Patterns</h1>
   <span class="sub">Live-running all 13 patterns, themed around the Belgian shepherd <b>Zao</b> and his pack — from puppy to pack.</span>
 </header>
@@ -137,7 +149,9 @@
       <button class="btn-reset" id="reset">Reset</button>
     </div>
     <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
-    <div class="dock">
+    <div class="dock" id="dock">
+      <div class="grip" id="grip" role="separator" aria-orientation="horizontal" tabindex="0"
+           title="Drag to resize — double-click to reset"></div>
       <div class="tabs">
         <button class="tab" data-pane="result">Result <span class="dot" id="result-dot" hidden>•</span></button>
         <button class="tab" data-pane="scope">Scope state</button>
@@ -484,6 +498,76 @@ document.getElementById('pane-clear').onclick=()=>{
   if(activePane()==='log'){ logLines=[]; renderLog(); }
   else document.getElementById('console').innerHTML='';
 };
+
+/* ---------- layout chrome: collapsible rail, resizable dock ----------
+   Both remembered in localStorage: the speaker arranges the room's view once, and a reload
+   (or a dev-mode restart mid-talk) doesn't undo it. */
+const DOCK_MIN=120, STAGE_MIN=260, PREFS='dashboard.layout';
+
+function loadPrefs(){ try{ return JSON.parse(localStorage.getItem(PREFS)) || {}; }catch(_){ return {}; } }
+function savePrefs(patch){ try{ localStorage.setItem(PREFS, JSON.stringify({...loadPrefs(), ...patch})); }catch(_){} }
+
+/* Prefer the height we last set over a measured rect: repeated drags would otherwise accumulate
+   sub-pixel drift, and before the first resize there is no inline value to read. */
+function dockHeight(){
+  const dock=document.getElementById('dock');
+  const inline=parseFloat(dock.style.height);
+  return Number.isFinite(inline) ? inline : dock.getBoundingClientRect().height;
+}
+function dockMax(){ return Math.max(DOCK_MIN, window.innerHeight - STAGE_MIN); }
+function setDockHeight(px, persist){
+  const h = Math.round(Math.min(dockMax(), Math.max(DOCK_MIN, px)));
+  document.getElementById('dock').style.height = h + 'px';
+  if(persist) savePrefs({dock:h});
+  return h;
+}
+function setRailHidden(hidden, persist){
+  document.body.classList.toggle('rail-hidden', hidden);
+  document.getElementById('rail-toggle').setAttribute('aria-expanded', String(!hidden));
+  if(persist) savePrefs({railHidden:hidden});
+}
+
+document.getElementById('rail-toggle').onclick = () =>
+  setRailHidden(!document.body.classList.contains('rail-hidden'), true);
+
+(function dockResizing(){
+  const grip=document.getElementById('grip');
+  let startY=0, startH=0, active=false;
+  grip.addEventListener('pointerdown', e=>{
+    active=true; startY=e.clientY; startH=dockHeight();
+    grip.setPointerCapture?.(e.pointerId);
+    document.body.classList.add('resizing');
+    e.preventDefault();
+  });
+  grip.addEventListener('pointermove', e=>{
+    if(active) setDockHeight(startH + (startY - e.clientY), false);   // drag up = taller
+  });
+  const stop = e => {
+    if(!active) return;
+    active=false;
+    document.body.classList.remove('resizing');
+    try{ grip.releasePointerCapture?.(e.pointerId); }catch(_){}
+    savePrefs({dock:Math.round(dockHeight())});
+  };
+  grip.addEventListener('pointerup', stop);
+  grip.addEventListener('pointercancel', stop);
+  grip.addEventListener('dblclick', ()=> setDockHeight(window.innerHeight*0.34, true));
+  grip.addEventListener('keydown', e=>{
+    const step = e.shiftKey ? 60 : 15;
+    if(e.key==='ArrowUp') setDockHeight(dockHeight()+step, true);
+    else if(e.key==='ArrowDown') setDockHeight(dockHeight()-step, true);
+    else return;
+    e.preventDefault();
+  });
+  // A shrinking window must never let the dock swallow the diagram.
+  window.addEventListener('resize', ()=> setDockHeight(dockHeight(), false));
+})();
+
+(function applySavedLayout(){
+  const p=loadPrefs();
+  if(typeof p.dock === 'number') setDockHeight(p.dock, false);
+  setRailHidden(!!p.railHidden, false);
+})();
 
 document.getElementById('run').onclick=run;
 document.getElementById('reset').onclick=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; reset(); };
