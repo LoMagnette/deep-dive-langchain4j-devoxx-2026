@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LangChain4j Agentic Patterns — Zao Dashboard</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --panel:#ffffff; --panel2:#eef1f7; --ink:#111827; --muted:#5b6472;
+    --line:#d7dce6; --accent:#4f46e5; --accent2:#0ea5e9;
+    --node:#ffffff; --node-line:#c3cad8; --node-active:#fde68a; --node-active-line:#d97706;
+    --node-done:#bbf7d0; --node-done-line:#16a34a; --board:#e0e7ff; --board-line:#6366f1;
+    --c-start:#6b7280; --c-before:#2563eb; --c-after:#16a34a; --c-error:#dc2626;
+    --c-result:#7c3aed; --c-done:#6b7280;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b0f17; --panel:#131a26; --panel2:#0f1622; --ink:#e6ebf2; --muted:#9aa6b8;
+      --line:#243043; --accent:#818cf8; --accent2:#38bdf8;
+      --node:#1a2333; --node-line:#33415a; --node-active:#78591b; --node-active-line:#fbbf24;
+      --node-done:#14532d; --node-done-line:#22c55e; --board:#1e2a52; --board-line:#818cf8;
+      --c-start:#9ca3af; --c-before:#60a5fa; --c-after:#4ade80; --c-error:#f87171;
+      --c-result:#c4b5fd; --c-done:#9ca3af;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  header.top{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex:0 0 auto}
+  header.top h1{font-size:20px;margin:0;font-weight:700}
+  header.top .sub{color:var(--muted);font-size:14px}
+  .layout{display:flex;flex:1 1 auto;min-height:0}
+  /* left rail */
+  .rail{width:250px;flex:0 0 auto;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel2);padding:10px}
+  .rail h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 8px 6px}
+  .rail button{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;color:var(--ink);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px;margin-bottom:2px}
+  .rail button:hover{background:var(--panel)}
+  .rail button.active{background:var(--accent);color:#fff;font-weight:600}
+  /* center */
+  .main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
+  .head{padding:16px 22px;border-bottom:1px solid var(--line);flex:0 0 auto}
+  .head h2{margin:0 0 4px;font-size:24px}
+  .head .useful{color:var(--muted);font-size:15px}
+  .caveat{margin-top:10px;background:color-mix(in srgb,#f59e0b 18%,transparent);border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;font-size:14px}
+  .stage{flex:1 1 auto;display:flex;min-height:0}
+  .graphwrap{flex:1 1 auto;min-width:0;position:relative}
+  svg{width:100%;height:100%;display:block}
+  .side{width:270px;flex:0 0 auto;border-left:1px solid var(--line);padding:12px;overflow-y:auto;background:var(--panel2)}
+  .side h4{margin:6px 0;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .kv{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;margin-bottom:8px;word-break:break-word}
+  .kv .k{color:var(--accent2);font-weight:700}
+  .result{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
+  /* controls */
+  .controls{padding:10px 22px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex:0 0 auto}
+  .controls input{flex:1 1 auto;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:15px}
+  .controls button{padding:9px 18px;border-radius:8px;border:none;font-weight:700;font-size:15px;cursor:pointer}
+  .btn-run{background:var(--accent);color:#fff}
+  .btn-reset{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+  .controls button:disabled{opacity:.5;cursor:not-allowed}
+  /* console */
+  .console{height:170px;flex:0 0 auto;border-top:1px solid var(--line);background:#000;overflow-y:auto;padding:8px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .console .line{white-space:pre-wrap;word-break:break-word}
+  .seq{color:#6b7280}
+  /* svg node classes set via attributes */
+  .node rect{fill:var(--node);stroke:var(--node-line);stroke-width:1.5}
+  .node.board rect{fill:var(--board);stroke:var(--board-line);stroke-dasharray:5 3}
+  .node.active rect{fill:var(--node-active);stroke:var(--node-active-line);stroke-width:2.5}
+  .node.done rect{fill:var(--node-done);stroke:var(--node-done-line)}
+  .node text{fill:var(--ink);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle}
+  .edge{stroke:var(--node-line);stroke-width:1.6;fill:none;marker-end:url(#arrow)}
+  .edge.back{stroke:var(--accent2);stroke-dasharray:5 4}
+  .edgelabel{fill:var(--muted);font-size:11px;text-anchor:middle}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>🐕 LangChain4j Agentic Patterns</h1>
+  <span class="sub">Live-running all 13 patterns, themed around the Belgian dog <b>Zao</b> — mock model, no API key needed.</span>
+</header>
+<div class="layout">
+  <nav class="rail" id="rail"></nav>
+  <section class="main">
+    <div class="head">
+      <h2 id="p-name">Select a pattern</h2>
+      <div class="useful" id="p-useful"></div>
+      <div class="caveat" id="p-caveat" style="display:none"></div>
+    </div>
+    <div class="stage">
+      <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <aside class="side">
+        <h4>Scope state</h4>
+        <div id="scope"><em style="color:var(--muted)">— empty —</em></div>
+        <h4 style="margin-top:16px">Result</h4>
+        <div class="result" id="result"><em style="color:var(--muted)">no run yet</em></div>
+      </aside>
+    </div>
+    <div class="controls">
+      <input id="input" placeholder="input for the pattern"/>
+      <button class="btn-run" id="run">▶ Run</button>
+      <button class="btn-reset" id="reset">Reset</button>
+    </div>
+    <div class="console" id="console"></div>
+  </section>
+</div>
+<script>
+const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents","pattern-zoo":"Pattern zoo"};
+let patterns = [], current = null, es = null;
+
+async function boot(){
+  patterns = await (await fetch('/api/patterns')).json();
+  const rail = document.getElementById('rail');
+  const groups = {};
+  patterns.forEach(p => (groups[p.category] ||= []).push(p));
+  Object.keys(CAT_LABELS).forEach(cat => {
+    if(!groups[cat]) return;
+    const h = document.createElement('h3'); h.textContent = CAT_LABELS[cat]; rail.appendChild(h);
+    groups[cat].forEach(p => {
+      const b = document.createElement('button'); b.textContent = p.name; b.dataset.id = p.id;
+      b.onclick = () => select(p.id); rail.appendChild(b);
+    });
+  });
+  if(patterns.length) select(patterns[0].id);
+}
+
+function select(id){
+  if(es){ es.close(); es=null; }
+  current = patterns.find(p => p.id===id);
+  document.querySelectorAll('.rail button').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
+  document.getElementById('p-name').textContent = current.name;
+  document.getElementById('p-useful').textContent = current.useful;
+  const cav = document.getElementById('p-caveat');
+  cav.style.display='block'; cav.innerHTML = '⚠ <b>Caveat:</b> ' + current.caveat;
+  document.getElementById('input').value = current.defaultInput || '';
+  reset();
+  drawGraph(current.topology);
+}
+
+function reset(){
+  document.getElementById('console').innerHTML='';
+  document.getElementById('scope').innerHTML='<em style="color:var(--muted)">— empty —</em>';
+  document.getElementById('result').innerHTML='<em style="color:var(--muted)">no run yet</em>';
+  document.querySelectorAll('.node').forEach(n=>n.classList.remove('active','done'));
+}
+
+/* ---------- graph layout & drawing ---------- */
+const W=820,H=440,NW=150,NH=46;
+function leadTok(s){ return (s||'').split(/[\s(]/)[0]; }
+
+function layout(topo){
+  const nodes = topo.nodes.map(n=>({...n}));
+  const idx = {}; nodes.forEach((n,i)=>idx[n.id]=n);
+  const lay = topo.layout;
+  const cx=W/2, cy=H/2;
+  const agents = nodes.filter(n=>n.role!=='board'&&n.role!=='supervisor'&&n.role!=='input'&&n.role!=='router');
+
+  if(lay==='chain'||lay==='dag'||lay==='loop'){
+    const n=nodes.length, gap=W/(n+1);
+    nodes.forEach((nd,i)=>{ nd.x=gap*(i+1); nd.y=cy; });
+  } else if(lay==='fanout'||lay==='branch'){
+    const src = nodes.find(n=>n.role==='input')||nodes.find(n=>n.role==='router')||nodes[0];
+    const board = nodes.find(n=>n.role==='board');
+    const mids = nodes.filter(n=>n!==src&&n!==board);
+    src.x=110; src.y=cy;
+    if(board){ board.x=W-110; board.y=cy; }
+    const step=H/(mids.length+1);
+    mids.forEach((m,i)=>{ m.x=cx; m.y=step*(i+1); });
+  } else if(lay==='star'){
+    const center = nodes.find(n=>n.role==='supervisor')||nodes.find(n=>n.role==='board')||nodes[0];
+    const others = nodes.filter(n=>n!==center);
+    center.x=cx; center.y=cy;
+    const R=150;
+    others.forEach((o,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/others.length; o.x=cx+R*Math.cos(a); o.y=cy+R*Math.sin(a); });
+  } else { // mesh
+    const R=150;
+    nodes.forEach((nd,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/nodes.length; nd.x=cx+R*Math.cos(a); nd.y=cy+R*Math.sin(a); });
+  }
+  return {nodes, idx};
+}
+
+function drawGraph(topo){
+  const svg=document.getElementById('graph');
+  svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--node-line)"/></marker></defs>';
+  const {nodes,idx}=layout(topo);
+  const order={}; topo.nodes.forEach((n,i)=>order[n.id]=i);
+  // edges
+  topo.edges.forEach(e=>{
+    const a=idx[e.from], b=idx[e.to]; if(!a||!b) return;
+    const back = order[e.to] < order[e.from];
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    if(back && (topo.layout==='chain'||topo.layout==='loop'||topo.layout==='dag')){
+      const midx=(a.x+b.x)/2; const arc=Math.min(a.y,b.y)-70;
+      p.setAttribute('d',`M${a.x} ${a.y-NH/2} C ${a.x} ${arc}, ${b.x} ${arc}, ${b.x} ${b.y-NH/2}`);
+      p.setAttribute('class','edge back');
+    } else {
+      p.setAttribute('d',`M${a.x} ${a.y} L ${b.x} ${b.y}`);
+      p.setAttribute('class','edge');
+    }
+    svg.appendChild(p);
+    if(e.label){
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',(a.x+b.x)/2); t.setAttribute('y',(a.y+b.y)/2 - (back?60:8));
+      t.setAttribute('class','edgelabel'); t.textContent=e.label; svg.appendChild(t);
+    }
+  });
+  // nodes
+  nodes.forEach(n=>{
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node '+(n.role==='board'?'board':'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',10);
+    g.appendChild(r);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',n.x); t.setAttribute('y',n.y);
+    const lbl=n.label.length>20?n.label.slice(0,19)+'…':n.label;
+    t.textContent=lbl; g.appendChild(t);
+    svg.appendChild(g);
+  });
+}
+
+function markNode(agent, cls){
+  if(!agent) return;
+  /* Fan-out agents report indexed names (TopicAnalyzer_0, ActivityPlanner$1); the topology
+     node is labelled with the bare type, so strip the index before matching. */
+  const base=String(agent).replace(/[_$]\d+$/,'');
+  document.querySelectorAll('.node').forEach(g=>{
+    if(g.dataset.tok && (g.dataset.tok===agent || g.dataset.tok===base)){
+      if(cls==='active'){ g.classList.add('active'); }
+      else { g.classList.remove('active'); g.classList.add('done'); }
+    }
+  });
+}
+
+/* ---------- run / SSE ---------- */
+function log(ev){
+  const c=document.getElementById('console');
+  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','run-result':'--c-result','run-done':'--c-done'};
+  const div=document.createElement('div'); div.className='line';
+  const col=`var(${colors[ev.type]||'--c-done'})`;
+  div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--accent2)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>`;
+  c.appendChild(div); c.scrollTop=c.scrollHeight;
+}
+function escapeHtml(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+function updateScope(scope){
+  if(!scope) return; const keys=Object.keys(scope); if(!keys.length) return;
+  const el=document.getElementById('scope'); el.innerHTML='';
+  keys.forEach(k=>{ const d=document.createElement('div'); d.className='kv'; d.innerHTML=`<span class="k">${escapeHtml(k)}</span>: ${escapeHtml(scope[k])}`; el.appendChild(d); });
+}
+
+function run(){
+  if(!current) return;
+  reset();
+  const input=encodeURIComponent(document.getElementById('input').value||'');
+  document.getElementById('run').disabled=true;
+  es=new EventSource(`/api/patterns/${current.id}/run?input=${input}`);
+  es.onmessage=e=>{
+    let ev; try{ ev=JSON.parse(e.data); }catch(_){ return; }
+    log(ev); updateScope(ev.scope);
+    if(ev.type==='agent-before') markNode(ev.agent,'active');
+    else if(ev.type==='agent-after') markNode(ev.agent,'done');
+    else if(ev.type==='run-result'){
+      document.getElementById('result').textContent = ev.data!=null? String(ev.data):'(no output)';
+    } else if(ev.type==='run-done'){
+      es.close(); es=null; document.getElementById('run').disabled=false;
+    }
+  };
+  es.onerror=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; };
+}
+
+document.getElementById('run').onclick=run;
+document.getElementById('reset').onclick=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; reset(); };
+boot();
+</script>
+</body>
+</html>
