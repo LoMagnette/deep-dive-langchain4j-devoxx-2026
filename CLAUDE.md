@@ -67,15 +67,18 @@ static file.
   conditional), `pure-agent` (supervisor), `pattern-zoo` (goap, p2p, blackboard, voting, debate, bdi).
 - **`Agents`** — all agent contracts as public nested interfaces (`@Agent` + `@UserMessage`/`@V`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
-- **`ModelFactory`** — `@Produces` the single shared `ChatModel` (OpenAI-compatible or mock) from config.
-  Eager (observes `StartupEvent`) so the `auto` connectivity probe runs at boot; `activeModel()` reports
-  what is actually live.
+- **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
+  so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
+  `currentModel()` re-probes when the last attempt fell back. `PatternResource` calls `currentModel()`
+  per run rather than injecting a `ChatModel` once — that is what makes recovery-without-restart work.
 - **`MockChatModel`** — deterministic, no-network `ChatModel`. It pattern-matches **the last user
   message** (never the accumulated conversation — that would pin multi-turn planners to their first
   choice) and returns canned, PARSEABLE answers (a score alternating 0.60/0.95 so loops visibly iterate
   then exit; "POSITIVE" for sentiment so voting converges; a line ending "AGREE" so debate/consensus
   fires; a 3-step supervisor plan activity→meal→done). If you change an agent prompt in `Agents`, keep
-  these heuristics in mind or the mock run will break — `mvn test` will tell you.
+  these heuristics in mind or the mock run will break — `mvn test` will tell you. Its care-category
+  branch must stay in step with `PatternCatalog.CATEGORIES`, and its canned supervisor plan names
+  `ActivityPlanner`/`MealPlanner` literally — renaming those two agents breaks the supervisor demo.
 - **`Errors`** — flattens a throwable's cause chain for display. LangChain4j reports every agent failure
   as `AgentInvocationException: Failed to invoke agent method`, so surfacing only `getMessage()` makes a
   dead Ollama and a parse failure look identical.
@@ -85,9 +88,17 @@ static file.
 - **`StreamingListener`** — implements LangChain4j's `AgentListener`; `inheritedBySubagents()` returns
   true so every sub-agent invocation in a composite is observed. Bridges before/after/error callbacks
   (plus a scope-state snapshot) into `RunEvent`s pushed to the SSE sink.
+- **`LogStream` / `LogResource`** — mirrors the server log into the browser's "Server log" tab.
+  `LogStream` attaches a JUL handler to the root logger (Quarkus logs via JBoss LogManager, a JUL
+  implementation), keeps a 400-line ring buffer and broadcasts to `GET /api/logs` over SSE. It observes
+  `StartupEvent` at `@Priority(1)` so it is listening before `ModelFactory` logs which model is live.
+  Two hazards it already handles: emitting a record can itself log (guarded by a thread-local, else
+  infinite recursion), and dev-mode reload would otherwise stack a second handler and double every line.
 - **`Topology` / `RunEvent`** — plain records describing the graph and the streamed events.
 - **`src/main/resources/META-INF/resources/index.html`** — the entire single-page frontend: renders the
-  SVG topology, consumes the SSE stream, animates agent activity, and shows the live scope-state panel.
+  SVG topology, consumes the SSE stream, animates agent activity, shows the live scope-state panel, and
+  hosts the bottom dock with its two tabs ("Run events" from `/api/patterns/{id}/run`, "Server log" from
+  `/api/logs`, with a level filter and a dot that flags a WARN/ERROR you haven't looked at yet).
 
 ### The data flow for one run
 

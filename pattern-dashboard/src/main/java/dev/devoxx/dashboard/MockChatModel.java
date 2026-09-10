@@ -28,8 +28,10 @@ public class MockChatModel implements ChatModel {
             "Zao, the Belgian shepherd, chases autumn leaves across the Grand-Place in Brussels.",
             "Zao naps under the kitchen table, one ear twitching at the smell of frites.",
             "On a rainy Ghent morning, Zao proudly carries the newspaper back to the door.",
-            "Zao learns a new trick in the park and celebrates with three joyful barks.",
+            "At the forest edge, Zao answers a distant wolf howl with one careful bark.",
+            "The Ardennes pack moves as one shadow through the birches, Zao at the flank.",
             "By the canal in Bruges, Zao watches the swans and dreams of a stolen waffle.",
+            "Zao herds three ducks, two children and one very patient cat into the garden.",
             "Zao greets every neighbour on the Ardennes trail, tail wagging like a metronome."
     };
 
@@ -103,14 +105,15 @@ public class MockChatModel implements ChatModel {
             double v = (scoreCounter.getAndIncrement() % 2 == 0) ? 0.60 : 0.95;
             return String.format(java.util.Locale.US, "%.2f", v);
         }
-        // 3. Category routing -> first known option present in the prompt.
+        // 3. Care routing -> first known option present in the prompt. Must stay in step with
+        //    PatternCatalog.CATEGORIES, or the router picks a branch that doesn't exist.
         if (has(p, "classify", "category") || p.contains("one of")) {
-            for (String opt : new String[] {"technical", "legal", "medical", "other"}) {
+            for (String opt : new String[] {"behaviour", "nutrition", "veterinary", "other"}) {
                 if (has(p, opt)) {
                     return opt;
                 }
             }
-            return "technical";
+            return "behaviour";
         }
         // 4. Debate / consensus / negotiation -> a line ending in AGREE so convergence fires.
         if (has(p, "agree", "consensus", "debate", "argue", "position")) {

@@ -126,8 +126,8 @@ public class PatternCatalog {
         return v;
     }
 
-    /** The categories the conditional router is allowed to dispatch to. */
-    private static final List<String> CATEGORIES = List.of("technical", "legal", "medical");
+    /** The kinds of care the kennel router is allowed to dispatch to. */
+    private static final List<String> CATEGORIES = List.of("behaviour", "nutrition", "veterinary");
 
     /**
      * Normalises the router's answer to exactly one known category. Asked to "return one word",
@@ -160,7 +160,8 @@ public class PatternCatalog {
                 .filter(s -> !s.isEmpty())
                 .toList();
         return parsed.size() > 1 ? parsed
-                : List.of("Zao's favourite toys", "Zao's morning walk", "Zao's dinner");
+                : List.of("Zao's favourite chew toys", "wolf packs in the Ardennes",
+                        "why dogs howl at sirens");
     }
 
     // ------------------------------------------------------------------
@@ -188,91 +189,91 @@ public class PatternCatalog {
     private PatternDef single() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "topic", "input"),
-                        node("writer", "CreativeWriter", "agent"),
+                        node("writer", "PackChronicler", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "writer"), edge("writer", "scope", "story")));
+                List.of(edge("in", "writer"), edge("writer", "scope", "tale")));
         Runner runner = (model, input, listener) -> {
-            var writer = agent(Agents.CreativeWriter.class, model, "CreativeWriter", "story");
+            var writer = agent(Agents.PackChronicler.class, model, "PackChronicler", "tale");
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(writer).outputKey("story").listener(listener).build();
+                    .subAgents(writer).outputKey("tale").listener(listener).build();
             var r = app.invokeWithAgenticScope(Map.of("topic", input));
-            return result(r, "story");
+            return result(r, "tale");
         };
         return new PatternDef("single", "Single Agent", "workflow",
                 "One LLM call wrapped as an agent — the simplest useful unit.",
                 "No decomposition: a single agent struggles with multi-step or long tasks.",
-                topo, "Zao the Belgian shepherd discovers snow for the first time", runner);
+                topo, "Zao the Belgian shepherd meets a wolf pack at dawn in the Ardennes", runner);
     }
 
     // 2 — sequential (writer -> editor)
     private PatternDef sequential() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "topic", "input"),
-                        node("writer", "CreativeWriter", "agent"),
-                        node("editor", "StoryEditor", "agent"),
+                        node("writer", "PackChronicler", "agent"),
+                        node("editor", "PackEditor", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "writer"), edge("writer", "editor", "story"),
-                        edge("editor", "scope", "editedStory")));
+                List.of(edge("in", "writer"), edge("writer", "editor", "tale"),
+                        edge("editor", "scope", "editedTale")));
         Runner runner = (model, input, listener) -> {
-            var writer = agent(Agents.CreativeWriter.class, model, "CreativeWriter", "story");
-            var editor = agent(Agents.StoryEditor.class, model, "StoryEditor", "editedStory");
+            var writer = agent(Agents.PackChronicler.class, model, "PackChronicler", "tale");
+            var editor = agent(Agents.PackEditor.class, model, "PackEditor", "editedTale");
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(writer, editor).outputKey("editedStory").listener(listener).build();
+                    .subAgents(writer, editor).outputKey("editedTale").listener(listener).build();
             var r = app.invokeWithAgenticScope(Map.of("topic", input));
-            return result(r, "editedStory");
+            return result(r, "editedTale");
         };
         return new PatternDef("sequential", "Sequential", "workflow",
                 "Deterministic pipeline: each agent's output feeds the next.",
                 "Rigid order; a failure or bad hand-off midway derails the whole chain.",
-                topo, "Zao eats a shoe and feels guilty", runner);
+                topo, "Zao steals a whole speculoos cake and hides under the table", runner);
     }
 
     // 3 — loop (editor + scorer until score >= 0.8)
     private PatternDef loop() {
         Topology.Graph topo = graph("loop",
-                List.of(node("in", "story", "input"),
-                        node("editor", "StoryEditor", "agent"),
-                        node("scorer", "StoryScorer", "agent"),
+                List.of(node("in", "tale", "input"),
+                        node("editor", "PackEditor", "agent"),
+                        node("scorer", "PackCritic", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "editor"), edge("editor", "scorer", "story"),
+                List.of(edge("in", "editor"), edge("editor", "scorer", "tale"),
                         edge("scorer", "editor", "score < 0.8"),
                         edge("scorer", "scope", "score")));
         Runner runner = (model, input, listener) -> {
-            var editor = agent(Agents.StoryEditor.class, model, "StoryEditor", "story");
-            var scorer = agent(Agents.StoryScorer.class, model, "StoryScorer", "score");
+            var editor = agent(Agents.PackEditor.class, model, "PackEditor", "tale");
+            var scorer = agent(Agents.PackCritic.class, model, "PackCritic", "score");
             Predicate<AgenticScope> good = s -> score(s) >= 0.8;
             UntypedAgent app = AgenticServices.loopBuilder()
                     .subAgents(editor, scorer)
                     .maxIterations(5)
                     .exitCondition(good)
                     .testExitAtLoopEnd(true)
-                    .outputKey("story")
+                    .outputKey("tale")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("story", input));
-            return result(r, "story");
+            var r = app.invokeWithAgenticScope(Map.of("tale", input));
+            return result(r, "tale");
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 "Refine until a quality bar is met (self-critique with an exit condition).",
                 "Can spin forever or oscillate — always cap iterations and define a clear exit.",
-                topo, "Zao becomes the mayor of a small Belgian village", runner);
+                topo, "Zao is elected leader of the Ardennes wolf pack", runner);
     }
 
     // 4 — parallel (movie + meal, combined)
     private PatternDef parallel() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "mood", "input"),
-                        node("movie", "MovieExpert", "agent"),
-                        node("meal", "MealExpert", "agent"),
+                        node("walk", "WalkExpert", "agent"),
+                        node("treat", "TreatExpert", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "movie"), edge("in", "meal"),
-                        edge("movie", "scope", "movie"), edge("meal", "scope", "meal")));
+                List.of(edge("in", "walk"), edge("in", "treat"),
+                        edge("walk", "scope", "walk"), edge("treat", "scope", "treat")));
         Runner runner = (model, input, listener) -> {
-            var movie = agent(Agents.MovieExpert.class, model, "MovieExpert", "movie");
-            var meal = agent(Agents.MealExpert.class, model, "MealExpert", "meal");
+            var walk = agent(Agents.WalkExpert.class, model, "WalkExpert", "walk");
+            var treat = agent(Agents.TreatExpert.class, model, "TreatExpert", "treat");
             UntypedAgent app = AgenticServices.parallelBuilder()
-                    .subAgents(movie, meal)
-                    .output(s -> "Movie: " + str(s, "movie") + "\nMeal: " + str(s, "meal"))
+                    .subAgents(walk, treat)
+                    .output(s -> "Walk: " + str(s, "walk") + "\nTreat: " + str(s, "treat"))
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("mood", input));
@@ -281,64 +282,65 @@ public class PatternCatalog {
         return new PatternDef("parallel", "Parallel", "workflow",
                 "Fan out independent work concurrently, then join the results.",
                 "Only for truly independent sub-tasks; joining/merging logic is on you.",
-                topo, "cozy and a little nostalgic", runner);
+                topo, "restless and bored after three days of Belgian rain", runner);
     }
 
     // 5 — parallel mapper (one agent over a list of items)
     private PatternDef parallelMapper() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "topics[3]", "input"),
-                        node("analyzer", "TopicAnalyzer (per item)", "agent"),
+                        node("scout", "PackScout (per item)", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "analyzer"), edge("analyzer", "scope", "analyses")));
+                List.of(edge("in", "scout"), edge("scout", "scope", "findings")));
         Runner runner = (model, input, listener) -> {
             // The mapper collects each per-item invocation under the agent's outputKey.
-            var analyzer = agent(Agents.TopicAnalyzer.class, model, "TopicAnalyzer", "analysis");
+            var scout = agent(Agents.PackScout.class, model, "PackScout", "finding");
             UntypedAgent app = AgenticServices.parallelMapperBuilder()
-                    .subAgents(analyzer)
+                    .subAgents(scout)
                     .itemsProvider("topics")
-                    .outputKey("analyses")
+                    .outputKey("findings")
                     .listener(listener)
                     .build();
             // The items come from what the user typed (comma-separated), not a hard-coded list —
             // otherwise the input box on the page has no effect on this pattern.
             var r = app.invokeWithAgenticScope(Map.of("topics", items(input)));
-            return result(r, "analyses");
+            return result(r, "findings");
         };
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
                 "Map one agent over a collection in parallel (scatter/gather).",
                 "Beware fan-out cost and rate limits when the list is large.",
-                topo, "Zao's favourite toys, Zao's morning walk, Zao's dinner", runner);
+                topo, "Zao's favourite chew toys, wolf packs in the Ardennes, "
+                        + "why dogs howl at sirens", runner);
     }
 
     // 6 — conditional routing
     private PatternDef conditional() {
         Topology.Graph topo = graph("branch",
                 List.of(node("in", "request", "input"),
-                        node("router", "CategoryRouter", "router"),
-                        node("tech", "TechnicalExpert", "agent"),
-                        node("legal", "LegalExpert", "agent"),
-                        node("medical", "MedicalExpert", "agent"),
+                        node("router", "KennelRouter", "router"),
+                        node("behaviour", "BehaviourExpert", "agent"),
+                        node("nutrition", "NutritionExpert", "agent"),
+                        node("vet", "VetExpert", "agent"),
                         node("scope", "AgenticScope", "board")),
                 List.of(edge("in", "router"),
-                        edge("router", "tech", "technical"),
-                        edge("router", "legal", "legal"),
-                        edge("router", "medical", "medical"),
-                        edge("tech", "scope", "answer"),
-                        edge("legal", "scope", "answer"),
-                        edge("medical", "scope", "answer")));
+                        edge("router", "behaviour", "behaviour"),
+                        edge("router", "nutrition", "nutrition"),
+                        edge("router", "vet", "veterinary"),
+                        edge("behaviour", "scope", "answer"),
+                        edge("nutrition", "scope", "answer"),
+                        edge("vet", "scope", "answer")));
         Runner runner = (model, input, listener) -> {
-            var router = agent(Agents.CategoryRouter.class, model, "CategoryRouter", "category");
-            var tech = agent(Agents.TechnicalExpert.class, model, "TechnicalExpert", "answer");
-            var legal = agent(Agents.LegalExpert.class, model, "LegalExpert", "answer");
-            var medical = agent(Agents.MedicalExpert.class, model, "MedicalExpert", "answer");
-            Predicate<AgenticScope> isTech = s -> category(s).equals("technical");
-            Predicate<AgenticScope> isLegal = s -> category(s).equals("legal");
-            Predicate<AgenticScope> isMed = s -> category(s).equals("medical");
+            var router = agent(Agents.KennelRouter.class, model, "KennelRouter", "category");
+            var behaviour = agent(Agents.BehaviourExpert.class, model, "BehaviourExpert", "answer");
+            var nutrition = agent(Agents.NutritionExpert.class, model, "NutritionExpert", "answer");
+            var vet = agent(Agents.VetExpert.class, model, "VetExpert", "answer");
+            Predicate<AgenticScope> isBehaviour = s -> category(s).equals("behaviour");
+            Predicate<AgenticScope> isNutrition = s -> category(s).equals("nutrition");
+            Predicate<AgenticScope> isVet = s -> category(s).equals("veterinary");
             UntypedAgent routed = AgenticServices.conditionalBuilder()
-                    .subAgents(isTech, tech)
-                    .subAgents(isLegal, legal)
-                    .subAgents(isMed, medical)
+                    .subAgents(isBehaviour, behaviour)
+                    .subAgents(isNutrition, nutrition)
+                    .subAgents(isVet, vet)
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, routed)
@@ -351,7 +353,8 @@ public class PatternCatalog {
         return new PatternDef("conditional", "Conditional Routing", "workflow",
                 "A router classifies the input and dispatches to the right specialist.",
                 "Only as good as the classifier; unseen categories fall through the cracks.",
-                topo, "my dog Zao keeps limping after walks, what should I do?", runner);
+                topo, "Zao keeps limping after long walks in the woods — what should I do?",
+                runner);
     }
 
     // 7 — supervisor (pure agent: LLM plans which sub-agent to call)
@@ -386,14 +389,14 @@ public class PatternCatalog {
     private PatternDef goap() {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "prompt", "input"),
-                        node("extractor", "PersonExtractor", "agent"),
-                        node("bio", "Biographer", "agent"),
+                        node("extractor", "DogExtractor", "agent"),
+                        node("bio", "PackBiographer", "agent"),
                         node("scope", "AgenticScope", "board")),
-                List.of(edge("in", "extractor"), edge("extractor", "bio", "person"),
+                List.of(edge("in", "extractor"), edge("extractor", "bio", "dog"),
                         edge("bio", "scope", "writeup")));
         Runner runner = (model, input, listener) -> {
-            var extractor = agent(Agents.PersonExtractor.class, model, "PersonExtractor", "person");
-            var bio = agent(Agents.Biographer.class, model, "Biographer", "writeup");
+            var extractor = agent(Agents.DogExtractor.class, model, "DogExtractor", "dog");
+            var bio = agent(Agents.PackBiographer.class, model, "PackBiographer", "writeup");
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(extractor, bio)
                     .planner(GoalOrientedPlanner::new)
@@ -407,23 +410,24 @@ public class PatternCatalog {
                 "The planner orders agents automatically by matching each output to the next input.",
                 // caveat: planning is only as good as the declared pre/post-conditions (I/O keys).
                 "Needs well-declared I/O keys; a missing link means the goal is unreachable.",
-                topo, "Write a short bio: the famous Belgian shepherd Zao", runner);
+                topo, "Write a short bio: Zao, the famous Belgian shepherd of the Ardennes",
+                runner);
     }
 
     // 9 — P2P (peers refine shared state until consensus)
     private PatternDef p2p() {
         Topology.Graph topo = graph("mesh",
                 List.of(node("in", "issue", "input"),
-                        node("negotiator", "Negotiator", "agent"),
-                        node("mediator", "Mediator", "agent"),
+                        node("negotiator", "PackNegotiator", "agent"),
+                        node("mediator", "PackMediator", "agent"),
                         node("scope", "AgenticScope", "board")),
                 List.of(edge("in", "negotiator"),
                         edge("negotiator", "mediator", "proposal"),
                         edge("mediator", "negotiator", "refine"),
                         edge("mediator", "scope", "consensus")));
         Runner runner = (model, input, listener) -> {
-            var negotiator = agent(Agents.Negotiator.class, model, "Negotiator", "proposal");
-            var mediator = agent(Agents.Mediator.class, model, "Mediator", "consensus");
+            var negotiator = agent(Agents.PackNegotiator.class, model, "PackNegotiator", "proposal");
+            var mediator = agent(Agents.PackMediator.class, model, "PackMediator", "consensus");
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(negotiator, mediator)
                     .planner(() -> new P2PPlanner(10, s -> s.hasState("consensus")))
@@ -437,26 +441,26 @@ public class PatternCatalog {
                 "Peers iteratively refine a shared blackboard until an exit condition holds.",
                 // caveat: without a firm exit predicate peers can ping-pong indefinitely.
                 "No fixed hierarchy — needs a solid exit predicate or it never terminates.",
-                topo, "should Zao sleep indoors or in the garden?", runner);
+                topo, "should Zao sleep indoors or outside with the rest of the pack?", runner);
     }
 
     // 10 — blackboard (experts contribute until goal state is reached)
     private PatternDef blackboard() {
         Topology.Graph topo = graph("star",
                 List.of(node("scope", "Blackboard (Scope)", "board"),
-                        node("researcher", "Researcher", "agent"),
-                        node("analyst", "Analyst", "agent"),
-                        node("solver", "Solver", "agent")),
-                List.of(edge("researcher", "scope", "facts"),
+                        node("tracker", "Tracker", "agent"),
+                        node("analyst", "PackAnalyst", "agent"),
+                        node("leader", "PackLeader", "agent")),
+                List.of(edge("tracker", "scope", "facts"),
                         edge("analyst", "scope", "analysis"),
-                        edge("solver", "scope", "solution")));
+                        edge("leader", "scope", "solution")));
         Runner runner = (model, input, listener) -> {
-            var researcher = agent(Agents.Researcher.class, model, "Researcher", "facts");
-            var analyst = agent(Agents.Analyst.class, model, "Analyst", "analysis");
-            var solver = agent(Agents.Solver.class, model, "Solver", "solution");
+            var tracker = agent(Agents.Tracker.class, model, "Tracker", "facts");
+            var analyst = agent(Agents.PackAnalyst.class, model, "PackAnalyst", "analysis");
+            var leader = agent(Agents.PackLeader.class, model, "PackLeader", "solution");
             Predicate<AgenticScope> goal = s -> s.hasState("solution");
             UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(researcher, analyst, solver)
+                    .subAgents(tracker, analyst, leader)
                     .planner(() -> new BlackboardPlanner(goal,
                             ConflictResolutionStrategy.declarationOrder()))
                     .outputKey("solution")
@@ -476,16 +480,16 @@ public class PatternCatalog {
     private PatternDef voting() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "text", "input"),
-                        node("a", "SentimentVoterA", "agent"),
-                        node("b", "SentimentVoterB", "agent"),
-                        node("c", "SentimentVoterC", "agent"),
+                        node("a", "MoodSnifferA", "agent"),
+                        node("b", "MoodSnifferB", "agent"),
+                        node("c", "MoodSnifferC", "agent"),
                         node("scope", "AgenticScope", "board")),
                 List.of(edge("in", "a"), edge("in", "b"), edge("in", "c"),
                         edge("a", "scope"), edge("b", "scope"), edge("c", "scope", "majority")));
         Runner runner = (model, input, listener) -> {
-            var a = agent(Agents.SentimentVoterA.class, model, "SentimentVoterA", null);
-            var b = agent(Agents.SentimentVoterB.class, model, "SentimentVoterB", null);
-            var c = agent(Agents.SentimentVoterC.class, model, "SentimentVoterC", null);
+            var a = agent(Agents.MoodSnifferA.class, model, "MoodSnifferA", null);
+            var b = agent(Agents.MoodSnifferB.class, model, "MoodSnifferB", null);
+            var c = agent(Agents.MoodSnifferC.class, model, "MoodSnifferC", null);
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(a, b, c)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
@@ -506,18 +510,18 @@ public class PatternCatalog {
     private PatternDef debate() {
         Topology.Graph topo = graph("mesh",
                 List.of(node("in", "motion", "input"),
-                        node("a", "DebaterA", "agent"),
-                        node("b", "DebaterB", "agent"),
-                        node("judge", "DebateJudge", "judge"),
+                        node("a", "DogAdvocate", "agent"),
+                        node("b", "HouseholdAdvocate", "agent"),
+                        node("judge", "PackJudge", "judge"),
                         node("scope", "AgenticScope", "board")),
                 List.of(edge("in", "a"), edge("in", "b"),
                         edge("a", "b", "rebut"), edge("b", "a", "rebut"),
                         edge("a", "judge"), edge("b", "judge"),
                         edge("judge", "scope", "verdict")));
         Runner runner = (model, input, listener) -> {
-            var a = agent(Agents.DebaterA.class, model, "DebaterA", null);
-            var b = agent(Agents.DebaterB.class, model, "DebaterB", null);
-            var judge = agent(Agents.DebateJudge.class, model, "DebateJudge", "verdict");
+            var a = agent(Agents.DogAdvocate.class, model, "DogAdvocate", null);
+            var b = agent(Agents.HouseholdAdvocate.class, model, "HouseholdAdvocate", null);
+            var judge = agent(Agents.PackJudge.class, model, "PackJudge", "verdict");
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(a, b, judge) // last sub-agent is the judge
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
@@ -538,20 +542,20 @@ public class PatternCatalog {
     private PatternDef bdi() {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "goal", "input"),
-                        node("gatherer", "InfoGatherer (desire p10)", "agent"),
-                        node("reporter", "Reporter (desire p5)", "agent"),
+                        node("gatherer", "CareScout (desire p10)", "agent"),
+                        node("reporter", "CareReporter (desire p5)", "agent"),
                         node("scope", "AgenticScope", "board")),
                 List.of(edge("in", "gatherer"),
                         edge("gatherer", "reporter", "info"),
                         edge("reporter", "scope", "report")));
         Runner runner = (model, input, listener) -> {
-            var gatherer = agent(Agents.InfoGatherer.class, model, "InfoGatherer", "info");
-            var reporter = agent(Agents.Reporter.class, model, "Reporter", "report");
+            var gatherer = agent(Agents.CareScout.class, model, "CareScout", "info");
+            var reporter = agent(Agents.CareReporter.class, model, "CareReporter", "report");
             List<Desire> desires = List.of(
                     Desire.of("gather-info", 10, s -> true, s -> s.hasState("info"),
-                            Agents.InfoGatherer.class),
+                            Agents.CareScout.class),
                     Desire.of("write-report", 5, s -> s.hasState("info"), s -> s.hasState("report"),
-                            Agents.Reporter.class));
+                            Agents.CareReporter.class));
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(gatherer, reporter)
                     .planner(() -> new BDIPlanner(desires))
@@ -565,6 +569,6 @@ public class PatternCatalog {
                 "Agent pursues prioritised desires, acting on the highest achievable, unmet one.",
                 // caveat: designing achievable/satisfied predicates is subtle and easy to get wrong.
                 "Powerful but fiddly: the achievable/satisfied predicates are hard to get right.",
-                topo, "produce a care report for the dog Zao", runner);
+                topo, "produce a winter care report for the dog Zao", runner);
     }
 }

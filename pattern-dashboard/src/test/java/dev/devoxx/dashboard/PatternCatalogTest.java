@@ -63,7 +63,7 @@ class PatternCatalogTest {
         Run r = run(def);
         // The mock alternates 0.60 then 0.95, so the scorer must run twice: once below the
         // 0.8 bar, once above it. One invocation would mean the exit condition never gated.
-        long scorings = r.invoked().stream().filter("StoryScorer"::equals).count();
+        long scorings = r.invoked().stream().filter("PackCritic"::equals).count();
         assertEquals(2, scorings, "loop should refine once, then exit: " + r.invoked());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
@@ -90,15 +90,15 @@ class PatternCatalogTest {
 
     @Test
     void categorySurvivesAChattyRouter() {
-        assertEquals("medical", PatternCatalog.category(scope("category", "medical")));
-        assertEquals("medical", PatternCatalog.category(
-                scope("category", "This request is best categorised as: **medical**.")));
-        assertEquals("legal", PatternCatalog.category(scope("category", "Legal")));
+        assertEquals("veterinary", PatternCatalog.category(scope("category", "veterinary")));
+        assertEquals("veterinary", PatternCatalog.category(
+                scope("category", "This request is best categorised as: **veterinary**.")));
+        assertEquals("nutrition", PatternCatalog.category(scope("category", "Nutrition")));
         // The conclusion comes last, so the last label mentioned wins.
-        assertEquals("medical", PatternCatalog.category(
-                scope("category", "Not a legal question — this is medical.")));
+        assertEquals("veterinary", PatternCatalog.category(
+                scope("category", "Not a behaviour question — this is veterinary.")));
         // Unknown answers must still pick a branch rather than silently routing nowhere.
-        assertEquals("technical", PatternCatalog.category(scope("category", "no idea")));
+        assertEquals("behaviour", PatternCatalog.category(scope("category", "no idea")));
     }
 
     @Test
