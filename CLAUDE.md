@@ -56,24 +56,52 @@ before `java -jar` (e.g. `cp -r target/quarkus-app /tmp/app && java -jar /tmp/ap
 
 ## Architecture
 
-Backend is a handful of small classes in `src/main/java/dev/devoxx/dashboard/`; the frontend is four
-static files (no build step).
+Backend is one package per concern under `src/main/java/dev/devoxx/dashboard/`; the frontend is
+four static files (no build step). Every package carries a `package-info.java` saying what it is
+for — read that first, it is the shortest path into any part of this.
 
+```
+agents/          44 agent contracts, ONE INTERFACE PER FILE
+  workflow/      … the six deterministic patterns' agents (11)
+  pureagent/     … the supervisor's two
+  zoo/           … the pattern zoo's (21)
+  composite/     … the two composites' own, mostly glue (10)
+catalog/         what patterns exist, how each is wired, the graph the page draws
+planner/         planners we wrote by hand (EscalationPlanner)
+support/         Wiring · Parsing · Errors — the shared pieces every pattern repeats
+model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
+run/             RunEvent · StreamingListener — observing a run
+web/             PatternResource · LogResource · LogStream — REST and SSE
+```
+
+- **The agent sub-packages mirror the catalogue exactly**, so *"where does this agent live?"* has
+  the same answer as *"where does this pattern live?"*. An agent lives where it is first
+  introduced and is imported from there when reused — the three assessors vote in `zoo` and
+  ratify in `composite`; `FridgeRuleCheck` is both the loop's critic and the capstone's. That
+  reuse is the point of these being contracts rather than prompts inlined at the call site.
+  A file is one `@Agent` interface and its javadoc; the reasoning that used to sit in section
+  comments now sits on the first agent of each section, and the two rules that govern every
+  scenario are in `agents/package-info.java`.
 - **The catalogue is one file per rail category**, so the source layout mirrors the talk's arc and
   "where does this pattern go?" has one answer:
   - `PatternCatalog` — registry only (~40 lines): what is in the catalogue and in what order.
   - `PatternDef` — the entry type, with nested `Runner` (the live wiring) and `PatternInfo` (the
     JSON the page gets: the same thing minus the runnable part).
-  - `Wiring` — `agent()`, `str()`, `result()`: the lines every pattern repeats.
-  - `Parsing` — `score()`, `category()`, `items()`: defensive readers for what a model *actually*
-    returns. Every one exists because a real model broke a pattern with no error at all.
-  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (7) · `CompositePatterns` (2).
-  - `EscalationPlanner` — the one hand-written `Planner`, in its own file because it is the
-    *subject* of its demo rather than plumbing for it: it has to be readable on a projector.
-  **To add a pattern:** write it in the group matching its category and list it in that group's
-  `all()`. `PatternCatalog` does not change. Every wiring is deliberately written to double as
-  readable demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the
-  way they did when it was all one class.
+  - `Topology` — the static graph description the frontend renders.
+  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (7) · `CompositePatterns` (2),
+    all package-private: only `PatternCatalog` needs them, and keeping them so says as much.
+  **To add a pattern:** add the agent interface(s) to the `agents` sub-package matching the
+  category, write the pattern in the group class matching it, and list it in that group's `all()`.
+  `PatternCatalog` does not change. Every wiring is deliberately written to double as readable
+  demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the way they
+  did when it was all one class.
+- **`run` is deliberately not part of `web`.** A run is observable whether or not anything is
+  watching over HTTP, which is exactly what lets the tests assert on the same `RunEvent`s the
+  browser animates. `catalog` depends on `run` (a `Runner` takes a listener); nothing depends on
+  `web`.
+- **Tests mirror the packages**: `catalog/PatternCatalogTest` (the pattern runs, the demo-integrity
+  claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
+  `run/StreamingListenerTest`.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
   inventing a new scenario.
@@ -170,8 +198,8 @@ static files (no build step).
     a rule matching a word which appears in the *note* hijacks the loop's second pass, and the
     composite returns the wrong stage's answer with no error at all. See the rule ordering note
     in `MockChatModel`.
-- **`Agents`** — all agent contracts as public nested interfaces (`@Agent` + `@UserMessage`/`@V`), so
-  LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
+- **`agents/**`** — one public interface per file (`@Agent` + `@UserMessage`/`@V`), so LangChain4j
+  can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
   `currentModel()` re-probes when the last attempt fell back. `PatternResource` calls `currentModel()`
@@ -220,7 +248,7 @@ static files (no build step).
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
-  `Agents.FridgeRuleCheck` returns one.
+  `agents.workflow.FridgeRuleCheck` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
   markdown subset, topology layout/drawing — functions of their arguments, which is why the same
@@ -264,7 +292,7 @@ static files (no build step).
   drawn paw mark shared by the header and favicon, a near-subliminal paw texture on the empty
   canvas, and the pulse on a working agent. It must NOT live in emoji decoration, pun button labels
   ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
-  talk. Labels stay plain; the names in `Agents` already carry the theme. Two glyphs remain, both
+  talk. Labels stay plain; the agent names already carry the theme. Two glyphs remain, both
   functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
   Visually it is a light, card-based shell — floating rounded surfaces with soft elevation on a
   tinted page — rather than the bordered-box admin look it started as. The primary action is ink,
@@ -335,10 +363,15 @@ stream back as `RunEvent`s → the page animates the topology and updates the sc
 
 ## Adding a pattern (the common task)
 
-1. Add the agent interface(s) to `Agents`.
-2. Add a `private PatternDef xxx()` method in `PatternCatalog` (topology + `Runner`) and register it in
-   `build()`.
-3. If running under the mock, make sure the new prompts hit a sensible `MockChatModel` branch.
+1. Add one file per agent under `agents/<category>/` — one `@Agent` interface each.
+2. Add a `private PatternDef xxx()` method (topology + `Runner`) to the group class for that
+   category, and list it in that group's `all()`. `PatternCatalog` does not change.
+3. If running under the mock, add a rule to `MockChatModel`'s table — and mind where you put it:
+   the table is ordered, and a rule keyed on a word that appears in quoted content will hijack
+   another agent's prompt.
+4. Extend `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` with the claim the
+   new pattern makes, and `everyTopologyShowsWhatItsPatternActuallyDoes` with what its diagram
+   must show.
 The frontend needs no change — it renders whatever `/api/patterns` returns.
 
 ## Foreign agent config detected
