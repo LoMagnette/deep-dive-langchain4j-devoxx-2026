@@ -9,7 +9,12 @@ public final class Topology {
     }
 
     /**
-     * role: "input" | "agent" | "board" | "supervisor" | "router" | "judge" | "join".
+     * role: "input" | "agent" | "board" | "supervisor" | "router" | "judge" | "join"
+     * | "human".
+     *
+     * <p>"human" is not an agent either — it is a step where the run stops and waits for a
+     * person. Drawing it as an agent box would say the model decided, which is the one thing the
+     * human-in-the-loop pattern exists to deny.
      *
      * <p>"join" is not an agent — it is the step that merges concurrent work (a parallel
      * builder's {@code output(...)}, a voting strategy, a mapper's gather). Drawing it matters:

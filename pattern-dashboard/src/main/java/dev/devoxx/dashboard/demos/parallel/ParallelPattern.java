@@ -3,9 +3,6 @@ package dev.devoxx.dashboard.demos.parallel;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
-import static dev.devoxx.dashboard.support.Wiring.str;
 import static java.util.stream.Collectors.joining;
 
 import java.util.List;
@@ -37,16 +34,24 @@ public final class ParallelPattern {
                 List.of(edge("in", "weather"), edge("in", "dog"),
                         edge("weather", "join", "weather"), edge("dog", "join", "dog")));
         Runner runner = (model, input, listener) -> {
-            var weather = agent(WeatherCheck.class, model, "WeatherCheck", "weather");
-            var dog = agent(DogCheck.class, model, "DogCheck", "dog");
+            var weather = AgenticServices.agentBuilder(WeatherCheck.class)
+                    .chatModel(model)
+                    .name("WeatherCheck")
+                    .outputKey("weather")
+                    .build();
+            var dog = AgenticServices.agentBuilder(DogCheck.class)
+                    .chatModel(model)
+                    .name("DogCheck")
+                    .outputKey("dog")
+                    .build();
             UntypedAgent app = AgenticServices.parallelBuilder()
                     .subAgents(weather, dog)
                     // The decision is plain Java over what the two agents wrote. Nothing about
                     // "did both checks pass" needs a model, and putting it in one would be a
                     // demo lying about where the judgement actually lives.
                     .output(s -> {
-                        String w = str(s, "weather");
-                        String d = str(s, "dog");
+                        String w = s.readState("weather", "");
+                        String d = s.readState("dog", "");
                         boolean veto = (w + " " + d).toUpperCase(Locale.ROOT).contains("FAIL");
                         return (veto ? "Not now" : "Fine — get the lead")
                                 + "\n\n- Weather and ground: " + w + "\n- Zao himself: " + d;

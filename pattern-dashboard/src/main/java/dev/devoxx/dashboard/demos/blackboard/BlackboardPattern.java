@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.blackboard;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -48,10 +46,26 @@ public final class BlackboardPattern {
             // board accumulates three different KINDS of knowledge. Chain them instead — each
             // reading the last one's output — and you have written a sequence wearing a
             // blackboard's coat, which is what this demo used to be.
-            var walks = agent(WalkNotes.class, model, "WalkNotes", "walks");
-            var routine = agent(RoutineNotes.class, model, "RoutineNotes", "routine");
-            var home = agent(HomeNotes.class, model, "HomeNotes", "home");
-            var lead = agent(TrainerLead.class, model, "TrainerLead", "causes");
+            var walks = AgenticServices.agentBuilder(WalkNotes.class)
+                    .chatModel(model)
+                    .name("WalkNotes")
+                    .outputKey("walks")
+                    .build();
+            var routine = AgenticServices.agentBuilder(RoutineNotes.class)
+                    .chatModel(model)
+                    .name("RoutineNotes")
+                    .outputKey("routine")
+                    .build();
+            var home = AgenticServices.agentBuilder(HomeNotes.class)
+                    .chatModel(model)
+                    .name("HomeNotes")
+                    .outputKey("home")
+                    .build();
+            var lead = AgenticServices.agentBuilder(TrainerLead.class)
+                    .chatModel(model)
+                    .name("TrainerLead")
+                    .outputKey("causes")
+                    .build();
             Predicate<AgenticScope> goal = s -> s.hasState("causes");
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(walks, routine, home, lead)
@@ -61,7 +75,7 @@ public final class BlackboardPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("problem", input));
-            return result(r, "causes");
+            return String.valueOf(r.result());
         };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
                 "Contributors read and write a shared board until a goal state exists. This is "

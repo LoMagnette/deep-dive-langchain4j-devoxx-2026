@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.debate;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -35,9 +33,19 @@ public final class DebatePattern {
                         edge("take", "leave", "rebut"), edge("leave", "take", "rebut"),
                         edge("take", "verdict"), edge("leave", "verdict")));
         Runner runner = (model, input, listener) -> {
-            var take = agent(TakeHimAdvocate.class, model, "TakeHimAdvocate", null);
-            var leave = agent(LeaveHimAdvocate.class, model, "LeaveHimAdvocate", null);
-            var verdict = agent(HolidayVerdict.class, model, "HolidayVerdict", "verdict");
+            var take = AgenticServices.agentBuilder(TakeHimAdvocate.class)
+                    .chatModel(model)
+                    .name("TakeHimAdvocate")
+                    .build();
+            var leave = AgenticServices.agentBuilder(LeaveHimAdvocate.class)
+                    .chatModel(model)
+                    .name("LeaveHimAdvocate")
+                    .build();
+            var verdict = AgenticServices.agentBuilder(HolidayVerdict.class)
+                    .chatModel(model)
+                    .name("HolidayVerdict")
+                    .outputKey("verdict")
+                    .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(take, leave, verdict) // last sub-agent is the judge
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
@@ -45,7 +53,7 @@ public final class DebatePattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("motion", input));
-            return result(r, "verdict");
+            return String.valueOf(r.result());
         };
         return new PatternDef("debate", "Debate", "pattern-zoo",
                 "Agents argue opposing sides for N rounds; a judge rules. The value is not the "

@@ -2,6 +2,7 @@ package dev.devoxx.dashboard.web;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -10,6 +11,7 @@ import dev.devoxx.dashboard.catalog.PatternCatalog;
 import dev.devoxx.dashboard.catalog.PatternDef.PatternInfo;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.model.ModelFactory;
+import dev.devoxx.dashboard.run.HumanQuestions;
 import dev.devoxx.dashboard.run.RunEvent;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.model.chat.ChatModel;
@@ -17,6 +19,7 @@ import io.smallrye.mutiny.Multi;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -32,6 +35,9 @@ public class PatternResource {
 
     @Inject
     ModelFactory models;
+
+    @Inject
+    HumanQuestions humans;
 
     // Small shared pool: runs are short and there are only a handful of concurrent viewers.
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
@@ -59,9 +65,15 @@ public class PatternResource {
         }
         String in = (input == null || input.isBlank()) ? def.defaultInput() : input;
 
+        // The SSE stream is one-way, so a run that wants to ask a person something needs an
+        // address the answer can be posted back to. The id goes out in run-start, before any
+        // question can be asked on it.
+        String runId = UUID.randomUUID().toString();
+
         return Multi.createFrom().emitter(em -> pool.submit(() -> {
             AtomicLong seq = new AtomicLong();
-            StreamingListener listener = new StreamingListener(em::emit, seq);
+            StreamingListener listener =
+                    new StreamingListener(em::emit, seq, q -> humans.await(runId));
             try {
                 // Asked for per run, not injected once: a run that fell back to the mock re-probes
                 // here, so starting Ollama recovers without restarting the app. Naming the live
@@ -69,7 +81,7 @@ public class PatternResource {
                 ChatModel model = models.currentModel();
                 em.emit(RunEvent.of(seq.getAndIncrement(), "run-start", def.name(),
                         "running '" + def.id() + "' [model: " + models.activeModel()
-                                + "] with input: " + in, Map.of(), null));
+                                + "] with input: " + in, Map.of(), runId));
                 String out = def.run(model, in, listener);
                 em.emit(RunEvent.of(seq.getAndIncrement(), "run-result", def.name(),
                         "final result", Map.of(), out));
@@ -79,8 +91,26 @@ public class PatternResource {
                 em.emit(RunEvent.of(seq.getAndIncrement(), "agent-error", def.name(),
                         "run failed: " + t, Map.of(), null));
             } finally {
+                // Release the waiting thread if the run ends while a question is outstanding —
+                // otherwise it sits out the full timeout holding one of four pool threads.
+                humans.cancel(runId);
                 em.complete();
             }
         }));
+    }
+
+    /**
+     * The other half of a human-in-the-loop run: the answer, posted back against the run id the
+     * stream announced. 409 rather than 404 when the run is not asking anything, because the
+     * common cause is a late answer to a question that already timed out.
+     */
+    @POST
+    @Path("/runs/{runId}/answer")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Map<String, Object> answer(@PathParam("runId") String runId,
+                                      @QueryParam("text") String text) {
+        boolean accepted = humans.answer(runId, text);
+        return Map.of("accepted", accepted,
+                "detail", accepted ? "delivered" : "that run is not waiting for an answer");
     }
 }

@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.single;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -41,11 +39,15 @@ public final class SinglePattern {
                         node("clerk", "SitterCardClerk", "agent")),
                 List.of(edge("in", "clerk")));
         Runner runner = (model, input, listener) -> {
-            var clerk = agent(SitterCardClerk.class, model, "SitterCardClerk", "card");
+            var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+                    .chatModel(model)
+                    .name("SitterCardClerk")
+                    .outputKey("card")
+                    .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(clerk).outputKey("card").listener(listener).build();
             var r = app.invokeWithAgenticScope(Map.of("message", input));
-            return result(r, "card");
+            return String.valueOf(r.result());
         };
         return new PatternDef("single", "Single Agent", "workflow",
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "

@@ -3,7 +3,6 @@ package dev.devoxx.dashboard.demos.supervisor;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
 
 import java.util.List;
 
@@ -34,8 +33,14 @@ public final class SupervisorPattern {
                         edge("supervisor", "training", "invoke"),
                         edge("training", "supervisor", "result")));
         Runner runner = (model, input, listener) -> {
-            var routine = agent(RoutinePlanner.class, model, "RoutinePlanner", null);
-            var training = agent(TrainingPlanner.class, model, "TrainingPlanner", null);
+            var routine = AgenticServices.agentBuilder(RoutinePlanner.class)
+                    .chatModel(model)
+                    .name("RoutinePlanner")
+                    .build();
+            var training = AgenticServices.agentBuilder(TrainingPlanner.class)
+                    .chatModel(model)
+                    .name("TrainingPlanner")
+                    .build();
             SupervisorAgent sup = AgenticServices.supervisorBuilder()
                     .subAgents(routine, training)
                     .chatModel(model)                 // planner LLM lives on the supervisor

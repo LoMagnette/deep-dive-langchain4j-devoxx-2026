@@ -63,6 +63,15 @@
       <button class="btn-run" id="run" title="Run this pattern">Run</button>
       <button class="btn-reset" id="reset" title="Clear the run and start over">Reset</button>
     </div>
+    <!-- Shown only while a run is stopped waiting for a person. The run is blocked on a thread
+         until this is answered or it times out, which is the pattern, not a bug. -->
+    <div class="ask" id="ask" hidden>
+      <div class="ask-q" id="ask-q"></div>
+      <div class="ask-row">
+        <input id="ask-text" placeholder="approve it, change it, or refuse it"/>
+        <button class="btn-run" id="ask-send">Send</button>
+      </div>
+    </div>
     <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div class="dock" id="dock">
       <div class="grip" id="grip" role="separator" aria-orientation="horizontal" tabindex="0"

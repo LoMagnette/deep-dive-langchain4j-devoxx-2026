@@ -4,8 +4,6 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.score;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -34,9 +32,17 @@ public final class LoopPattern {
                 List.of(edge("in", "writer"), edge("writer", "check", "note"),
                         edge("check", "writer", "score < 0.8")));
         Runner runner = (model, input, listener) -> {
-            var writer = agent(SitterNoteWriter.class, model, "SitterNoteWriter", "note");
-            var check = agent(FridgeRuleCheck.class, model, "FridgeRuleCheck", "score");
-            Predicate<AgenticScope> good = s -> score(s) >= 0.8;
+            var writer = AgenticServices.agentBuilder(SitterNoteWriter.class)
+                    .chatModel(model)
+                    .name("SitterNoteWriter")
+                    .outputKey("note")
+                    .build();
+            var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
+                    .chatModel(model)
+                    .name("FridgeRuleCheck")
+                    .outputKey("score")
+                    .build();
+            Predicate<AgenticScope> good = s -> score(s.readState("score", "")) >= 0.8;
             UntypedAgent app = AgenticServices.loopBuilder()
                     .subAgents(writer, check)
                     .maxIterations(5)
@@ -46,7 +52,7 @@ public final class LoopPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("note", input));
-            return result(r, "note");
+            return String.valueOf(r.result());
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "

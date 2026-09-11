@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import dev.devoxx.dashboard.model.MockChatModel;
+import dev.devoxx.dashboard.run.AskHuman;
 import dev.devoxx.dashboard.run.RunEvent;
 import dev.devoxx.dashboard.run.StreamingListener;
 import org.junit.jupiter.api.Test;
@@ -36,8 +37,17 @@ class PatternCatalogTest {
 
     /** Same, with a typed-in input — for patterns whose behaviour depends on what is asked. */
     private static Run run(PatternDef def, String input) {
+        return run(def, input, AskHuman.NOBODY);
+    }
+
+    /**
+     * Same, with a stand-in for the person. This is the only way to test a pattern that stops and
+     * waits for a human: swap the human for a lambda. It is also why {@link AskHuman} is an
+     * interface rather than a method on the web layer.
+     */
+    private static Run run(PatternDef def, String input, AskHuman human) {
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
-        var listener = new StreamingListener(events::add, new AtomicLong());
+        var listener = new StreamingListener(events::add, new AtomicLong(), human);
         String result = def.run(new MockChatModel(), input, listener);
         return new Run(result, events);
     }
@@ -69,9 +79,9 @@ class PatternCatalogTest {
             }
         }
 
-        assertEquals(14, catalog.infos().stream()
+        assertEquals(15, catalog.infos().stream()
                         .filter(i -> !i.category().equals("composite")).count(),
-                "expected all 14 patterns registered");
+                "expected all 15 patterns registered");
         assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
     }
 
@@ -249,6 +259,52 @@ class PatternCatalogTest {
     }
 
     /**
+     * The human-in-the-loop demo is the one pattern whose answer is supposed to change because a
+     * person said so, and the only way to test that is to stand in for the person. Both paths
+     * matter: a gate that cannot refuse is a rubber stamp, and a gate whose refusal is quietly
+     * overridden downstream is worse than no gate at all.
+     */
+    @Test
+    void theHumanCanRefuseAndTheRunHonoursIt() {
+        var def = new PatternCatalog().byId("humanApproval").orElseThrow();
+
+        // The question has to reach the person with the draft in it — an approval step that asks
+        // "is this ok?" without showing what "this" is, is theatre.
+        var asked = new ArrayList<String>();
+        Run approved = run(def, def.defaultInput(), q -> {
+            asked.add(q);
+            return "Fine, but take out the ibuprofen.";
+        });
+        assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
+        assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
+        assertTrue(asked.get(0).contains("painkiller"),
+                "the question must carry the draft being approved: " + asked.get(0));
+        assertTrue(instruction(approved).contains("No ibuprofen"),
+                "the change the person asked for must reach the instruction: " + approved.result());
+
+        // Refusal has to stick. Assert on the INSTRUCTION, not the whole result: the result also
+        // echoes what the person said, so a naive contains() passes on their own words and a
+        // run that ignored them entirely still looks green.
+        Run refused = run(def, def.defaultInput(), q -> "No. Give him nothing until the vet opens.");
+        assertTrue(instruction(refused).contains("nothing"),
+                "a refusal must survive to the instruction: " + instruction(refused));
+        assertTrue(!instruction(refused).contains("painkiller"),
+                "a refusal must not be quietly overridden: " + instruction(refused));
+
+        // And the run has to be legible on the page: a question event, then an answer event.
+        List<String> types = refused.events().stream().map(RunEvent::type).toList();
+        assertTrue(types.contains("human-ask") && types.contains("human-answer"),
+                "the page needs both halves of the exchange: " + types);
+    }
+
+    /** Just the final instruction, without the draft and the answer the result also shows. */
+    private static String instruction(Run r) {
+        String marker = "**So the instruction is**";
+        int at = r.result().indexOf(marker);
+        return at < 0 ? r.result() : r.result().substring(at + marker.length());
+    }
+
+    /**
      * A topology has to show the mechanism, not just the cast. These are the structural claims
      * each diagram makes; the geometry that renders them lives in the frontend.
      */
@@ -289,6 +345,12 @@ class PatternCatalogTest {
                 "each branch must say which category picks it");
         assertNull(role(catalog, "conditional", "join"),
                 "only one branch runs, so a join would misrepresent it");
+
+        // The person must not be drawn as an agent. A human-in-the-loop diagram whose middle
+        // box looks like the two either side says the model decided, which is the one thing the
+        // pattern exists to deny.
+        assertEquals("owner", role(catalog, "humanApproval", "human"),
+                "the approval step must be drawn as a person, not an agent");
 
         // The escalation ladder must show BOTH ways out of every rung — on up, and out to the
         // answer. Drawn as a plain chain it would read as a pipeline that always runs all three,

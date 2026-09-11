@@ -133,7 +133,7 @@ function reset(){
 /* ---------- run / SSE ---------- */
 function log(ev){
   const c=document.getElementById('console');
-  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','run-result':'--c-result','run-done':'--c-done'};
+  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
   div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--accent2)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>`;
@@ -179,9 +179,33 @@ function revealResult(){
   else if(activePane()!=='result') document.getElementById('result-dot').hidden=false;
 }
 
+/* The id the server gave this run, so an answer can be posted back against it: the SSE stream
+   is one-way, so the human's reply cannot travel down the pipe the question came from. */
+let runId=null;
+
+function showAsk(question){
+  const box=document.getElementById('ask');
+  document.getElementById('ask-q').textContent=question;
+  const text=document.getElementById('ask-text');
+  text.value=''; box.hidden=false; text.focus();
+}
+function hideAsk(){ document.getElementById('ask').hidden=true; }
+
+async function sendAnswer(){
+  const text=document.getElementById('ask-text').value.trim();
+  if(!text || !runId) return;
+  hideAsk();
+  try{
+    await fetch(`/api/patterns/runs/${encodeURIComponent(runId)}/answer?text=`
+      + encodeURIComponent(text), {method:'POST'});
+  }catch(_){ /* the run times out on its own; nothing useful to say here */ }
+}
+
 function run(){
   if(!current) return;
   reset();
+  hideAsk();
+  runId=null;
   tabPinned=false;
   const input=encodeURIComponent(document.getElementById('input').value||'');
   document.getElementById('run').disabled=true;
@@ -189,7 +213,10 @@ function run(){
   es.onmessage=e=>{
     let ev; try{ ev=JSON.parse(e.data); }catch(_){ return; }
     log(ev); updateScope(ev.scope);
-    if(ev.type==='agent-before') markNode(ev.agent,'active');
+    if(ev.type==='run-start') runId=ev.data||null;
+    else if(ev.type==='human-ask'){ showAsk(ev.message); markNode(ev.agent,'active'); }
+    else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
+    else if(ev.type==='agent-before') markNode(ev.agent,'active');
     else if(ev.type==='agent-after') markNode(ev.agent,'done');
     else if(ev.type==='run-result'){
       document.getElementById('result').innerHTML = ev.data!=null
@@ -197,10 +224,12 @@ function run(){
         : '<span class="empty">The run produced no output.</span>';
       revealResult();
     } else if(ev.type==='run-done'){
+      hideAsk();
       es.close(); es=null; document.getElementById('run').disabled=false;
     }
   };
-  es.onerror=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; };
+  es.onerror=()=>{ if(es){es.close();es=null;} hideAsk();
+    document.getElementById('run').disabled=false; };
 }
 
 /* ---------- bottom dock: run events + live server log ---------- */
@@ -356,6 +385,11 @@ document.getElementById('rail-toggle').onclick = () =>
 })();
 
 document.getElementById('run').onclick=run;
-document.getElementById('reset').onclick=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; reset(); };
+document.getElementById('ask-send').onclick=sendAnswer;
+document.getElementById('ask-text').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); sendAnswer(); }
+});
+document.getElementById('reset').onclick=()=>{ if(es){es.close();es=null;} hideAsk();
+  document.getElementById('run').disabled=false; reset(); };
 boot();
 connectLogs();

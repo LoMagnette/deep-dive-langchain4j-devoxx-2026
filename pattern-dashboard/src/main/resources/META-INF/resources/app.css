@@ -123,6 +123,14 @@ body:not(.on-grid) .gallery{display:none}
 .head h2{margin:0 0 4px;font-size:25px;letter-spacing:-.02em}
 .head .useful{color:var(--muted);font-size:15px}
 .caveat{margin-top:10px;background:var(--accent-soft);border:0;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:8px 12px;font-size:14px}
+/* The run has stopped and is waiting for a person. Deliberately the loudest thing on the page
+   while it is up — a blocked run that looks like a slow one is how a demo dies on stage. */
+.ask{margin-top:10px;background:var(--panel);border-radius:14px;padding:12px 14px;
+  box-shadow:var(--shadow);border-left:3px solid var(--accent)}
+.ask-q{white-space:pre-wrap;font-size:14px;line-height:1.45;margin-bottom:10px}
+.ask-row{display:flex;gap:8px}
+.ask-row input{flex:1 1 auto;min-width:0}
+@media (max-width:560px){ .ask-row{flex-wrap:wrap} }
 /* The graph owns the whole stage: result and scope moved into the dock's tabs. The empty
    canvas is a paw trail rather than blank paper — kept faint so edges stay legible. */
 .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative;background-color:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;
@@ -211,6 +219,10 @@ body.resizing{cursor:ns-resize;user-select:none}
 @keyframes wag{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
 .node.active rect{animation:wag 1.15s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
 @media (prefers-reduced-motion: reduce){ .node.active rect{animation:none} }
+/* The one node that is a person. It gets the accent because this is identity, not decoration:
+   drawn like the agents either side of it, the diagram would say the model decided. */
+.node.human rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2;stroke-dasharray:none}
+.node.human text{fill:var(--accent);font-weight:700}
 /* A join is a step, not an agent — drawn plainer so it never reads as one. */
 .node.join rect{fill:var(--panel2);stroke:var(--node-line);stroke-dasharray:4 3}
 .node.join text{fill:var(--muted);font-style:italic}

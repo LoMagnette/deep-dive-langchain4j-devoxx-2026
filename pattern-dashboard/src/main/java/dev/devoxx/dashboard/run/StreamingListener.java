@@ -17,15 +17,40 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 /**
  * Bridges LangChain4j agentic observability callbacks into {@link RunEvent}s pushed to a sink.
  * Inherited by sub-agents so every agent invocation in a composite is observed.
+ *
+ * <p>It also carries the run's channel to a person ({@link AskHuman}). That lives here rather
+ * than being a fourth argument to every {@code Runner} because the listener already <i>is</i> the
+ * per-run context object, and only one demo out of seventeen needs to ask anybody anything.
  */
 public class StreamingListener implements AgentListener {
 
     private final Consumer<RunEvent> sink;
     private final java.util.concurrent.atomic.AtomicLong seq;
+    private final AskHuman human;
 
     public StreamingListener(Consumer<RunEvent> sink, java.util.concurrent.atomic.AtomicLong seq) {
+        this(sink, seq, AskHuman.NOBODY);
+    }
+
+    public StreamingListener(Consumer<RunEvent> sink,
+                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human) {
         this.sink = sink;
         this.seq = seq;
+        this.human = human == null ? AskHuman.NOBODY : human;
+    }
+
+    /**
+     * Puts a question to whoever is watching this run and blocks until they answer.
+     *
+     * <p>The {@code human-ask} event is emitted first and the wait happens after, so the page has
+     * the question on screen before anything is waiting on it — do it the other way round and the
+     * run blocks on a question nobody has been shown.
+     */
+    public String askHuman(String agent, String question) {
+        emit("human-ask", agent, question, null, null);
+        String answer = human.ask(question);
+        emit("human-answer", agent, answer, null, null);
+        return answer;
     }
 
     @Override

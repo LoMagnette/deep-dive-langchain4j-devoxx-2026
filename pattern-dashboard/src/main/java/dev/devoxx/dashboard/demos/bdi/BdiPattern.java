@@ -3,9 +3,6 @@ package dev.devoxx.dashboard.demos.bdi;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
-import static dev.devoxx.dashboard.support.Wiring.str;
 
 import java.util.List;
 import java.util.Map;
@@ -40,9 +37,21 @@ public final class BdiPattern {
                         edge("out", "train", "needs been out"),
                         edge("fed", "train", "needs fed")));
         Runner runner = (model, input, listener) -> {
-            var out = agent(ToiletTrip.class, model, "ToiletTrip", "out");
-            var fed = agent(FirstMeal.class, model, "FirstMeal", "fed");
-            var train = agent(FirstTraining.class, model, "FirstTraining", "session");
+            var out = AgenticServices.agentBuilder(ToiletTrip.class)
+                    .chatModel(model)
+                    .name("ToiletTrip")
+                    .outputKey("out")
+                    .build();
+            var fed = AgenticServices.agentBuilder(FirstMeal.class)
+                    .chatModel(model)
+                    .name("FirstMeal")
+                    .outputKey("fed")
+                    .build();
+            var train = AgenticServices.agentBuilder(FirstTraining.class)
+                    .chatModel(model)
+                    .name("FirstTraining")
+                    .outputKey("session")
+                    .build();
             // Priorities, not order. Nobody needs telling that a puppy goes out before he is fed
             // and long before he is taught anything — so the room can see the planner making the
             // right call instead of taking it on trust. Shuffle these three declarations and the
@@ -65,11 +74,11 @@ public final class BdiPattern {
             var r = app.invokeWithAgenticScope(Map.of("hour", input));
             var scope = r.agenticScope();
             if (scope == null) {
-                return result(r, "session");
+                return String.valueOf(r.result());
             }
-            return "**Out first** — " + str(scope, "out")
-                    + "\n\n**Then fed** — " + str(scope, "fed")
-                    + "\n\n**Then taught** — " + str(scope, "session");
+            return "**Out first** — " + scope.readState("out", "")
+                    + "\n\n**Then fed** — " + scope.readState("fed", "")
+                    + "\n\n**Then taught** — " + scope.readState("session", "");
         };
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
                 "The agent pursues prioritised desires, always acting on the highest-priority one "

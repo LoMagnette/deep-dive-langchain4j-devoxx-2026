@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.p2p;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -33,8 +31,16 @@ public final class P2pPattern {
                         edge("bed", "floor", "proposal"),
                         edge("floor", "bed", "counter")));
         Runner runner = (model, input, listener) -> {
-            var bed = agent(TeamOnTheBed.class, model, "TeamOnTheBed", "proposal");
-            var floor = agent(TeamOnTheFloor.class, model, "TeamOnTheFloor", "agreement");
+            var bed = AgenticServices.agentBuilder(TeamOnTheBed.class)
+                    .chatModel(model)
+                    .name("TeamOnTheBed")
+                    .outputKey("proposal")
+                    .build();
+            var floor = AgenticServices.agentBuilder(TeamOnTheFloor.class)
+                    .chatModel(model)
+                    .name("TeamOnTheFloor")
+                    .outputKey("agreement")
+                    .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(bed, floor)
                     // The exit predicate is the only thing that ends this: neither side can
@@ -44,7 +50,7 @@ public final class P2pPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("question", input));
-            return result(r, "agreement");
+            return String.valueOf(r.result());
         };
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
                 "Peers refine a shared state until an exit condition holds. The case for it: "

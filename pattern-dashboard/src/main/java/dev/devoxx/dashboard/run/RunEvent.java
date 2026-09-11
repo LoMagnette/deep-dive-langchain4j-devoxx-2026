@@ -4,7 +4,8 @@ import java.util.Map;
 
 /**
  * A single streamed event describing what an agentic run is doing.
- * types: run-start, agent-before, agent-after, agent-error, run-result, run-done.
+ * types: run-start, agent-before, agent-after, agent-error, human-ask, human-answer,
+ * run-result, run-done.
  */
 public record RunEvent(
         long seq,

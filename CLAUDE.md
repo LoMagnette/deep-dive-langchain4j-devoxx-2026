@@ -19,7 +19,7 @@ Two distinct halves:
 mvn quarkus:dev                       # dev mode + live reload; needs Maven 3.9+. Open http://localhost:8080
 mvn quarkus:dev -Ddashboard.model=mock  # no Ollama / no API key — deterministic offline run
 mvn -DskipTests package               # build fast-jar to target/quarkus-app/
-mvn test                              # smoke-runs all 14 patterns + both composites on the mock model
+mvn test                              # smoke-runs all 15 patterns + both composites on the mock model
 ```
 
 Point at a real model by overriding env vars (same code path as the default):
@@ -65,17 +65,33 @@ demos/<id>/      EVERYTHING for one demo, and nothing else:
                    its agent contracts, one interface per file
                    its XxxPattern — topology + Runner
                    package-info.java — what this demo is for
-  single/ sequential/ loop/ parallel/ parallelmapper/ conditional/
+  single/ sequential/ loop/ parallel/ parallelmapper/ conditional/ humanapproval/
   supervisor/
   goap/ p2p/ blackboard/ voting/ debate/ bdi/ customplanner/
   sitternote/ seconddogcouncil/
 catalog/         PatternCatalog (the registry) · PatternDef · Topology
-support/         Wiring · Parsing · Errors — the shared pieces every pattern repeats
+support/         Parsing · Errors — the shared pieces that are OURS, not LangChain4j's
 model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
 run/             RunEvent · StreamingListener — observing a run
 web/             PatternResource · LogResource · LogStream — REST and SSE
 ```
 
+- **The demo wiring shows the LangChain4j API, never a wrapper around it.** This is a talk about
+  that API, so every call the room needs to learn is written out at the call site:
+  `AgenticServices.agentBuilder(X.class).chatModel(model).name("X").outputKey("k").build()`,
+  `scope.readState("k", "")`, `r.result()`. There used to be a `Wiring.agent(...)` helper that
+  collapsed the first of those to one line; it made the demos shorter and hid the single most
+  important call in the library. It is gone, and it should stay gone — the verbosity **is** the
+  lesson, and the composites paying five lines per agent is the honest price of it.
+  Two things that follow from this:
+  - **`.name("X")` is load-bearing, not decoration.** An agent's default name is its *method*
+    name (`check`, `rewrite`, `plan`), not its interface name — so without it the topology labels
+    stop matching, `markNode` never lights a node, and the supervisor's canned plan cannot find
+    `RoutinePlanner`. Nine tests go red at once if you drop it, which is how this was established.
+  - **`support/Parsing` takes plain strings, not an `AgenticScope`.** Reading the scope is
+    LangChain4j API and belongs in the demo; parsing a model's prose into a number is ours. So a
+    loop's predicate reads `scope -> Parsing.score(scope.readState("score", "")) >= 0.8`, with
+    the scope read visible where the room is looking.
 - **The package is named after the pattern id**, lowercased. So the deep link on a slide
   (`#/loop`) names the package to open on stage (`demos.loop`), and `#/secondDogCouncil` is
   `demos.seconddogcouncil`. Keep that rule when adding a demo — it is the whole reason the
@@ -127,6 +143,33 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     pattern fit is.
   `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the rule-1 claims,
   so a prompt tweak that quietly turns a pattern back into decoration goes red. Extend it too.
+- **`humanApproval` is the brake on the dial**, and the only pattern where the run stops and
+  waits for a person. `HumanInTheLoop` (from `AgenticServices.humanInTheLoopBuilder()`) is a
+  non-AI agent: it reads a key from the scope and writes one back, so the sequence around it
+  cannot tell that the answer came from a browser. Three pieces make that work here, and they are
+  the part worth understanding before touching it:
+  - **`run/AskHuman`** — a one-method interface, deliberately blocking. It is an interface and
+    not a method on the web layer for one reason: the demo has to run under `mvn test`, where
+    the "human" is a lambda. Swapping the person for a stub is the only way to test a pattern
+    that waits for one, and `AskHuman.NOBODY` is what every other run gets.
+  - **`run/HumanQuestions`** — the meeting point between a blocked run and the POST carrying the
+    answer. SSE is one-way, so the reply cannot travel down the pipe the question came from; every
+    run announces a `runId` in its `run-start` event and the answer is posted to
+    `POST /api/patterns/runs/{runId}/answer`. The wait has a **timeout** and ending a run
+    **cancels** its question — runs execute on a pool of four, so a question nobody answers would
+    otherwise hold a thread for ever and the next few runs would silently never start.
+  - **`StreamingListener.askHuman`** carries it, because the listener already *is* the per-run
+    context object and only one demo out of seventeen asks anybody anything. It emits `human-ask`
+    **before** waiting — do it the other way round and the run blocks on a question nobody has
+    been shown.
+  The diagram gives the person the `human` role rather than `agent`, and
+  `everyTopologyShowsWhatItsPatternActuallyDoes` asserts it: drawn like the boxes either side, the
+  picture would say the model decided, which is the one thing this pattern denies.
+  A trap this already paid for: `MockChatModel`'s reply lambda is handed the **raw** prompt, not
+  the lowercased one its rule matched on, so `indexOf("what they said:")` returned -1, the slice
+  landed somewhere arbitrary, and the refusal path quietly produced the approved answer. The test
+  missed it too, because the result echoes the person's words and a naive `contains("nothing")`
+  passed on those — assert on the instruction section, not the whole result.
 - **`customPlanner` is the §7 "middle ground" made runnable**, and the only pattern whose
   behaviour lives in this repo rather than in the library. `demos/customplanner/` holds all of
   it — the three tier agents, the planner, and the wiring. `EscalationPlanner` implements

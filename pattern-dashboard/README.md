@@ -1,6 +1,6 @@
 # LangChain4j Agentic Patterns — Zao Dashboard
 
-A Quarkus web app that visualizes and **live-runs** all 14 LangChain4j agentic patterns plus two
+A Quarkus web app that visualizes and **live-runs** all 15 LangChain4j agentic patterns plus two
 composite systems. Each pattern is streamed over Server-Sent Events and animated on an SVG
 topology graph, with a live scope-state panel and an event console.
 
@@ -72,9 +72,12 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 
 ## API
 
-- `GET /api/patterns` — JSON metadata + static topology for all 14 patterns and both composites.
+- `GET /api/patterns` — JSON metadata + static topology for all 15 patterns and both composites.
 - `GET /api/patterns/{id}/run?input=...` — `text/event-stream` of `RunEvent`s
-  (`run-start`, `agent-before`, `agent-after`, `agent-error`, `run-result`, `run-done`).
+  (`run-start`, `agent-before`, `agent-after`, `agent-error`, `human-ask`, `human-answer`,
+  `run-result`, `run-done`). `run-start` carries a `runId`.
+- `POST /api/patterns/runs/{runId}/answer?text=...` — the other half of a human-in-the-loop run.
+  SSE is one-way, so the person's answer comes back as its own request.
 
 ## The catalogue
 
@@ -86,6 +89,7 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 | `parallel` | Walk him now? Weather and dog checked at once; **either can veto** |
 | `parallelMapper` | Five things off the picnic blanket, one verdict each — and you know all five answers |
 | `conditional` | He ate a bar of dark chocolate: vet, trainer, or everyday care? |
+| `humanApproval` | The vet is closed and the dog is sore: the model drafts a dose, **a person approves it** |
 | `supervisor` | "A baby is due in three months" — you cannot enumerate what that needs |
 | `goap` | Recall: indoors → garden → park, **registered backwards on purpose** |
 | `p2p` | Should the dog sleep on the bed? Neither half of the household outranks the other |

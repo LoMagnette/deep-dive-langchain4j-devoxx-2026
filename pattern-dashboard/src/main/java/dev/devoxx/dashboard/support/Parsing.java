@@ -1,16 +1,18 @@
 package dev.devoxx.dashboard.support;
 
-import static dev.devoxx.dashboard.support.Wiring.str;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-import dev.langchain4j.agentic.scope.AgenticScope;
-
 /**
  * Defensive readers for what a model actually returns, as opposed to what it was asked for.
+ *
+ * <p>These take the model's answer as a plain {@code String} rather than reaching into an
+ * {@code AgenticScope} themselves. That is deliberate: reading the scope is LangChain4j API and
+ * belongs in the demo where the room can see it, so a predicate reads
+ * {@code scope.readState("score", "")} and hands the text here. What is left in this class is
+ * only the part that is ours — the parsing no framework can do for you.
  * Every method here exists because a real model broke a pattern in a way that produced no
  * error at all — a score as prose, a category wrapped in a sentence, a list that wasn't one.
  */
@@ -27,8 +29,8 @@ public final class Parsing {
      * rescale anything above 1.0. An unparseable answer scores 0, which keeps the loop iterating
      * rather than exiting on garbage.
      */
-    public static double score(AgenticScope s) {
-        var m = NUMBER.matcher(str(s, "score"));
+    public static double score(String answer) {
+        var m = NUMBER.matcher(answer == null ? "" : answer);
         if (!m.find()) {
             return 0.0;
         }
@@ -50,8 +52,8 @@ public final class Parsing {
      * the first, which is deliberately {@code emergency}: when the classifier is unsure about a
      * dog, the tolerable mistake is bothering the vet, not routing a poisoning to the trainer.
      */
-    public static String category(AgenticScope s) {
-        String raw = str(s, "category").toLowerCase(Locale.ROOT);
+    public static String category(String answer) {
+        String raw = (answer == null ? "" : answer).toLowerCase(Locale.ROOT);
         String best = CATEGORIES.get(0);
         int bestAt = -1;
         for (String c : CATEGORIES) {

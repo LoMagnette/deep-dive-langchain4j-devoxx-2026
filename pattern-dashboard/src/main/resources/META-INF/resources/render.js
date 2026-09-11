@@ -190,7 +190,7 @@ function drawGraph(topo){
   // nodes
   nodes.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('class','node '+(n.role==='board'||n.role==='join'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
+    g.setAttribute('class','node '+(n.role==='board'||n.role==='join'||n.role==='human'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
     const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
     r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',14);
     g.appendChild(r);

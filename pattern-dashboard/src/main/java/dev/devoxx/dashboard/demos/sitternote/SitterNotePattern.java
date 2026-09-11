@@ -5,8 +5,6 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
 import static dev.devoxx.dashboard.support.Parsing.score;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -57,19 +55,43 @@ public final class SitterNotePattern {
 
         Runner runner = (model, input, listener) -> {
             // 1. Conditional routing — one LLM judgement decides who answers the worry.
-            var router = agent(WorryRouter.class, model, "WorryRouter", "category");
-            var vet = agent(EmergencyVet.class, model, "EmergencyVet", "answer");
-            var trainer = agent(DogTrainer.class, model, "DogTrainer", "answer");
-            var care = agent(EverydayCare.class, model, "EverydayCare", "answer");
+            var router = AgenticServices.agentBuilder(WorryRouter.class)
+                    .chatModel(model)
+                    .name("WorryRouter")
+                    .outputKey("category")
+                    .build();
+            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+                    .chatModel(model)
+                    .name("EmergencyVet")
+                    .outputKey("answer")
+                    .build();
+            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
+                    .chatModel(model)
+                    .name("DogTrainer")
+                    .outputKey("answer")
+                    .build();
+            var care = AgenticServices.agentBuilder(EverydayCare.class)
+                    .chatModel(model)
+                    .name("EverydayCare")
+                    .outputKey("answer")
+                    .build();
             UntypedAgent triage = AgenticServices.conditionalBuilder()
-                    .subAgents(s -> category(s).equals("emergency"), vet)
-                    .subAgents(s -> category(s).equals("training"), trainer)
-                    .subAgents(s -> category(s).equals("everyday"), care)
+                    .subAgents(s -> category(s.readState("category", "")).equals("emergency"), vet)
+                    .subAgents(s -> category(s.readState("category", "")).equals("training"), trainer)
+                    .subAgents(s -> category(s.readState("category", "")).equals("everyday"), care)
                     .build();
 
             // 2. Parallel — meals and walks do not need each other, so fan them out.
-            var meals = agent(MealPlanner.class, model, "MealPlanner", "meals");
-            var walks = agent(WalkPlanner.class, model, "WalkPlanner", "walks");
+            var meals = AgenticServices.agentBuilder(MealPlanner.class)
+                    .chatModel(model)
+                    .name("MealPlanner")
+                    .outputKey("meals")
+                    .build();
+            var walks = AgenticServices.agentBuilder(WalkPlanner.class)
+                    .chatModel(model)
+                    .name("WalkPlanner")
+                    .outputKey("walks")
+                    .build();
             UntypedAgent plan = AgenticServices.parallelBuilder()
                     .subAgents(meals, walks)
                     .build();
@@ -77,17 +99,29 @@ public final class SitterNotePattern {
             // 3. Loop — refine the note until the four fridge-door rules hold, never forever.
             //    FridgeRuleCheck is the same agent the standalone loop demo uses: a composite
             //    reuses the parts, it does not re-implement them.
-            var tighten = agent(NoteTightener.class, model, "NoteTightener", "note");
-            var check = agent(FridgeRuleCheck.class, model, "FridgeRuleCheck", "score");
+            var tighten = AgenticServices.agentBuilder(NoteTightener.class)
+                    .chatModel(model)
+                    .name("NoteTightener")
+                    .outputKey("note")
+                    .build();
+            var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
+                    .chatModel(model)
+                    .name("FridgeRuleCheck")
+                    .outputKey("score")
+                    .build();
             UntypedAgent refine = AgenticServices.loopBuilder()
                     .subAgents(tighten, check)
                     .maxIterations(3)
-                    .exitCondition(s -> score(s) >= 0.8)
+                    .exitCondition(s -> score(s.readState("score", "")) >= 0.8)
                     .testExitAtLoopEnd(true)
                     .build();
 
             // 4. Sequence — the spine that holds the three composites plus the merge step.
-            var merge = agent(SitterNoteMerger.class, model, "SitterNoteMerger", "note");
+            var merge = AgenticServices.agentBuilder(SitterNoteMerger.class)
+                    .chatModel(model)
+                    .name("SitterNoteMerger")
+                    .outputKey("note")
+                    .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, triage, plan, merge, refine)
                     .outputKey("note")
@@ -99,7 +133,7 @@ public final class SitterNotePattern {
             // the seam the caveat is about, and getting it wrong is a MissingArgumentException
             // pointing at a step that looks unrelated.
             var r = app.invokeWithAgenticScope(Map.of("worry", input, "stay", input));
-            return result(r, "note");
+            return String.valueOf(r.result());
         };
 
         return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",

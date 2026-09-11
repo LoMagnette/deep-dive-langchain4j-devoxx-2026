@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.goap;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.str;
 
 import java.util.List;
 import java.util.Map;
@@ -34,9 +32,21 @@ public final class GoapPattern {
                         edge("indoor", "garden", "indoor"),
                         edge("garden", "park", "garden")));
         Runner runner = (model, input, listener) -> {
-            var indoor = agent(IndoorRecall.class, model, "IndoorRecall", "indoor");
-            var garden = agent(GardenRecall.class, model, "GardenRecall", "garden");
-            var park = agent(ParkRecall.class, model, "ParkRecall", "park");
+            var indoor = AgenticServices.agentBuilder(IndoorRecall.class)
+                    .chatModel(model)
+                    .name("IndoorRecall")
+                    .outputKey("indoor")
+                    .build();
+            var garden = AgenticServices.agentBuilder(GardenRecall.class)
+                    .chatModel(model)
+                    .name("GardenRecall")
+                    .outputKey("garden")
+                    .build();
+            var park = AgenticServices.agentBuilder(ParkRecall.class)
+                    .chatModel(model)
+                    .name("ParkRecall")
+                    .outputKey("park")
+                    .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     // Registered BACKWARDS on purpose, and it still runs indoor → garden → park.
                     // That is the whole pattern: the order comes from the I/O keys (ParkRecall
@@ -49,9 +59,9 @@ public final class GoapPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("goal", input));
-            return "**Indoors** — " + str(r.agenticScope(), "indoor")
-                    + "\n\n**Garden** — " + str(r.agenticScope(), "garden")
-                    + "\n\n**Park** — " + str(r.agenticScope(), "park");
+            return "**Indoors** — " + r.agenticScope().readState("indoor", "")
+                    + "\n\n**Garden** — " + r.agenticScope().readState("garden", "")
+                    + "\n\n**Park** — " + r.agenticScope().readState("park", "");
         };
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 "The planner orders agents automatically by matching each output to the next "

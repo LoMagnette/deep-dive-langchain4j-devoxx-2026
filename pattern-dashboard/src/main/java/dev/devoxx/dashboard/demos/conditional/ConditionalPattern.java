@@ -4,8 +4,6 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -38,13 +36,29 @@ public final class ConditionalPattern {
                         edge("router", "trainer", "training"),
                         edge("router", "care", "everyday")));
         Runner runner = (model, input, listener) -> {
-            var router = agent(WorryRouter.class, model, "WorryRouter", "category");
-            var vet = agent(EmergencyVet.class, model, "EmergencyVet", "answer");
-            var trainer = agent(DogTrainer.class, model, "DogTrainer", "answer");
-            var care = agent(EverydayCare.class, model, "EverydayCare", "answer");
-            Predicate<AgenticScope> isEmergency = s -> category(s).equals("emergency");
-            Predicate<AgenticScope> isTraining = s -> category(s).equals("training");
-            Predicate<AgenticScope> isEveryday = s -> category(s).equals("everyday");
+            var router = AgenticServices.agentBuilder(WorryRouter.class)
+                    .chatModel(model)
+                    .name("WorryRouter")
+                    .outputKey("category")
+                    .build();
+            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+                    .chatModel(model)
+                    .name("EmergencyVet")
+                    .outputKey("answer")
+                    .build();
+            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
+                    .chatModel(model)
+                    .name("DogTrainer")
+                    .outputKey("answer")
+                    .build();
+            var care = AgenticServices.agentBuilder(EverydayCare.class)
+                    .chatModel(model)
+                    .name("EverydayCare")
+                    .outputKey("answer")
+                    .build();
+            Predicate<AgenticScope> isEmergency = s -> category(s.readState("category", "")).equals("emergency");
+            Predicate<AgenticScope> isTraining = s -> category(s.readState("category", "")).equals("training");
+            Predicate<AgenticScope> isEveryday = s -> category(s.readState("category", "")).equals("everyday");
             UntypedAgent routed = AgenticServices.conditionalBuilder()
                     .subAgents(isEmergency, vet)
                     .subAgents(isTraining, trainer)
@@ -56,7 +70,7 @@ public final class ConditionalPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("worry", input));
-            return result(r, "answer");
+            return String.valueOf(r.result());
         };
         return new PatternDef("conditional", "Conditional Routing", "workflow",
                 "A router classifies the input and dispatches to the right specialist. Worth it "

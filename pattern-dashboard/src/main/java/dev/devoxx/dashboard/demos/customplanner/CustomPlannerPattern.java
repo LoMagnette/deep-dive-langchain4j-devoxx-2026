@@ -3,8 +3,6 @@ package dev.devoxx.dashboard.demos.customplanner;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Locale;
@@ -48,9 +46,21 @@ public final class CustomPlannerPattern {
         Runner runner = (model, input, listener) -> {
             // Declaration order IS the cost order — that is the whole configuration of this
             // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
-            var book = agent(PuppyBook.class, model, "PuppyBook", "answer");
-            var trainer = agent(TrainerOnCall.class, model, "TrainerOnCall", "answer");
-            var vet = agent(VetOnCall.class, model, "VetOnCall", "answer");
+            var book = AgenticServices.agentBuilder(PuppyBook.class)
+                    .chatModel(model)
+                    .name("PuppyBook")
+                    .outputKey("answer")
+                    .build();
+            var trainer = AgenticServices.agentBuilder(TrainerOnCall.class)
+                    .chatModel(model)
+                    .name("TrainerOnCall")
+                    .outputKey("answer")
+                    .build();
+            var vet = AgenticServices.agentBuilder(VetOnCall.class)
+                    .chatModel(model)
+                    .name("VetOnCall")
+                    .outputKey("answer")
+                    .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(book, trainer, vet)
                     // Same builder as every pattern above it. The only difference is that this
@@ -64,7 +74,7 @@ public final class CustomPlannerPattern {
             // would hide the only thing this pattern does differently from a sequence — the
             // scope's invocation history is what makes that reportable without threading state
             // out of the planner.
-            String answer = result(r, "answer");
+            String answer = String.valueOf(r.result());
             var scope = r.agenticScope();
             if (scope == null) {
                 return answer;

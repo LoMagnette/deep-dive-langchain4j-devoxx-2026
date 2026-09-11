@@ -4,8 +4,6 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.items;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 import static java.util.stream.Collectors.joining;
 
 import java.util.List;
@@ -36,7 +34,11 @@ public final class ParallelMapperPattern {
         Runner runner = (model, input, listener) -> {
             // The mapper collects each per-item invocation under the agent's outputKey, and binds
             // the item itself to the sub-agent's first argument.
-            var check = agent(FoodSafetyCheck.class, model, "FoodSafetyCheck", "verdict");
+            var check = AgenticServices.agentBuilder(FoodSafetyCheck.class)
+                    .chatModel(model)
+                    .name("FoodSafetyCheck")
+                    .outputKey("verdict")
+                    .build();
             UntypedAgent app = AgenticServices.parallelMapperBuilder()
                     .subAgents(check)
                     .itemsProvider("eaten")
@@ -59,7 +61,7 @@ public final class ParallelMapperPattern {
                                 + "** — " + said.get(i))
                         .collect(joining("\n"));
             }
-            return result(r, "verdicts");
+            return String.valueOf(r.result());
         };
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
                 "Map one agent over a collection in parallel (scatter/gather). Five things off "

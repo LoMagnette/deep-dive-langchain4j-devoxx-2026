@@ -11,6 +11,7 @@ import dev.devoxx.dashboard.demos.parallelmapper.ParallelMapperPattern;
 import dev.devoxx.dashboard.demos.conditional.ConditionalPattern;
 import dev.devoxx.dashboard.demos.supervisor.SupervisorPattern;
 import dev.devoxx.dashboard.demos.goap.GoapPattern;
+import dev.devoxx.dashboard.demos.humanapproval.HumanApprovalPattern;
 import dev.devoxx.dashboard.demos.p2p.P2pPattern;
 import dev.devoxx.dashboard.demos.blackboard.BlackboardPattern;
 import dev.devoxx.dashboard.demos.voting.VotingPattern;
@@ -47,6 +48,7 @@ public class PatternCatalog {
                 ParallelPattern.define(),
                 ParallelMapperPattern.define(),
                 ConditionalPattern.define(),
+                HumanApprovalPattern.define(),
                 // Pure agents — the model decides the path
                 SupervisorPattern.define(),
                 // The pattern zoo — planners that decide the turns, the last one ours

@@ -3,9 +3,6 @@ package dev.devoxx.dashboard.demos.voting;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
-import static dev.devoxx.dashboard.support.Wiring.str;
 
 import java.util.List;
 import java.util.Map;
@@ -56,9 +53,21 @@ public final class VotingPattern {
             // Each voter also writes its own key. The strategy does not need them — it tallies
             // what the agents returned — but the result pane does: one word on its own hides the
             // only interesting thing, which is whether they split.
-            var space = agent(SpaceAndTime.class, model, "SpaceAndTime", "spaceVote");
-            var money = agent(MoneyAndVet.class, model, "MoneyAndVet", "moneyVote");
-            var zao = agent(AskZaoHimself.class, model, "AskZaoHimself", "zaoVote");
+            var space = AgenticServices.agentBuilder(SpaceAndTime.class)
+                    .chatModel(model)
+                    .name("SpaceAndTime")
+                    .outputKey("spaceVote")
+                    .build();
+            var money = AgenticServices.agentBuilder(MoneyAndVet.class)
+                    .chatModel(model)
+                    .name("MoneyAndVet")
+                    .outputKey("moneyVote")
+                    .build();
+            var zao = AgenticServices.agentBuilder(AskZaoHimself.class)
+                    .chatModel(model)
+                    .name("AskZaoHimself")
+                    .outputKey("zaoVote")
+                    .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(space, money, zao)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
@@ -68,12 +77,12 @@ public final class VotingPattern {
             var r = app.invokeWithAgenticScope(Map.of("household", input));
             var scope = r.agenticScope();
             if (scope == null) {
-                return result(r, "decision");
+                return String.valueOf(r.result());
             }
-            return "**Majority: " + str(scope, "decision") + "**\n\n"
-                    + "- Space and hours alone: " + str(scope, "spaceVote") + "\n"
-                    + "- Money: " + str(scope, "moneyVote") + "\n"
-                    + "- Zao himself: " + str(scope, "zaoVote");
+            return "**Majority: " + scope.readState("decision", "") + "**\n\n"
+                    + "- Space and hours alone: " + scope.readState("spaceVote", "") + "\n"
+                    + "- Money: " + scope.readState("moneyVote", "") + "\n"
+                    + "- Zao himself: " + scope.readState("zaoVote", "");
         };
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
                 "Several agents answer independently; a strategy aggregates (majority, average, "

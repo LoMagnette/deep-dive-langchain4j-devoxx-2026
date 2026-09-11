@@ -328,6 +328,20 @@ public class MockChatModel implements ChatModel {
                                 + "weight-bear needs examining today, so ring for an appointment "
                                 + "this morning. ANSWERED"),
 
+                // --- 14c. The approval demo. The draft deliberately includes the thing a
+                // person must strike out — human ibuprofen is toxic to dogs — so the demo has
+                // something real for the human step to catch rather than a rubber stamp.
+                new Rule(p -> p.contains("what is in the cupboard"),
+                        p -> """
+                                Give one of his own painkillers from the last check-up, the dose \
+                                on the label, with food.
+                                Half a tablet of our ibuprofen on top if he is still sore at \
+                                midnight.
+                                Keep him off the stairs and do not walk him tonight.
+                                Ring the vet when they open."""),
+                new Rule(p -> p.contains("honouring the person's decision"),
+                        MockChatModel::finalNote),
+
                 // --- 15. The council. The chair and the glue are listed before the two
                 // advocates, because all three prompts talk about a motion.
                 new Rule(p -> p.contains("chair the household council"),
@@ -418,6 +432,33 @@ public class MockChatModel implements ChatModel {
         return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Two things to start now: "
                 + "move his bed out of your room this month, and teach a settle on a mat. Keep "
                 + "the walks exactly as they are.\"}}";
+    }
+
+    /**
+     * The instruction, after a person has had their say. Reads only what they said — and note
+     * that the reply lambda is handed the RAW prompt, not the lowercased one the rule matched on,
+     * which is a trap worth knowing: {@code indexOf("what they said:")} against raw text silently
+     * returns -1, the slice lands somewhere arbitrary, and the refusal path quietly produces the
+     * approved answer. That looked like a working demo and was caught by a dump, not by a test.
+     */
+    private static String finalNote(String prompt) {
+        String all = prompt.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        int at = all.lastIndexOf("what they said:");
+        String said = at < 0 ? "" : all.substring(at + "what they said:".length());
+        boolean refused = said.contains("no ") || said.startsWith(" no")
+                || said.contains("nothing") || said.contains("don't") || said.contains("refuse");
+        boolean struckIbuprofen = said.contains("ibuprofen") || said.contains("take out")
+                || said.contains("remove") || said.contains("drop");
+        if (refused && !struckIbuprofen) {
+            return "Give him nothing tonight. Keep him off the stairs, no walk, and ring the vet "
+                    + "the moment they open. If he gets worse before then, ring the out-of-hours "
+                    + "line rather than the cupboard.";
+        }
+        return "Give one of his own painkillers from the last check-up, the dose on the label, "
+                + "with food."
+                + (struckIbuprofen ? " No ibuprofen — human painkillers are toxic to dogs, and it "
+                        + "has been struck out." : "")
+                + " Keep him off the stairs, no walk tonight, and ring the vet when they open.";
     }
 
     /** Which rung of the escalation ladder a question belongs on. */

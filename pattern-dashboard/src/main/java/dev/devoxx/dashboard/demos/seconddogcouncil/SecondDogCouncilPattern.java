@@ -4,9 +4,6 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.demos.voting.VotingPattern.HOUSEHOLD;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
-import static dev.devoxx.dashboard.support.Wiring.str;
 
 import java.util.List;
 import java.util.Map;
@@ -56,7 +53,11 @@ public final class SecondDogCouncilPattern {
 
         Runner runner = (model, input, listener) -> {
             // 1. Parallel mapper (simple) — one scout over three angles of the household at once.
-            var scout = agent(AngleScout.class, model, "AngleScout", "finding");
+            var scout = AgenticServices.agentBuilder(AngleScout.class)
+                    .chatModel(model)
+                    .name("AngleScout")
+                    .outputKey("finding")
+                    .build();
             UntypedAgent survey = AgenticServices.parallelMapperBuilder()
                     .subAgents(scout)
                     .itemsProvider("angles")
@@ -64,12 +65,26 @@ public final class SecondDogCouncilPattern {
                     .build();
 
             // 2. One plain agent (simple) turns the evidence into something debatable.
-            var briefer = agent(CouncilBriefer.class, model, "CouncilBriefer", "motion");
+            var briefer = AgenticServices.agentBuilder(CouncilBriefer.class)
+                    .chatModel(model)
+                    .name("CouncilBriefer")
+                    .outputKey("motion")
+                    .build();
 
             // 3. Debate (advanced) — the two sides argue, the chair rules.
-            var forIt = agent(SecondDogFor.class, model, "SecondDogFor", null);
-            var against = agent(SecondDogAgainst.class, model, "SecondDogAgainst", null);
-            var chair = agent(HouseholdVerdict.class, model, "HouseholdVerdict", "verdict");
+            var forIt = AgenticServices.agentBuilder(SecondDogFor.class)
+                    .chatModel(model)
+                    .name("SecondDogFor")
+                    .build();
+            var against = AgenticServices.agentBuilder(SecondDogAgainst.class)
+                    .chatModel(model)
+                    .name("SecondDogAgainst")
+                    .build();
+            var chair = AgenticServices.agentBuilder(HouseholdVerdict.class)
+                    .chatModel(model)
+                    .name("HouseholdVerdict")
+                    .outputKey("verdict")
+                    .build();
             UntypedAgent debate = AgenticServices.plannerBuilder()
                     .subAgents(forIt, against, chair)    // judge LAST
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
@@ -78,13 +93,26 @@ public final class SecondDogCouncilPattern {
 
             // 4. Glue (simple): the assessors vote on a 'household', the debate wrote a
             //    'verdict'. This one line is the whole lesson of this composite — see the caveat.
-            var note = agent(CouncilNote.class, model, "CouncilNote", "household");
+            var note = AgenticServices.agentBuilder(CouncilNote.class)
+                    .chatModel(model)
+                    .name("CouncilNote")
+                    .outputKey("household")
+                    .build();
 
             // 5. Voting (advanced) — the same three assessors the voting demo used, now
             //    ratifying a debated motion instead of voting cold.
-            var space = agent(SpaceAndTime.class, model, "SpaceAndTime", null);
-            var money = agent(MoneyAndVet.class, model, "MoneyAndVet", null);
-            var zao = agent(AskZaoHimself.class, model, "AskZaoHimself", null);
+            var space = AgenticServices.agentBuilder(SpaceAndTime.class)
+                    .chatModel(model)
+                    .name("SpaceAndTime")
+                    .build();
+            var money = AgenticServices.agentBuilder(MoneyAndVet.class)
+                    .chatModel(model)
+                    .name("MoneyAndVet")
+                    .build();
+            var zao = AgenticServices.agentBuilder(AskZaoHimself.class)
+                    .chatModel(model)
+                    .name("AskZaoHimself")
+                    .build();
             UntypedAgent ratify = AgenticServices.plannerBuilder()
                     .subAgents(space, money, zao)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
@@ -108,11 +136,11 @@ public final class SecondDogCouncilPattern {
             // diagram looking decorative.
             var scope = r.agenticScope();
             if (scope == null) {
-                return result(r, "verdict");
+                return String.valueOf(r.result());
             }
-            return "**The chair's ruling** — " + str(scope, "verdict")
-                    + "\n\n**Put to the assessors as** — " + str(scope, "household")
-                    + "\n\n**Ratified:** " + str(scope, "ratified");
+            return "**The chair's ruling** — " + scope.readState("verdict", "")
+                    + "\n\n**Put to the assessors as** — " + scope.readState("household", "")
+                    + "\n\n**Ratified:** " + scope.readState("ratified", "");
         };
 
         return new PatternDef("secondDogCouncil", "Second Dog Council (composite)", "composite",

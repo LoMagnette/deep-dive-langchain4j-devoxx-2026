@@ -4,8 +4,6 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.demos.single.SinglePattern.SITTER_MESSAGE;
-import static dev.devoxx.dashboard.support.Wiring.agent;
-import static dev.devoxx.dashboard.support.Wiring.result;
 
 import java.util.List;
 import java.util.Map;
@@ -32,12 +30,20 @@ public final class SequentialPattern {
                         node("list", "FridgeChecklist", "agent")),
                 List.of(edge("in", "clerk"), edge("clerk", "list", "card")));
         Runner runner = (model, input, listener) -> {
-            var clerk = agent(SitterCardClerk.class, model, "SitterCardClerk", "card");
-            var list = agent(FridgeChecklist.class, model, "FridgeChecklist", "checklist");
+            var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+                    .chatModel(model)
+                    .name("SitterCardClerk")
+                    .outputKey("card")
+                    .build();
+            var list = AgenticServices.agentBuilder(FridgeChecklist.class)
+                    .chatModel(model)
+                    .name("FridgeChecklist")
+                    .outputKey("checklist")
+                    .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(clerk, list).outputKey("checklist").listener(listener).build();
             var r = app.invokeWithAgenticScope(Map.of("message", input));
-            return result(r, "checklist");
+            return String.valueOf(r.result());
         };
         return new PatternDef("sequential", "Sequential", "workflow",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
