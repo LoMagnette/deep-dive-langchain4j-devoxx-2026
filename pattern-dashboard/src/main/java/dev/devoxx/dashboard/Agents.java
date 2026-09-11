@@ -454,7 +454,52 @@ public final class Agents {
         String teach(@V("out") String out, @V("fed") String fed);
     }
 
-    // ---------------------------------------------------------------- 14 — the weekend away
+    // ------------------------------------------------- 14 — the escalation ladder (custom planner)
+    // Declared cheapest-first, because that order IS the policy in EscalationPlanner. Each one
+    // ends with ANSWERED or ESCALATE, which is the only thing the planner reads: the model makes
+    // a local judgement about its own competence, and the Java decides what that costs.
+    // Everyone already knows this ladder — you look it up, then you ring the trainer, then you
+    // ring the vet — and everyone knows you do not start at the vet to ask about kibble.
+
+    public interface PuppyBook {
+        @Agent(description = "The book on the shelf: free, instant, and only good for the basics")
+        @UserMessage("""
+                You are the puppy book on the shelf. Answer only if this is ordinary, settled
+                information — food, kit, grooming, routine, house-training. Anything about how the
+                dog behaves, or anything that might be a health problem, is past you.
+                Answer in one or two sentences, then end with exactly one word on its own:
+                ANSWERED if you fully covered it, or ESCALATE if you did not.
+
+                Question: {{question}}""")
+        String answer(@V("question") String question);
+    }
+
+    public interface TrainerOnCall {
+        @Agent(description = "The trainer on the phone: costs a call, knows behaviour")
+        @UserMessage("""
+                You are the trainer, reached by telephone. Answer only if this is about behaviour
+                or training — pulling, barking, recall, resource guarding, fear. Anything that
+                might be pain, injury or illness is past you and belongs to the vet.
+                Answer in two or three sentences, then end with exactly one word on its own:
+                ANSWERED if you fully covered it, or ESCALATE if you did not.
+
+                Question: {{question}}""")
+        String answer(@V("question") String question);
+    }
+
+    public interface VetOnCall {
+        @Agent(description = "The vet: the expensive last rung, and the only one who ends the ladder")
+        @UserMessage("""
+                You are the vet. You are the last rung of the ladder, so answer as best you can
+                whatever is asked, and say plainly if the dog needs to be seen in person.
+                Answer in two or three sentences, then end with exactly one word on its own:
+                ANSWERED.
+
+                Question: {{question}}""")
+        String answer(@V("question") String question);
+    }
+
+    // ---------------------------------------------------------------- 15 — the weekend away
     // The capstone's own agents. The artefact is the one a household really does produce: a
     // single note on the fridge door that a sitter can follow without ringing you.
 
@@ -503,7 +548,7 @@ public final class Agents {
         String tighten(@V("note") String note);
     }
 
-    // ---------------------------------------------------------------- 15 — the second-dog council
+    // ---------------------------------------------------------------- 16 — the second-dog council
     // The same question the voting demo asks, but put through a whole council — so the room has
     // already met the three assessors and can watch them ratify a debated motion instead of
     // voting cold. Both agents below are "glue": each exists to hand one pattern's output to the

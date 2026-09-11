@@ -30,9 +30,14 @@ class PatternCatalogTest {
      * events here, which shows up as a flaky "that agent never ran" failure.
      */
     private static Run run(PatternDef def) {
+        return run(def, def.defaultInput());
+    }
+
+    /** Same, with a typed-in input — for patterns whose behaviour depends on what is asked. */
+    private static Run run(PatternDef def, String input) {
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong());
-        String result = def.run(new MockChatModel(), def.defaultInput(), listener);
+        String result = def.run(new MockChatModel(), input, listener);
         return new Run(result, events);
     }
 
@@ -63,9 +68,9 @@ class PatternCatalogTest {
             }
         }
 
-        assertEquals(13, catalog.infos().stream()
+        assertEquals(14, catalog.infos().stream()
                         .filter(i -> !i.category().equals("composite")).count(),
-                "expected all 13 patterns registered");
+                "expected all 14 patterns registered");
         assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
     }
 
@@ -248,6 +253,38 @@ class PatternCatalogTest {
     }
 
     /**
+     * The hand-written planner is the one pattern whose whole point is a decision made in Java
+     * rather than by a builder or a model, so its policy is asserted directly: the ladder must
+     * stop at the first rung that can answer. A planner that always walks every tier is a
+     * sequence with extra ceremony, and it would pass every other test in this file.
+     */
+    @Test
+    void theCustomPlannerStopsAtTheFirstRungThatCanAnswer() {
+        var def = new PatternCatalog().byId("customPlanner").orElseThrow();
+
+        // A limp is past the book and past the trainer, so the ladder runs to the top.
+        Run medical = run(def);
+        assertTrue(medical.errors().isEmpty(), medical.errors()::toString);
+        assertEquals(List.of("PuppyBook", "TrainerOnCall", "VetOnCall"),
+                medical.invoked().stream().filter(a -> !a.equals("invoke")).toList(),
+                "a limp should escalate all the way, in cost order");
+
+        // Ordinary kibble question: the cheapest rung answers it and nothing else is called.
+        // This is the assertion that distinguishes the planner from a sequence.
+        Run basics = run(def, "which food should I buy for a four-year-old shepherd?");
+        assertEquals(List.of("PuppyBook"), basics.invoked().stream()
+                        .filter(a -> !a.equals("invoke")).toList(),
+                "the book answered, so nobody should have rung the trainer or the vet");
+        assertTrue(basics.result() != null && !basics.result().isBlank(), "no answer returned");
+
+        // A behaviour question stops one rung further up — never reaching the vet.
+        Run behaviour = run(def, "he pulls like a train on the lead");
+        assertEquals(List.of("PuppyBook", "TrainerOnCall"), behaviour.invoked().stream()
+                        .filter(a -> !a.equals("invoke")).toList(),
+                "the trainer answered, so the vet should not have been rung");
+    }
+
+    /**
      * A topology has to show the mechanism, not just the cast. These are the structural claims
      * each diagram makes; the geometry that renders them lives in the frontend.
      */
@@ -288,6 +325,16 @@ class PatternCatalogTest {
                 "each branch must say which category picks it");
         assertNull(role(catalog, "conditional", "join"),
                 "only one branch runs, so a join would misrepresent it");
+
+        // The escalation ladder must show BOTH ways out of every rung — on up, and out to the
+        // answer. Drawn as a plain chain it would read as a pipeline that always runs all three,
+        // which is the exact misreading the pattern exists to correct.
+        String exit = role(catalog, "customPlanner", "join");
+        assertEquals(3, inDegree(catalog, "customPlanner", exit),
+                "every rung needs its own way out, or the picture says only the vet can answer");
+        assertEquals(2, edges(catalog, "customPlanner").stream()
+                        .filter(e -> "ESCALATE".equals(e.label())).count(),
+                "the two lower rungs escalate; the top one has nowhere to escalate to");
 
         // Supervisor and blackboard are loops, not one-way arrows.
         assertTrue(mutual(catalog, "supervisor", "supervisor", "routine"),

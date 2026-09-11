@@ -9,7 +9,7 @@ Two distinct halves:
 
 - **Root** (`README.md`) — talk planning: the through-line is "autonomy is a dial," told as "From Puppy
   to Pack." The `NN-*.md` planning docs referenced in the root README are the speaker's notes.
-- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 13
+- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 14
   LangChain4j agentic patterns, set in the life of **Zao**, a Belgian shepherd, and the household
   he runs. This is the code you will actually build and edit.
 
@@ -19,7 +19,7 @@ Two distinct halves:
 mvn quarkus:dev                       # dev mode + live reload; needs Maven 3.9+. Open http://localhost:8080
 mvn quarkus:dev -Ddashboard.model=mock  # no Ollama / no API key — deterministic offline run
 mvn -DskipTests package               # build fast-jar to target/quarkus-app/
-mvn test                              # smoke-runs all 13 patterns + both composites on the mock model
+mvn test                              # smoke-runs all 14 patterns + both composites on the mock model
 ```
 
 Point at a real model by overriding env vars (same code path as the default):
@@ -67,7 +67,9 @@ static files (no build step).
   - `Wiring` — `agent()`, `str()`, `result()`: the lines every pattern repeats.
   - `Parsing` — `score()`, `category()`, `items()`: defensive readers for what a model *actually*
     returns. Every one exists because a real model broke a pattern with no error at all.
-  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (6) · `CompositePatterns` (2).
+  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (7) · `CompositePatterns` (2).
+  - `EscalationPlanner` — the one hand-written `Planner`, in its own file because it is the
+    *subject* of its demo rather than plumbing for it: it has to be readable on a projector.
   **To add a pattern:** write it in the group matching its category and list it in that group's
   `all()`. `PatternCatalog` does not change. Every wiring is deliberately written to double as
   readable demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the
@@ -103,6 +105,34 @@ static files (no build step).
     pattern fit is.
   `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the rule-1 claims,
   so a prompt tweak that quietly turns a pattern back into decoration goes red. Extend it too.
+- **`customPlanner` is the §7 "middle ground" made runnable**, and the only pattern whose
+  behaviour lives in this repo rather than in the library. `EscalationPlanner` implements
+  `dev.langchain4j.agentic.planner.Planner` — which is a smaller interface than it looks:
+  `nextAction(PlanningContext)` returns `call(...)` to invoke agents or `done()` / `done(result)`
+  to stop, `init(InitPlanningContext)` hands you the sub-agents in declaration order, and
+  `firstAction` defaults to `nextAction` (so it runs once before anything has been invoked and
+  `previousAgentInvocation()` is null that first time). Everything else is a default method.
+  The policy is a **cost ladder**: `PuppyBook` → `TrainerOnCall` → `VetOnCall`, stopping at the
+  first rung whose answer ends `ANSWERED` rather than `ESCALATE`. Declaration order *is* the cost
+  order; no prompt says "cheapest first".
+  Why it has to be a custom planner, which is the only reason to write one — a sequence runs all
+  three every time, a conditional picks a rung up front from the question alone, a loop re-runs
+  the same agents, and a supervisor would hand an LLM your cost policy. The decision here depends
+  on **what came back**, which is what `PlanningContext.previousAgentInvocation().output()` is
+  for and what none of the built-in builders can express.
+  Two things worth keeping if you touch it:
+  - **The result names the rung that settled it** ("asked 1 of 3 rungs"), read from
+    `AgenticScope.agentInvocations()`. Return just the answer and the one thing that distinguishes
+    this from a sequence becomes invisible.
+  - **`MockChatModel.kind()` reads only the question, never the tier's instructions.** Every
+    tier's prompt explains what is past it ("anything about pain, injury or illness"), so a match
+    against the whole prompt finds "injur" every time, classifies everything as medical, and the
+    ladder walks to the top no matter what is asked — a planner that behaves exactly like a
+    sequence. `PatternCatalogTest.theCustomPlannerStopsAtTheFirstRungThatCanAnswer` is what
+    caught that, and it asserts the early exit on three different questions for that reason.
+  On stage: the default input (a limp) walks all three rungs; type "which food should I buy?" and
+  it stops at the book, or "he pulls like a train on the lead" and it stops at the trainer. That
+  works offline too — the mock has three canned ladders.
 - **`sitterNote` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
   pattern: conditional routing sends the owner's worry to the right person, a parallel step plans
   the meals and the walks, a sequence merges all three into one note for the fridge door, and a

@@ -301,6 +301,33 @@ public class MockChatModel implements ChatModel {
                                 + "indoors at all. Stand still and say nothing until he goes, "
                                 + "then tell him he is wonderful the second he finishes."),
 
+                // --- 14b. The escalation ladder. Each tier decides from the QUESTION which
+                // kind it is, so the ladder stops at a different rung depending on what is
+                // asked — which is the whole demo. A kibble question stops at the book, a
+                // pulling question at the trainer, a limp goes all the way. Three canned
+                // ladders, all deterministic, so the early exit can be shown offline by just
+                // typing a different question.
+                new Rule(p -> p.contains("puppy book on the shelf"),
+                        p -> kind(p) == Kind.BASICS
+                                ? "Feed a four-year-old shepherd of that size twice a day, a "
+                                        + "measured amount from the bag's chart, and weigh him "
+                                        + "monthly rather than guessing by eye. ANSWERED"
+                                : "There is nothing in here about that — the book only covers "
+                                        + "food, kit, grooming and routine. ESCALATE"),
+                new Rule(p -> p.contains("trainer, reached by telephone"),
+                        p -> kind(p) == Kind.BEHAVIOUR
+                                ? "Stop the walk dead the moment the lead goes tight, and only "
+                                        + "move off when it slackens — he learns that pulling "
+                                        + "makes the walk stop. Ten minutes of that daily beats "
+                                        + "an hour of being dragged. ANSWERED"
+                                : "That is not a training problem and I would be guessing. If he "
+                                        + "is sore or unwell it needs the vet, not me. ESCALATE"),
+                new Rule(p -> p.contains("you are the vet"),
+                        p -> "Keep him still and off stairs, and do not give him any human "
+                                + "painkiller — several are toxic to dogs. A sudden refusal to "
+                                + "weight-bear needs examining today, so ring for an appointment "
+                                + "this morning. ANSWERED"),
+
                 // --- 15. The council. The chair and the glue are listed before the two
                 // advocates, because all three prompts talk about a motion.
                 new Rule(p -> p.contains("chair the household council"),
@@ -391,6 +418,50 @@ public class MockChatModel implements ChatModel {
         return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Two things to start now: "
                 + "move his bed out of your room this month, and teach a settle on a mat. Keep "
                 + "the walks exactly as they are.\"}}";
+    }
+
+    /** Which rung of the escalation ladder a question belongs on. */
+    private enum Kind { BASICS, BEHAVIOUR, MEDICAL }
+
+    private static final String[] MEDICAL_WORDS = {
+            "limp", "blood", "bleeding", "vomit", "sick", "swollen", "collapse", "breathing",
+            "not eating", "won't eat", "lump", "sore", "hurt", "injur", "poison", "ate a"
+    };
+    private static final String[] BEHAVIOUR_WORDS = {
+            "pull", "bark", "bite", "biting", "growl", "jump", "recall", "come back", "lead",
+            "aggress", "scared", "afraid", "anxious", "chew", "destroy", "toilet", "training"
+    };
+
+    /**
+     * Reads ONLY the question, never the tier's own instructions. This one is worth the comment
+     * because the obvious version is wrong in a way tests caught and eyes would not: every tier's
+     * prompt explains what is past it ("anything about pain, injury or illness"), so a match
+     * against the whole prompt finds "injur" every single time, classifies every question as
+     * medical, and the ladder walks to the top no matter what is asked — a planner that looks
+     * exactly like a sequence.
+     *
+     * <p>The question is the last thing in every tier's template, hence {@code lastIndexOf}. A
+     * missing marker means the wording in {@link Agents} changed: fall back to MEDICAL, so the
+     * ladder visibly runs to the top rather than silently answering everything from the book.
+     */
+    private static Kind kind(String prompt) {
+        String lower = prompt.toLowerCase(Locale.ROOT);
+        int at = lower.lastIndexOf("question:");
+        if (at < 0) {
+            return Kind.MEDICAL;
+        }
+        String q = lower.substring(at + "question:".length());
+        for (String w : MEDICAL_WORDS) {
+            if (q.contains(w)) {
+                return Kind.MEDICAL;
+            }
+        }
+        for (String w : BEHAVIOUR_WORDS) {
+            if (q.contains(w)) {
+                return Kind.BEHAVIOUR;
+            }
+        }
+        return Kind.BASICS;
     }
 
     /** What the room already knows, in a table: the dangerous ones and the harmless ones. */

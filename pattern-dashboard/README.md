@@ -1,6 +1,6 @@
 # LangChain4j Agentic Patterns — Zao Dashboard
 
-A Quarkus web app that visualizes and **live-runs** all 13 LangChain4j agentic patterns plus two
+A Quarkus web app that visualizes and **live-runs** all 14 LangChain4j agentic patterns plus two
 composite systems. Each pattern is streamed over Server-Sent Events and animated on an SVG
 topology graph, with a live scope-state panel and an event console.
 
@@ -72,7 +72,7 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 
 ## API
 
-- `GET /api/patterns` — JSON metadata + static topology for all 13 patterns and both composites.
+- `GET /api/patterns` — JSON metadata + static topology for all 14 patterns and both composites.
 - `GET /api/patterns/{id}/run?input=...` — `text/event-stream` of `RunEvent`s
   (`run-start`, `agent-before`, `agent-after`, `agent-error`, `run-result`, `run-done`).
 
@@ -93,8 +93,16 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 | `voting` | A second dog? Three criteria over one household — money says yes, the other two say later |
 | `debate` | Two weeks in Tuscany: take him, or leave him with a sitter? |
 | `bdi` | The puppy's first hour, ordered by desire **priority** rather than declaration order |
+| `customPlanner` | A hand-written `Planner`: ask the book, then the trainer, then the vet — stop at the first rung that can answer |
 | `sitterNote` | *Composite:* routing + parallel + merge + refinement loop → the note on the fridge |
 | `secondDogCouncil` | *Composite:* mapper + debate + vote, and the glue agents between them |
 
 `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the claims above, so
 a prompt change that turns a pattern back into decoration fails the build rather than the talk.
+
+`customPlanner` is the only one whose behaviour lives in this repo rather than in the library:
+`EscalationPlanner` implements `dev.langchain4j.agentic.planner.Planner` in about forty lines.
+Change the question and it stops at a different rung — "which food should I buy?" stops at the
+book, "he pulls like a train on the lead" stops at the trainer, a limp goes all the way. That
+decision depends on what came back from the previous rung, which is the one thing none of the
+built-in builders can express, and the only good reason to write a planner yourself.
