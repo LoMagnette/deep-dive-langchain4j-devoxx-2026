@@ -56,51 +56,45 @@ before `java -jar` (e.g. `cp -r target/quarkus-app /tmp/app && java -jar /tmp/ap
 
 ## Architecture
 
-Backend is one package per concern under `src/main/java/dev/devoxx/dashboard/`; the frontend is
-four static files (no build step). Every package carries a `package-info.java` saying what it is
-for — read that first, it is the shortest path into any part of this.
+Backend is **one package per demo** under `src/main/java/dev/devoxx/dashboard/demos/`, plus a
+few shared packages; the frontend is four static files (no build step). Every package carries a
+`package-info.java` saying what it is for — read that first, it is the shortest path in.
 
 ```
-agents/          44 agent contracts, ONE INTERFACE PER FILE
-  workflow/      … the six deterministic patterns' agents (11)
-  pureagent/     … the supervisor's two
-  zoo/           … the pattern zoo's (21)
-  composite/     … the two composites' own, mostly glue (10)
-catalog/         what patterns exist, how each is wired, the graph the page draws
-planner/         planners we wrote by hand (EscalationPlanner)
+demos/<id>/      EVERYTHING for one demo, and nothing else:
+                   its agent contracts, one interface per file
+                   its XxxPattern — topology + Runner
+                   package-info.java — what this demo is for
+  single/ sequential/ loop/ parallel/ parallelmapper/ conditional/
+  supervisor/
+  goap/ p2p/ blackboard/ voting/ debate/ bdi/ customplanner/
+  sitternote/ seconddogcouncil/
+catalog/         PatternCatalog (the registry) · PatternDef · Topology
 support/         Wiring · Parsing · Errors — the shared pieces every pattern repeats
 model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
 run/             RunEvent · StreamingListener — observing a run
 web/             PatternResource · LogResource · LogStream — REST and SSE
 ```
 
-- **The agent sub-packages mirror the catalogue exactly**, so *"where does this agent live?"* has
-  the same answer as *"where does this pattern live?"*. An agent lives where it is first
-  introduced and is imported from there when reused — the three assessors vote in `zoo` and
-  ratify in `composite`; `FridgeRuleCheck` is both the loop's critic and the capstone's. That
-  reuse is the point of these being contracts rather than prompts inlined at the call site.
-  A file is one `@Agent` interface and its javadoc; the reasoning that used to sit in section
-  comments now sits on the first agent of each section, and the two rules that govern every
-  scenario are in `agents/package-info.java`.
-- **The catalogue is one file per rail category**, so the source layout mirrors the talk's arc and
-  "where does this pattern go?" has one answer:
-  - `PatternCatalog` — registry only (~40 lines): what is in the catalogue and in what order.
-  - `PatternDef` — the entry type, with nested `Runner` (the live wiring) and `PatternInfo` (the
-    JSON the page gets: the same thing minus the runnable part).
-  - `Topology` — the static graph description the frontend renders.
-  - `WorkflowPatterns` (6) · `PureAgentPatterns` (1) · `ZooPatterns` (7) · `CompositePatterns` (2),
-    all package-private: only `PatternCatalog` needs them, and keeping them so says as much.
-  **To add a pattern:** add the agent interface(s) to the `agents` sub-package matching the
-  category, write the pattern in the group class matching it, and list it in that group's `all()`.
-  `PatternCatalog` does not change. Every wiring is deliberately written to double as readable
-  demo code, so keep the helpers statically imported — `agent(...)`, `score(s)` read the way they
-  did when it was all one class.
+- **The package is named after the pattern id**, lowercased. So the deep link on a slide
+  (`#/loop`) names the package to open on stage (`demos.loop`), and `#/secondDogCouncil` is
+  `demos.seconddogcouncil`. Keep that rule when adding a demo — it is the whole reason the
+  packages are named this way rather than after the concept.
+- **An agent lives in the demo that introduces it**, and later demos import it from there. That is
+  deliberate, and worth pointing at on stage: `sitternote` imports the loop's `FridgeRuleCheck`
+  and the routing demo's `WorryRouter`; `seconddogcouncil` imports the three assessors `voting`
+  introduced. A composite reuses the parts rather than re-implementing them, and its import list
+  says so before a word of explanation. Two shared default inputs work the same way —
+  `SinglePattern.SITTER_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
+  used by the council).
+- **`PatternCatalog` is the registry and nothing else**: sixteen `XxxPattern.define()` calls in
+  the talk's running order, grouped by comments for the four rail categories. Adding a demo is a
+  new package plus one line here.
 - **`run` is deliberately not part of `web`.** A run is observable whether or not anything is
   watching over HTTP, which is exactly what lets the tests assert on the same `RunEvent`s the
-  browser animates. `catalog` depends on `run` (a `Runner` takes a listener); nothing depends on
-  `web`.
-- **Tests mirror the packages**: `catalog/PatternCatalogTest` (the pattern runs, the demo-integrity
-  claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
+  browser animates. `catalog` and every demo depend on `run`; nothing depends on `web`.
+- **Tests mirror the shared packages**: `catalog/PatternCatalogTest` (the pattern runs, the
+  demo-integrity claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
   `run/StreamingListenerTest`.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
@@ -134,7 +128,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the rule-1 claims,
   so a prompt tweak that quietly turns a pattern back into decoration goes red. Extend it too.
 - **`customPlanner` is the §7 "middle ground" made runnable**, and the only pattern whose
-  behaviour lives in this repo rather than in the library. `EscalationPlanner` implements
+  behaviour lives in this repo rather than in the library. `demos/customplanner/` holds all of
+  it — the three tier agents, the planner, and the wiring. `EscalationPlanner` implements
   `dev.langchain4j.agentic.planner.Planner` — which is a smaller interface than it looks:
   `nextAction(PlanningContext)` returns `call(...)` to invoke agents or `done()` / `done(result)`
   to stop, `init(InitPlanningContext)` hands you the sub-agents in declaration order, and
@@ -198,8 +193,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     a rule matching a word which appears in the *note* hijacks the loop's second pass, and the
     composite returns the wrong stage's answer with no error at all. See the rule ordering note
     in `MockChatModel`.
-- **`agents/**`** — one public interface per file (`@Agent` + `@UserMessage`/`@V`), so LangChain4j
-  can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
+- **`demos/<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@V`), so
+  LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
   `currentModel()` re-probes when the last attempt fell back. `PatternResource` calls `currentModel()`
@@ -248,7 +243,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
-  `agents.workflow.FridgeRuleCheck` returns one.
+  `demos.loop.FridgeRuleCheck` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
   markdown subset, topology layout/drawing — functions of their arguments, which is why the same
@@ -363,9 +358,10 @@ stream back as `RunEvent`s → the page animates the topology and updates the sc
 
 ## Adding a pattern (the common task)
 
-1. Add one file per agent under `agents/<category>/` — one `@Agent` interface each.
-2. Add a `private PatternDef xxx()` method (topology + `Runner`) to the group class for that
-   category, and list it in that group's `all()`. `PatternCatalog` does not change.
+1. Make a package `demos/<id>/`, named after the pattern id in lowercase.
+2. Put one file per agent in it (one `@Agent` interface each), an `XxxPattern` with a
+   `public static PatternDef define()`, and a `package-info.java` saying what the demo shows.
+   Then add one line to `PatternCatalog.build()`.
 3. If running under the mock, add a rule to `MockChatModel`'s table — and mind where you put it:
    the table is ordered, and a rule keyed on a word that appears in quoted content will hijack
    another agent's prompt.

@@ -1,18 +1,37 @@
 package dev.devoxx.dashboard.catalog;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import dev.devoxx.dashboard.demos.single.SinglePattern;
+import dev.devoxx.dashboard.demos.sequential.SequentialPattern;
+import dev.devoxx.dashboard.demos.loop.LoopPattern;
+import dev.devoxx.dashboard.demos.parallel.ParallelPattern;
+import dev.devoxx.dashboard.demos.parallelmapper.ParallelMapperPattern;
+import dev.devoxx.dashboard.demos.conditional.ConditionalPattern;
+import dev.devoxx.dashboard.demos.supervisor.SupervisorPattern;
+import dev.devoxx.dashboard.demos.goap.GoapPattern;
+import dev.devoxx.dashboard.demos.p2p.P2pPattern;
+import dev.devoxx.dashboard.demos.blackboard.BlackboardPattern;
+import dev.devoxx.dashboard.demos.voting.VotingPattern;
+import dev.devoxx.dashboard.demos.debate.DebatePattern;
+import dev.devoxx.dashboard.demos.bdi.BdiPattern;
+import dev.devoxx.dashboard.demos.customplanner.CustomPlannerPattern;
+import dev.devoxx.dashboard.demos.sitternote.SitterNotePattern;
+import dev.devoxx.dashboard.demos.seconddogcouncil.SecondDogCouncilPattern;
 import dev.devoxx.dashboard.catalog.PatternDef.PatternInfo;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * The registry. Everything interesting lives in the group classes — this only decides what is
- * in the catalogue and in which order, which is also the order the rail and the gallery show.
+ * The registry, and nothing else: what is in the catalogue and in what order — which is also the
+ * order the rail and the gallery show, and the order the talk runs in.
  *
- * <p>To add a pattern, put it in the group matching its category and list it in that group's
- * {@code all()}. Nothing here needs to change.
+ * <p>One entry per demo, each defined in its own package under {@code demos/}. The package is
+ * named after the pattern id, so the deep link a slide points at ({@code #/loop}) names the
+ * package to open on stage ({@code demos.loop}).
+ *
+ * <p>To add a demo: make a package for it, put its agents and its {@code XxxPattern} in there,
+ * and add one line here.
  */
 @ApplicationScoped
 public class PatternCatalog {
@@ -20,12 +39,27 @@ public class PatternCatalog {
     private final List<PatternDef> patterns = build();
 
     private static List<PatternDef> build() {
-        List<PatternDef> all = new ArrayList<>();
-        all.addAll(WorkflowPatterns.all());
-        all.addAll(PureAgentPatterns.all());
-        all.addAll(ZooPatterns.all());
-        all.addAll(CompositePatterns.all());
-        return List.copyOf(all);
+        return List.of(
+                // Workflows — you decide the path
+                SinglePattern.define(),
+                SequentialPattern.define(),
+                LoopPattern.define(),
+                ParallelPattern.define(),
+                ParallelMapperPattern.define(),
+                ConditionalPattern.define(),
+                // Pure agents — the model decides the path
+                SupervisorPattern.define(),
+                // The pattern zoo — planners that decide the turns, the last one ours
+                GoapPattern.define(),
+                P2pPattern.define(),
+                BlackboardPattern.define(),
+                VotingPattern.define(),
+                DebatePattern.define(),
+                BdiPattern.define(),
+                CustomPlannerPattern.define(),
+                // Putting it together
+                SitterNotePattern.define(),
+                SecondDogCouncilPattern.define());
     }
 
     public List<PatternInfo> infos() {
