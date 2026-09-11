@@ -66,20 +66,49 @@ body:not(.on-grid) .gallery{display:none}
 .gallery-head{padding:14px 4px 16px}
 .gallery-head h2{font-family:var(--display);margin:0 0 4px;font-size:25px;letter-spacing:-.02em}
 .gallery-head p{margin:0;color:var(--muted);font-size:14.5px}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));padding-bottom:6px}
+/* Categories are separated physically rather than tagged on each card. The rail groups them the
+   same way and in the same order, so the two views do not teach different arrangements — and a
+   chip on every card competed with the pattern's own name for the top-left corner while making
+   the reader do the sorting the layout can do for them. */
+.groups{display:flex;flex-direction:column;gap:28px;padding-bottom:8px}
+.group-head{display:flex;align-items:baseline;gap:9px;margin:0 4px 11px;padding-bottom:7px;
+  border-bottom:1px solid var(--line)}
+.group-head h3{font-family:var(--display);margin:0;font-size:17.5px;letter-spacing:-.01em}
+.group-head .note{color:var(--muted);font-size:13px}
+.group-head .count{margin-left:auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+/* The dot keeps the colour each category used to carry on its chip — a quick anchor when
+   scrolling, at a size that cannot read as a badge. */
+.group-head .dot{flex:0 0 auto;width:9px;height:9px;border-radius:3px;background:var(--muted);
+  align-self:center}
+.group-head .dot.pure-agent{background:var(--accent)}
+.group-head .dot.pattern-zoo{background:var(--accent2)}
+.group-head .dot.composite{background:var(--ink)}
+/* Three cards a row at most. The track minimum is the LARGER of the card's own minimum and a
+   third of the row, so a wide screen lands on exactly three (three thirds plus the two gaps is
+   the whole row — a fourth cannot fit) while a narrow one still falls back to two and then one.
+   That is one line instead of a ladder of media queries, and there is no width at which it can
+   produce four. Unbounded auto-fill put five or six across a big monitor, which made the grid
+   read as a list and shrank the topology thumbnails past recognising.
+   auto-fill, NOT auto-fit: the sections with one or two patterns keep cards the same size as
+   everywhere else instead of stretching a lone card across the row.
+   The 28px is the two gaps between three cards — keep it in step with `gap` on the line above. */
+.cards{display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fill,minmax(max(255px,(100% - 28px)/3),1fr))}
+@media (max-width:560px){
+  /* Stacked headings need the note on its own line or it squeezes the group name to two words. */
+  .group-head{flex-wrap:wrap}
+  .group-head .count{margin-left:0}
+}
 /* Cards are real links, so Back, keyboard and open-in-new-tab all work without JS. */
 .card{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--panel);
   border-radius:16px;padding:14px 15px 13px;box-shadow:var(--shadow);
   transition:transform .12s ease, box-shadow .12s ease}
 .card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(0,0,0,.06),0 16px 34px -16px rgba(0,0,0,.30)}
 .card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.card h3{font-family:var(--display);margin:8px 0 5px;font-size:16.5px;letter-spacing:-.01em}
+/* No top margin any more: the category chip that used to sit above the name is gone, so the
+   name is the first thing in the card. */
+.card h3{font-family:var(--display);margin:0 0 5px;font-size:16.5px;letter-spacing:-.01em}
 .card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.4}
-.cat{align-self:flex-start;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
-  padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--muted)}
-.cat.pure-agent{background:var(--accent-soft);color:var(--accent)}
-.cat.composite{background:var(--accent);color:var(--btn-ink);}
-  .cat.pattern-zoo{color:var(--accent2);background:color-mix(in srgb,var(--accent2) 12%,transparent)}
 /* A shape signature: you learn to recognise a fan-out from a chain before reading the name. */
 .thumb{width:100%;height:60px;display:block;margin-top:12px;background:var(--panel2);border-radius:10px}
 .thumb .tedge{stroke:var(--node-line);stroke-width:5;fill:none}

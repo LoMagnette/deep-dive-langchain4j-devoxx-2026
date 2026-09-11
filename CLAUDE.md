@@ -198,10 +198,24 @@ static files (no build step).
   catalogue, SSE runs, the dock, layout chrome). Classic deferred scripts in that order, not ES
   modules — they share globals and load in sequence. The **theme bootstrap stays inline in
   `<head>`**: it has to set `data-theme` before first paint or dark users get a white flash, and an
-  external file cannot guarantee that. Two hash routes share the main column: `#/` is the **gallery** (a card grid — one card per pattern with its
-  category, its `useful` line, and a label-free thumbnail of its topology drawn by the same `layout()`
-  the real diagram uses, so a fan-out is recognisable from a chain at a glance), and `#/<id>` is the
-  **tester**. Cards are real `<a href="#/id">` anchors, so Back, keyboard and open-in-new-tab work
+  external file cannot guarantee that. Two hash routes share the main column: `#/` is the **gallery** and `#/<id>` is the
+  **tester**. The gallery is **one section per category, not a flat grid of tagged cards**: the
+  categories are separated physically, under a heading that carries the group's name, a one-line
+  gloss in the talk's own words (`CAT_NOTES` — "you decide the path" / "the model decides the
+  path") and a count. Same categories in the same order as the rail, so the two views never teach
+  different arrangements. A category chip on every card was the earlier design and it was worse
+  twice over: it made the reader sort what the layout can sort for them, and it competed with the
+  pattern's own name for the top-left of the card. The colour each chip carried survives as a
+  small dot on the group heading. A card holds the pattern's name, its `useful` line, and a
+  label-free thumbnail of its topology drawn by the same `layout()` the real diagram uses, so a
+  fan-out is recognisable from a chain at a glance. **Three cards a row at most** — the track
+  minimum is `max(255px, (100% - 28px)/3)`, so a wide screen lands on exactly three and a narrow
+  one still falls back to two and then one, with no width in between that yields four. Unbounded
+  `auto-fill` put five or six across a large monitor, which read as a list and shrank the
+  thumbnails past recognising. It stays `auto-fill` rather than `auto-fit` so the one- and
+  two-pattern sections keep cards the same size as every other section. `buildGallery` orders the sections by
+  `CAT_LABELS` and then appends any category not named there, so a new `category` value shows up
+  in the gallery even before someone gives it a label. Cards are real `<a href="#/id">` anchors, so Back, keyboard and open-in-new-tab work
   without JS, and a pattern can be deep-linked straight from a slide. An unknown id falls back to the
   gallery rather than rendering a blank page. The tester's layout is
   title → run controls → full-width SVG diagram → bottom dock. The dock has four tabs: **Result**

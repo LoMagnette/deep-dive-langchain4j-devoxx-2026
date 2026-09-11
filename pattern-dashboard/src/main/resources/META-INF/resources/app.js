@@ -3,6 +3,14 @@
 
 const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
                     "pattern-zoo":"Pattern zoo","composite":"Putting it together"};
+/* One line per group, in the talk's own words (see the through-line diagram in the root README).
+   The gallery separates the categories physically instead of tagging every card, and a heading
+   that says what the group MEANS is the reason the separation is worth having — otherwise it is
+   just the same cards with more whitespace. */
+const CAT_NOTES = {"workflow":"You decide the path",
+                   "pure-agent":"The model decides the path",
+                   "pattern-zoo":"The middle ground — a planner decides the turns",
+                   "composite":"Several patterns wired into one system"};
 let patterns = [], current = null, es = null;
 
 async function boot(){
@@ -55,18 +63,44 @@ function buildGallery(){
     ? `Each one runs live against a real model — plus ${composites === 1 ? 'a system that combines'
         : composites + ' systems that combine'} them. Pick one to try it.`
     : 'Every one of them runs live against a real model. Pick one to try it.';
-  const grid = document.getElementById('grid');
-  grid.innerHTML = '';
-  patterns.forEach(p => {
-    const a = document.createElement('a');
-    a.className = 'card';
-    a.href = '#/' + encodeURIComponent(p.id);
-    a.dataset.id = p.id;
-    a.innerHTML = `<span class="cat ${escapeHtml(p.category)}">${escapeHtml(CAT_LABELS[p.category]||p.category)}</span>`
-      + `<h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.useful)}</p>`
-      + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`;
-    grid.appendChild(a);
-    drawThumb(a.querySelector('.thumb'), p.topology);
+  /* Grouped into sections rather than a flat grid with a category chip on every card. The chip
+     made the reader do the sorting that the layout can do for them, and it competed with the
+     pattern's own name for the top-left of the card. Same categories and same order as the rail,
+     so moving between the two does not re-teach the arrangement. */
+  const groups = document.getElementById('grid');
+  groups.innerHTML = '';
+  const byCat = {};
+  patterns.forEach(p => (byCat[p.category] ||= []).push(p));
+  // CAT_LABELS first (the talk's order), then anything a future category adds, so a new
+  // category appears in the gallery even before it is named here.
+  const order = [...Object.keys(CAT_LABELS), ...Object.keys(byCat)]
+    .filter((c, i, a) => byCat[c] && a.indexOf(c) === i);
+
+  order.forEach(cat => {
+    const section = document.createElement('section');
+    section.className = 'group';
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    head.innerHTML = `<span class="dot ${escapeHtml(cat)}"></span>`
+      + `<h3>${escapeHtml(CAT_LABELS[cat] || cat)}</h3>`
+      + (CAT_NOTES[cat] ? `<span class="note">${escapeHtml(CAT_NOTES[cat])}</span>` : '')
+      + `<span class="count">${byCat[cat].length}</span>`;
+    section.appendChild(head);
+    const cards = document.createElement('div');
+    cards.className = 'cards';
+    section.appendChild(cards);
+    groups.appendChild(section);
+
+    byCat[cat].forEach(p => {
+      const a = document.createElement('a');
+      a.className = 'card';
+      a.href = '#/' + encodeURIComponent(p.id);
+      a.dataset.id = p.id;
+      a.innerHTML = `<h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.useful)}</p>`
+        + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`;
+      cards.appendChild(a);
+      drawThumb(a.querySelector('.thumb'), p.topology);
+    });
   });
 }
 
