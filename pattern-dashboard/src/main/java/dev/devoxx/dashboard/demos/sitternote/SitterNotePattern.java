@@ -1,0 +1,120 @@
+package dev.devoxx.dashboard.demos.sitternote;
+
+import static dev.devoxx.dashboard.catalog.Topology.edge;
+import static dev.devoxx.dashboard.catalog.Topology.graph;
+import static dev.devoxx.dashboard.catalog.Topology.node;
+import static dev.devoxx.dashboard.support.Parsing.category;
+import static dev.devoxx.dashboard.support.Parsing.score;
+import static dev.devoxx.dashboard.support.Wiring.agent;
+import static dev.devoxx.dashboard.support.Wiring.result;
+
+import java.util.List;
+import java.util.Map;
+
+import dev.devoxx.dashboard.catalog.PatternDef;
+import dev.devoxx.dashboard.catalog.PatternDef.Runner;
+import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.conditional.DogTrainer;
+import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos.conditional.EverydayCare;
+import dev.devoxx.dashboard.demos.conditional.WorryRouter;
+import dev.devoxx.dashboard.demos.loop.FridgeRuleCheck;
+import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
+
+/**
+ * Wiring for the <b>sitter note (composite)</b> demo — the capstone: four patterns composed into the note on the fridge door.
+ */
+public final class SitterNotePattern {
+
+    private SitterNotePattern() {
+    }
+
+    public static PatternDef define() {
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "the weekend", "input", 0),
+                        node("router", "WorryRouter", "router", 1),
+                        node("vet", "EmergencyVet", "agent", 2),
+                        node("trainer", "DogTrainer", "agent", 2),
+                        node("care", "EverydayCare", "agent", 2),
+                        node("meals", "MealPlanner", "agent", 2),
+                        node("walks", "WalkPlanner", "agent", 2),
+                        node("merge", "SitterNoteMerger", "join", 3),
+                        node("tighten", "NoteTightener", "agent", 4),
+                        node("check", "FridgeRuleCheck", "agent", 4)),
+                List.of(edge("in", "router"),
+                        edge("router", "vet", "emergency"),
+                        edge("router", "trainer", "training"),
+                        edge("router", "care", "everyday"),
+                        edge("in", "meals", "in parallel"),
+                        edge("in", "walks"),
+                        edge("vet", "merge"), edge("trainer", "merge"),
+                        edge("care", "merge", "answer"),
+                        edge("meals", "merge"), edge("walks", "merge"),
+                        edge("merge", "tighten", "note"),
+                        edge("tighten", "check"),
+                        edge("check", "tighten", "score < 0.8")));
+
+        Runner runner = (model, input, listener) -> {
+            // 1. Conditional routing — one LLM judgement decides who answers the worry.
+            var router = agent(WorryRouter.class, model, "WorryRouter", "category");
+            var vet = agent(EmergencyVet.class, model, "EmergencyVet", "answer");
+            var trainer = agent(DogTrainer.class, model, "DogTrainer", "answer");
+            var care = agent(EverydayCare.class, model, "EverydayCare", "answer");
+            UntypedAgent triage = AgenticServices.conditionalBuilder()
+                    .subAgents(s -> category(s).equals("emergency"), vet)
+                    .subAgents(s -> category(s).equals("training"), trainer)
+                    .subAgents(s -> category(s).equals("everyday"), care)
+                    .build();
+
+            // 2. Parallel — meals and walks do not need each other, so fan them out.
+            var meals = agent(MealPlanner.class, model, "MealPlanner", "meals");
+            var walks = agent(WalkPlanner.class, model, "WalkPlanner", "walks");
+            UntypedAgent plan = AgenticServices.parallelBuilder()
+                    .subAgents(meals, walks)
+                    .build();
+
+            // 3. Loop — refine the note until the four fridge-door rules hold, never forever.
+            //    FridgeRuleCheck is the same agent the standalone loop demo uses: a composite
+            //    reuses the parts, it does not re-implement them.
+            var tighten = agent(NoteTightener.class, model, "NoteTightener", "note");
+            var check = agent(FridgeRuleCheck.class, model, "FridgeRuleCheck", "score");
+            UntypedAgent refine = AgenticServices.loopBuilder()
+                    .subAgents(tighten, check)
+                    .maxIterations(3)
+                    .exitCondition(s -> score(s) >= 0.8)
+                    .testExitAtLoopEnd(true)
+                    .build();
+
+            // 4. Sequence — the spine that holds the three composites plus the merge step.
+            var merge = agent(SitterNoteMerger.class, model, "SitterNoteMerger", "note");
+            UntypedAgent app = AgenticServices.sequenceBuilder()
+                    .subAgents(router, triage, plan, merge, refine)
+                    .outputKey("note")
+                    .listener(listener)
+                    .build();
+            // The same text under two keys, and not by accident: the router and the three
+            // specialists ask "what is the worry", the two planners ask "what is the stay".
+            // Reusing an agent means accepting the key IT already declared — this one line is
+            // the seam the caveat is about, and getting it wrong is a MissingArgumentException
+            // pointing at a step that looks unrelated.
+            var r = app.invokeWithAgenticScope(Map.of("worry", input, "stay", input));
+            return result(r, "note");
+        };
+
+        return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",
+                "A real system, not a pattern: the owner's worry is routed to the right person, a "
+                        + "parallel step plans the meals and the walks, a sequence merges all "
+                        + "three into one note for the fridge door, and a loop tightens it until "
+                        + "it passes the same four rules as the loop demo. Deterministic "
+                        + "scaffolding with LLM judgement at exactly three points.",
+                // caveat: the interesting failures in composites are at the seams, not inside them.
+                "Composites fail at the seams: every step depends on a key an earlier one wrote, "
+                        + "so one agent answering off-format breaks a step that looks unrelated.",
+                topo,
+                "we're away Friday to Sunday and my sister is having Zao. He's on two scoops "
+                        + "morning and evening, he pulls like a train on the lead, and it's New "
+                        + "Year so there will be fireworks both nights.",
+                runner);
+    }
+}
