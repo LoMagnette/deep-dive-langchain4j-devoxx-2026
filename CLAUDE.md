@@ -236,6 +236,33 @@ static files (no build step).
   double-click to reset); both sizes persist in `localStorage` under `dashboard.layout`, so a reload
   or a dev-mode restart mid-talk doesn't undo how the room's view was set up. Every storage access is
   wrapped — a private-mode browser where `localStorage` throws must still boot the page.
+- **Edge labels are placed, not just positioned** (`placeEdgeLabels` / `fitEdgeLabels` in
+  `render.js`). They are the only thing that says *what* travels along an arrow — `score < 0.8` is
+  the loop's exit condition — and they were frequently unreadable for four reasons, none of which
+  was the font size. Worth knowing before touching that code, because each fix has an invariant:
+  - They were appended **before** the nodes, so any label landing on a node box was painted over
+    by it — total, not partial, because node fills are opaque. They now go on last. Keep it that
+    way: it is why the label wins when a diagram is genuinely too tight to avoid a box.
+  - Their anchor was the midpoint between node **centres**, which in a fan-out, a star, or any
+    edge spanning two columns is regularly inside a third node. Each label now slides along its
+    own curve (`at(t)`, which follows the real line/bow/arc it was drawn as) and perpendicular to
+    it, taking the first position clear of every node box and every label already placed. In a
+    chain the boxes are 150 wide and ~15 apart, so **no multi-word label can ever fit between
+    them** — the offsets deliberately reach far enough to sit above or below the row instead.
+  - Reserved boxes carry a margin (8×5), because two labels that merely fail to overlap still
+    read as one run of text: "needs been out" and "needs fed" landed 0.4px apart on the BDI
+    diagram and a plain collision check was perfectly happy with it.
+  - The diagram is a viewBox scaled to fit its pane, so a wide composite in a short dock is drawn
+    at under half size. `fitEdgeLabels` grows the labels in user units to hold them at a constant
+    size **on screen**, re-fired by a `ResizeObserver` in `app.js` (re-fit, never redraw — a
+    redraw would throw away which nodes are mid-run). **`EDGE_FS_MAX` is load-bearing:**
+    `placeEdgeLabels` reserves space at that size, so raising the cap without re-checking
+    placement silently brings the overlaps back.
+  Legibility, not just geometry: labels are haloed in the canvas colour via `paint-order` so the
+  glyphs sit on top of their own arrow, and inked at ~8:1 (`--edge-ink`) rather than `--muted`.
+  Edges and arrowheads use `--edge-line`, a shade darker than `--node-line`, which sits at ~1.3:1
+  on the canvas — fine for the outline of a filled box, invisible for a hairline arrow at the
+  back of a room, and the arrows *are* the topology.
 - **The diagrams deliberately do not draw the AgenticScope.** It was the identical terminal box in all
   13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
   is Blackboard, where the shared board *is* the pattern — remove it there and you get four

@@ -310,6 +310,17 @@ document.getElementById('rail-toggle').onclick = () =>
   setRailHidden(!!p.railHidden, false);
 })();
 
+/* The diagram is a viewBox scaled to fit its pane, so dragging the dock, collapsing the rail or
+   resizing the window all change how far it is scaled down — and with it how big the edge labels
+   land on screen. Re-fit them rather than redraw: a redraw would throw away which nodes are
+   mid-run, and mid-talk that is the one thing on the screen worth keeping. */
+(function keepEdgeLabelsReadable(){
+  const wrap=document.querySelector('.graphwrap');
+  const svg=document.getElementById('graph');
+  if(!wrap || !svg || typeof ResizeObserver !== 'function') return;
+  new ResizeObserver(()=>fitEdgeLabels(svg)).observe(wrap);
+})();
+
 document.getElementById('run').onclick=run;
 document.getElementById('reset').onclick=()=>{ if(es){es.close();es=null;} document.getElementById('run').disabled=false; reset(); };
 boot();

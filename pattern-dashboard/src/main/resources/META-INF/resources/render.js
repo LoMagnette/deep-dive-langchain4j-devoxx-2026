@@ -137,7 +137,7 @@ function layout(topo){
 
 function drawGraph(topo){
   const svg=document.getElementById('graph');
-  svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--node-line)"/></marker></defs>';
+  svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--edge-line)"/></marker></defs>';
   const {nodes,idx,cw,ch}=layout(topo);
   svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);
   const order={}; topo.nodes.forEach((n,i)=>order[n.id]=i);
@@ -151,16 +151,25 @@ function drawGraph(topo){
   const pairs=new Set(topo.edges.map(e=>e.from+'->'+e.to));
   const isMutual = e => !arcLayout && pairs.has(e.to+'->'+e.from);
 
+  /* Labels are collected, not drawn, in this pass: they are placed once every node position is
+     known and appended AFTER the nodes. See placeEdgeLabels. */
+  const pending=[];
+
   topo.edges.forEach(e=>{
     const a=idx[e.from], b=idx[e.to]; if(!a||!b) return;
     const back = order[e.to] < order[e.from];
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
-    let lx=(a.x+b.x)/2, ly=(a.y+b.y)/2 - 8;
+    /* at(t) walks the curve this edge is actually drawn as, so a label can slide ALONG its own
+       arrow to find a clear spot instead of being pinned to the midpoint of a straight line it
+       is not drawn on. */
+    let at;
     if(back && (topo.layout==='chain'||topo.layout==='loop'||topo.layout==='dag')){
       const arc=Math.min(a.y,b.y)-70;
-      p.setAttribute('d',`M${a.x} ${a.y-NH/2} C ${a.x} ${arc}, ${b.x} ${arc}, ${b.x} ${b.y-NH/2}`);
+      const p0={x:a.x,y:a.y-NH/2}, c1={x:a.x,y:arc}, c2={x:b.x,y:arc}, p1={x:b.x,y:b.y-NH/2};
+      p.setAttribute('d',`M${p0.x} ${p0.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p1.x} ${p1.y}`);
       p.setAttribute('class','edge back');
-      ly=(a.y+b.y)/2 - 60;
+      at = t => { const u=1-t, k0=u*u*u, k1=3*u*u*t, k2=3*u*t*t, k3=t*t*t;
+        return {x:k0*p0.x+k1*c1.x+k2*c2.x+k3*p1.x, y:k0*p0.y+k1*c1.y+k2*c2.y+k3*p1.y}; };
     } else if(isMutual(e)){
       // Perpendicular offset, signed consistently so the two halves bow apart, not together.
       const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
@@ -168,17 +177,15 @@ function drawGraph(topo){
       const mx=(a.x+b.x)/2 - dy/len*bow, my=(a.y+b.y)/2 + dx/len*bow;
       p.setAttribute('d',`M${a.x} ${a.y} Q ${mx} ${my}, ${b.x} ${b.y}`);
       p.setAttribute('class','edge'+(back?' back':''));
-      lx=(a.x+b.x)/2 - dy/len*bow*0.75; ly=(a.y+b.y)/2 + dx/len*bow*0.75;
+      at = t => { const u=1-t;
+        return {x:u*u*a.x+2*u*t*mx+t*t*b.x, y:u*u*a.y+2*u*t*my+t*t*b.y}; };
     } else {
       p.setAttribute('d',`M${a.x} ${a.y} L ${b.x} ${b.y}`);
       p.setAttribute('class','edge');
+      at = t => ({x:a.x+(b.x-a.x)*t, y:a.y+(b.y-a.y)*t});
     }
     svg.appendChild(p);
-    if(e.label){
-      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x',lx); t.setAttribute('y',ly);
-      t.setAttribute('class','edgelabel'); t.textContent=e.label; svg.appendChild(t);
-    }
+    if(e.label) pending.push({text:e.label, at, a, b});
   });
   // nodes
   nodes.forEach(n=>{
@@ -193,6 +200,87 @@ function drawGraph(topo){
     t.textContent=lbl; g.appendChild(t);
     svg.appendChild(g);
   });
+  placeEdgeLabels(svg, pending, nodes);
+  fitEdgeLabels(svg);
+}
+
+/* Edge labels are the most fragile thing in the diagram: they are small, they float free of any
+   box, and they are the only thing that says WHAT travels along an arrow — "score < 0.8" is the
+   loop's exit condition, and a diagram that loses it has lost the pattern. Three separate things
+   were making them unreadable, and none of them was the font size:
+
+   1. They were appended BEFORE the nodes, so any label whose anchor landed on a node box was
+      painted over by it. Opaque node fills made this total, not partial — the commonest case,
+      and it looked like the label was missing rather than covered.
+   2. Their anchor was the midpoint between node CENTRES. In a fan-out, a star or a branch that
+      point is regularly inside a third node, or on top of a sibling edge's label.
+   3. They had no backing, so glyphs were crossed by their own arrow.
+
+   (3) is fixed in CSS with a halo (paint-order). This function fixes (1) by being called after
+   the nodes are appended, and (2) by sliding each label along its own curve — and perpendicular
+   to it — until it sits clear of every node box and every label already placed. */
+function placeEdgeLabels(svg, pending, nodes){
+  const boxes = nodes.map(n=>({x1:n.x-NW/2-5, y1:n.y-NH/2-5, x2:n.x+NW/2+5, y2:n.y+NH/2+5}));
+  const hits = (r,o) => r.x1 < o.x2 && r.x2 > o.x1 && r.y1 < o.y2 && r.y2 > o.y1;
+  /* Tried nearest the middle of the arrow first, then further along it, then pushed further off
+     to one side: a label that has to move should move as little as the picture allows.
+     The offsets have to reach past a node box (NH/2 = 23) plus half a label, because in a chain
+     the boxes are 150 wide and only ~15 apart — no multi-word label will EVER fit in that gap,
+     so the honest place for it is above or below the row rather than spilling across two nodes.
+     Negative first: above an arrow is where a reader looks for its label. */
+  const TS = [0.5, 0.44, 0.56, 0.38, 0.62, 0.32, 0.68, 0.26, 0.74];
+  const OFFS = [0, -16, 16, -27, 27, -36, 36, -45, 45, -56, 56];
+
+  pending.forEach(p=>{
+    /* No getBBox before the element is in the DOM, so estimate. Deliberately estimated at the
+       LARGEST size a label can be drawn at (EDGE_FS_MAX, see fitEdgeLabels) rather than at 12px:
+       the font grows when the diagram is scaled down, and space reserved for 12px text would be
+       overrun by the same label at 18px. Reserving the worst case makes the placement valid at
+       every pane size, and errs towards generous spacing, which is what legibility wants. */
+    const w = p.text.length*(EDGE_FS_MAX*0.54) + 8, h = EDGE_FS_MAX*1.25;
+    const dx=p.b.x-p.a.x, dy=p.b.y-p.a.y, len=Math.hypot(dx,dy)||1;
+    const nx=-dy/len, ny=dx/len;              // unit normal to the chord
+    let best=null, bestHits=Infinity;
+    outer:
+    for(const off of OFFS){
+      for(const t of TS){
+        const c=p.at(t);
+        const x=c.x+nx*off, y=c.y+ny*off - (off===0?9:0);   // clear the line when centred
+        const r={x1:x-w/2, y1:y-h/2, x2:x+w/2, y2:y+h/2};
+        const n=boxes.reduce((k,o)=>k+(hits(r,o)?1:0),0);
+        if(n===0){ best={x,y,r}; break outer; }
+        // Nothing is clear yet — remember the least bad, so a cramped diagram degrades to one
+        // slightly crowded label rather than to whatever the first guess happened to be.
+        if(n<bestHits){ bestHits=n; best={x,y,r}; }
+      }
+    }
+    /* Reserved with a margin, not flush: two labels that merely fail to overlap still read as
+       one run of text. "needs been out" and "needs fed" landed 0.4px apart on the BDI diagram
+       and the collision check was perfectly happy with it. */
+    boxes.push({x1:best.r.x1-8, y1:best.r.y1-5, x2:best.r.x2+8, y2:best.r.y2+5});
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',best.x); t.setAttribute('y',best.y);
+    t.setAttribute('class','edgelabel'); t.textContent=p.text;
+    svg.appendChild(t);
+  });
+}
+
+/* The graph is a viewBox scaled to fit its pane, so a wide composite in a short pane is drawn at
+   well under half size — and 12px labels stop being readable long before the diagram stops being
+   useful. Hold them at a constant SIZE ON SCREEN instead by growing them in user units as the
+   diagram shrinks. EDGE_FS_MAX is the ceiling, and it is not cosmetic: placeEdgeLabels reserves
+   space at that size, so the labels it spaced apart stay spaced apart however the pane is
+   dragged. Node labels are left to scale — they sit on an opaque plate that shrinks with them,
+   and enlarging them would push their text out of its box. */
+const EDGE_FS = 12, EDGE_FS_MAX = 18;
+function fitEdgeLabels(svg){
+  const box = svg.getBoundingClientRect();
+  const vb = svg.viewBox.baseVal;
+  if(!box.width || !vb || !vb.width) return;
+  const scale = Math.min(box.width/vb.width, box.height/vb.height);
+  if(!isFinite(scale) || scale <= 0) return;
+  const px = Math.max(EDGE_FS/2, Math.min(EDGE_FS/scale, EDGE_FS_MAX));
+  svg.style.setProperty('--edge-fs', px.toFixed(2)+'px');
 }
 
 function markNode(agent, cls){

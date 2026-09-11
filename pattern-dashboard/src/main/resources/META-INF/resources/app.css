@@ -7,7 +7,7 @@
   --line:#e8e1d6; --accent:#ad470b; --accent-soft:#fbe8db; --accent2:#0f766e;
   --node:#ffffff; --node-line:#e2d8ca; --node-active:#fbd38d; --node-active-line:#ad470b;
   --node-done:#d3e8c6; --node-done-line:#4d8040; --board:#f2e5d0; --board-line:#ad470b;
-  --btn:#211d1a; --btn-ink:#ffffff; --term:#1b1917;
+  --btn:#211d1a; --btn-ink:#ffffff; --term:#1b1917; --edge-ink:#574f48; --edge-line:#9c8f7e;
   --shadow:0 1px 2px rgba(28,25,23,.05), 0 10px 30px -14px rgba(28,25,23,.22);
 }
 /* Deliberately not near-black: a heavy dark theme reads as murky on a projector. These are
@@ -18,7 +18,7 @@
   --line:#34302c; --accent:#f4813c; --accent-soft:#3b2618; --accent2:#5eead4;
   --node:#2b2826; --node-line:#403a35; --node-active:#5c3f14; --node-active-line:#f4b45c;
   --node-done:#26402a; --node-done-line:#6fbf5f; --board:#3a2c18; --board-line:#f4813c;
-  --btn:#f4f0eb; --btn-ink:#211d1a; --term:#141312;
+  --btn:#f4f0eb; --btn-ink:#211d1a; --term:#141312; --edge-ink:#c3b8ac; --edge-line:#7a7066;
   --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.75);
 }
 /* The event/log panes are dark in BOTH themes, so their inks must not follow the theme. */
@@ -188,6 +188,23 @@ body.resizing{cursor:ns-resize;user-select:none}
 .node.active rect{fill:var(--node-active);stroke:var(--node-active-line);stroke-width:2.5}
 .node.done rect{fill:var(--node-done);stroke:var(--node-done-line)}
 .node text{fill:var(--ink);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle}
-.edge{stroke:var(--node-line);stroke-width:1.6;fill:none;marker-end:url(#arrow)}
+/* Edges are drawn a shade darker than a node border, which is not a whim: --node-line sits at
+   about 1.3:1 on the canvas in both themes. That is fine for the outline of a filled box, and
+   invisible for a hairline arrow at the back of a room — and the arrows ARE the topology. These
+   reach ~3:1, the non-text minimum, without turning the diagram into a wiring schematic. */
+.edge{stroke:var(--edge-line);stroke-width:1.7;fill:none;marker-end:url(#arrow)}
 .edge.back{stroke:var(--accent2);stroke-dasharray:5 4}
-.edgelabel{fill:var(--muted);font-size:11px;text-anchor:middle}
+/* An edge label is the only thing that says WHAT flows along an arrow, so it is the one bit of
+   the diagram that must never be guessed at. Three things keep it readable, and the font size is
+   the least of them: it is painted AFTER the nodes and placed clear of them (render.js), it is
+   haloed in the canvas colour with paint-order so the glyphs sit on top of their own arrow
+   instead of being crossed by it, and it is inked at ~8:1 rather than --muted, which measured
+   fine on paper and was the first thing to disappear on a projector. The halo is in em so it
+   tracks --edge-fs, which render.js sets to hold the label at a constant size on screen however
+   far the diagram is scaled down. */
+.edgelabel{
+  fill:var(--edge-ink);font-size:var(--edge-fs,12px);font-weight:600;
+  text-anchor:middle;dominant-baseline:middle;
+  paint-order:stroke fill;stroke:var(--panel);stroke-width:0.34em;
+  stroke-linejoin:round;stroke-linecap:round;
+}
