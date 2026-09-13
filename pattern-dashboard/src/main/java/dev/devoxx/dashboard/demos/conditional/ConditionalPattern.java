@@ -12,6 +12,9 @@ import java.util.function.Predicate;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.conditional.Keys.Answer;
+import dev.devoxx.dashboard.demos.conditional.Keys.Category;
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -39,26 +42,29 @@ public final class ConditionalPattern {
             var router = AgenticServices.agentBuilder(WorryRouter.class)
                     .chatModel(model)
                     .name("WorryRouter")
-                    .outputKey("category")
+                    .outputKey(Category.class)
                     .build();
             var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                     .chatModel(model)
                     .name("EmergencyVet")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                     .chatModel(model)
                     .name("DogTrainer")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var care = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
                     .name("EverydayCare")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
-            Predicate<AgenticScope> isEmergency = s -> category(s.readState("category", "")).equals("emergency");
-            Predicate<AgenticScope> isTraining = s -> category(s.readState("category", "")).equals("training");
-            Predicate<AgenticScope> isEveryday = s -> category(s.readState("category", "")).equals("everyday");
+            Predicate<AgenticScope> isEmergency =
+                    s -> category(s.readState(Category.class)).equals("emergency");
+            Predicate<AgenticScope> isTraining =
+                    s -> category(s.readState(Category.class)).equals("training");
+            Predicate<AgenticScope> isEveryday =
+                    s -> category(s.readState(Category.class)).equals("everyday");
             UntypedAgent routed = AgenticServices.conditionalBuilder()
                     .subAgents(isEmergency, vet)
                     .subAgents(isTraining, trainer)
@@ -66,10 +72,10 @@ public final class ConditionalPattern {
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, routed)
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("worry", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
             // Each desk ends by saying whether it could answer. That word is what the custom
             // planner's ladder branches on nine demos later; here it is protocol, not prose.
             return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");

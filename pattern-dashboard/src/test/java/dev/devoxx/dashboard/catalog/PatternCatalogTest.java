@@ -456,6 +456,34 @@ class PatternCatalogTest {
     }
 
     /**
+     * Scope keys are declared as {@code TypedKey} records, never as string literals at the call
+     * site. This reads the demo sources and fails on a relapse, because a stringly-typed key is
+     * invisible until it is wrong at run time — this repo lost a run to {@code "note"} against
+     * {@code "notes"}, and another to findings declared {@code String} when the scope held a
+     * {@code List}. The compiler cannot see either mistake; this can.
+     */
+    @Test
+    void noDemoAddressesTheScopeWithAStringLiteral() throws Exception {
+        var demos = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos");
+        var offenders = new ArrayList<String>();
+        // outputKey("x"), readState("x"), hasState("x"), itemsProvider("x") — every place the
+        // library will take a String and silently accept a typo.
+        var stringKey = java.util.regex.Pattern.compile(
+                "\\.(outputKey|readState|hasState|itemsProvider)\\(\"");
+        try (var paths = java.nio.file.Files.walk(demos)) {
+            for (var p : paths.filter(p -> p.toString().endsWith("Pattern.java")).toList()) {
+                var src = java.nio.file.Files.readString(p);
+                var m = stringKey.matcher(src);
+                while (m.find()) {
+                    offenders.add(p.getFileName() + " uses " + m.group(1) + "(\"…\")");
+                }
+            }
+        }
+        assertTrue(offenders.isEmpty(), () -> "use a TypedKey from Keys instead:\n"
+                + String.join("\n", offenders));
+    }
+
+    /**
      * The demos are meant to build on each other: by the capstone, nearly every box on the
      * diagram is something the room has already watched run on its own. That claim is made in
      * prose on every page, so it had better be true of the wiring — and it is the first thing a

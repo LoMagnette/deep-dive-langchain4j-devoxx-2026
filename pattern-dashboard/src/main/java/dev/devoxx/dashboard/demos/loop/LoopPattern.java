@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.loop.Keys.Score;
+import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -40,23 +42,24 @@ public final class LoopPattern {
             var writer = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
                     .name("FridgeChecklist")
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .build();
             var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
                     .chatModel(model)
                     .name("FridgeRuleCheck")
-                    .outputKey("score")
+                    .outputKey(Score.class)
                     .build();
-            Predicate<AgenticScope> good = s -> score(s.readState("score", "")) >= 0.8;
+            Predicate<AgenticScope> good =
+                    s -> score(s.readState(Score.class)) >= 0.8;
             UntypedAgent app = AgenticServices.loopBuilder()
                     .subAgents(writer, check)
                     .maxIterations(5)
                     .exitCondition(good)
                     .testExitAtLoopEnd(true)
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("notes", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",

@@ -4,6 +4,7 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.demos.voting.VotingPattern.HOUSEHOLD;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,15 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.debate.Keys.Motion;
+import dev.devoxx.dashboard.demos.debate.Keys.Verdict;
+import dev.devoxx.dashboard.demos.p2p.Keys.Question;
+import dev.devoxx.dashboard.demos.seconddogcouncil.Keys.Angles;
+import dev.devoxx.dashboard.demos.seconddogcouncil.Keys.Finding;
+import dev.devoxx.dashboard.demos.seconddogcouncil.Keys.Findings;
+import dev.devoxx.dashboard.demos.seconddogcouncil.Keys.Ratified;
 import dev.devoxx.dashboard.demos.voting.AskZaoHimself;
+import dev.devoxx.dashboard.demos.voting.Keys.Household;
 import dev.devoxx.dashboard.demos.voting.MoneyAndVet;
 import dev.devoxx.dashboard.demos.voting.SpaceAndTime;
 import dev.langchain4j.agentic.AgenticServices;
@@ -56,19 +65,19 @@ public final class SecondDogCouncilPattern {
             var scout = AgenticServices.agentBuilder(AngleScout.class)
                     .chatModel(model)
                     .name("AngleScout")
-                    .outputKey("finding")
+                    .outputKey(Finding.class)
                     .build();
             UntypedAgent survey = AgenticServices.parallelMapperBuilder()
                     .subAgents(scout)
-                    .itemsProvider("angles")
-                    .outputKey("findings")
+                    .itemsProvider(new Angles().name())
+                    .outputKey(Findings.class)
                     .build();
 
             // 2. One plain agent (simple) turns the evidence into something debatable.
             var briefer = AgenticServices.agentBuilder(CouncilBriefer.class)
                     .chatModel(model)
                     .name("CouncilBriefer")
-                    .outputKey("motion")
+                    .outputKey(Motion.class)
                     .build();
 
             // 3. Debate (advanced) — the two sides argue, the chair rules.
@@ -83,12 +92,12 @@ public final class SecondDogCouncilPattern {
             var chair = AgenticServices.agentBuilder(HouseholdVerdict.class)
                     .chatModel(model)
                     .name("HouseholdVerdict")
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .build();
             UntypedAgent debate = AgenticServices.plannerBuilder()
                     .subAgents(forIt, against, chair)    // judge LAST
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .build();
 
             // 4. Glue (simple): the assessors vote on a 'household', the debate wrote a
@@ -96,7 +105,7 @@ public final class SecondDogCouncilPattern {
             var note = AgenticServices.agentBuilder(CouncilNote.class)
                     .chatModel(model)
                     .name("CouncilNote")
-                    .outputKey("household")
+                    .outputKey(Household.class)
                     .build();
 
             // 5. Voting (advanced) — the same three assessors the voting demo used, now
@@ -116,19 +125,19 @@ public final class SecondDogCouncilPattern {
             UntypedAgent ratify = AgenticServices.plannerBuilder()
                     .subAgents(space, money, zao)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
-                    .outputKey("ratified")
+                    .outputKey(Ratified.class)
                     .build();
 
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(survey, briefer, debate, note, ratify)
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .listener(listener)
                     .build();
             // The angles are derived here rather than by an agent: the mapper needs a real
             // collection in scope before anything has run.
             var r = app.invokeWithAgenticScope(Map.of(
-                    "question", input,
-                    "angles", List.of("the space and the hours alone — " + input,
+                    new Question().name(), input,
+                    new Angles().name(), List.of("the space and the hours alone — " + input,
                             "the money over ten years — " + input,
                             "what Zao would say about it — " + input)));
             // The last stage is the vote, so the result has to show it: returning only the
@@ -138,9 +147,12 @@ public final class SecondDogCouncilPattern {
             if (scope == null) {
                 return String.valueOf(r.result());
             }
-            return "**The chair's ruling** — " + scope.readState("verdict", "")
-                    + "\n\n**Put to the assessors as** — " + scope.readState("household", "")
-                    + "\n\n**Ratified:** " + scope.readState("ratified", "");
+            String verdictText = requireNonNullElse(scope.readState(Verdict.class), "");
+            String householdText = requireNonNullElse(scope.readState(Household.class), "");
+            String ratifiedText = requireNonNullElse(scope.readState(Ratified.class), "");
+            return "**The chair's ruling** — " + verdictText
+                    + "\n\n**Put to the assessors as** — " + householdText
+                    + "\n\n**Ratified:** " + ratifiedText;
         };
 
         return new PatternDef("secondDogCouncil", "Second Dog Council (composite)", "composite",

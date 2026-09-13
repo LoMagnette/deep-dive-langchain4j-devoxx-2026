@@ -137,6 +137,29 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **Tests mirror the shared packages**: `catalog/PatternCatalogTest` (the pattern runs, the
   demo-integrity claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
   `run/StreamingListenerTest`.
+- **Every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
+  holding the keys it introduces, and later demos import them the way they import agents —
+  `demos/loop/Keys.Score`, `demos/single/Keys.Notes`. A key is the contract between two agents
+  that never see each other, and nothing checks that the two spellings match: this repo lost a
+  run to `"note"` against `"notes"`, and another to `findings` declared `String` when the scope
+  held a `List`. Four things worth knowing before writing one:
+  - **They are records, not interfaces.** The framework *instantiates* a key to ask its name
+    (`AgentUtil.keyName` → `stateInstance` → `name()`), so it needs a public, concrete,
+    no-args-constructible type. An interface fails with "doesn't have a no-args constructor".
+  - **Each overrides `name()` to return the lowercase string it always used.** That is why the
+    `@V("notes")` parameters and the `{{notes}}` placeholders in the prompts are untouched —
+    the default name is the class's simple name, which would have capitalised every key.
+  - **The input side is still bound by name.** `@V` takes a string, and
+    `HumanInTheLoopBuilder.outputKey` has no `TypedKey` overload where `AgentBuilder` does — so
+    those sites read `new Draft().name()`. The typing is only ever as good as the narrowest API
+    you touch, which is worth saying out loud on stage.
+  - **A typed read returns `null` when the key is absent** — it does *not* fall back to
+    `defaultValue()`, which is a builder-level mechanism. Hence `requireNonNullElse(...)` at the
+    display sites, and nothing at all where `Parsing.score`/`category` already treat null as "no
+    answer".
+  What it buys, concretely: the mapper's gathered verdicts read as a `List<String>` with no cast
+  and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
+  `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 - **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
   `story` (its beat: a weekend away, a picnic, the chocolate, a baby coming, the second dog) and a
   `buildsOn` naming what it inherits. Read in catalogue order the seventeen beats are one passage;

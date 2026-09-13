@@ -1,6 +1,7 @@
 package dev.devoxx.dashboard.demos.parallelmapper;
 
 import static dev.devoxx.dashboard.catalog.Topology.edge;
+import static java.util.Objects.requireNonNullElse;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.items;
@@ -13,6 +14,9 @@ import java.util.stream.IntStream;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.debate.Keys.Verdict;
+import dev.devoxx.dashboard.demos.parallelmapper.Keys.Eaten;
+import dev.devoxx.dashboard.demos.parallelmapper.Keys.Verdicts;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 
@@ -37,25 +41,29 @@ public final class ParallelMapperPattern {
             var check = AgenticServices.agentBuilder(FoodSafetyCheck.class)
                     .chatModel(model)
                     .name("FoodSafetyCheck")
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .build();
             UntypedAgent app = AgenticServices.parallelMapperBuilder()
                     .subAgents(check)
-                    .itemsProvider("eaten")
-                    .outputKey("verdicts")
+                    .itemsProvider(new Eaten().name())
+                    .outputKey(Verdicts.class)
                     .listener(listener)
                     .build();
             // The items come from what the user typed (comma- or semicolon-separated), not a
             // hard-coded list — otherwise the input box on the page has no effect here.
             List<String> eaten = items(input);
-            var r = app.invokeWithAgenticScope(Map.of("eaten", eaten));
-            // Each verdict is paired back with the item it is about. The mapper preserves order,
-            // and String.valueOf(List) would put five unlabelled verdicts on the screen for the
-            // room to match up by counting — which is exactly the moment the demo loses them.
-            Object verdicts = r.agenticScope() == null ? null
-                    : r.agenticScope().readState("verdicts");
-            if (verdicts instanceof java.util.Collection<?> c) {
-                List<String> said = c.stream().map(String::valueOf).toList();
+            var r = app.invokeWithAgenticScope(Map.of(new Eaten().name(), eaten));
+            // Each verdict is paired back with the item it is about. The mapper preserves
+            // order, and String.valueOf(List) would put five unlabelled verdicts on the screen
+            // for the room to match up by counting — the moment the demo loses them.
+            //
+            // Note what the typed key bought: Verdicts is a TypedKey<List<String>>, so this
+            // reads as a List with no cast and no instanceof. The string version of this line
+            // returned Object and had to be interrogated at run time.
+            var scope = r.agenticScope();
+            List<String> said = scope == null ? List.of()
+                    : requireNonNullElse(scope.readState(Verdicts.class), List.<String>of());
+            if (!said.isEmpty()) {
                 return IntStream.range(0, said.size())
                         .mapToObj(i -> "- **" + (i < eaten.size() ? eaten.get(i) : "item " + i)
                                 + "** — " + said.get(i))

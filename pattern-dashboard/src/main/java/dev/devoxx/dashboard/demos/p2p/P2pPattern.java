@@ -10,6 +10,9 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.p2p.Keys.Agreement;
+import dev.devoxx.dashboard.demos.p2p.Keys.Proposal;
+import dev.devoxx.dashboard.demos.p2p.Keys.Question;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
@@ -34,22 +37,22 @@ public final class P2pPattern {
             var bed = AgenticServices.agentBuilder(TeamOnTheBed.class)
                     .chatModel(model)
                     .name("TeamOnTheBed")
-                    .outputKey("proposal")
+                    .outputKey(Proposal.class)
                     .build();
             var floor = AgenticServices.agentBuilder(TeamOnTheFloor.class)
                     .chatModel(model)
                     .name("TeamOnTheFloor")
-                    .outputKey("agreement")
+                    .outputKey(Agreement.class)
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(bed, floor)
                     // The exit predicate is the only thing that ends this: neither side can
                     // overrule the other, so without it they counter each other forever.
-                    .planner(() -> new P2PPlanner(10, s -> s.hasState("agreement")))
-                    .outputKey("agreement")
+                    .planner(() -> new P2PPlanner(10, s -> s.hasState(Agreement.class)))
+                    .outputKey(Agreement.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("question", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Question().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",

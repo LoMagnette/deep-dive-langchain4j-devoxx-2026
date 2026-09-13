@@ -11,6 +11,9 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.sequential.Keys.Checklist;
+import dev.devoxx.dashboard.demos.single.Keys.Message;
+import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.devoxx.dashboard.demos.single.SitterCardClerk;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -33,16 +36,16 @@ public final class SequentialPattern {
             var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
                     .chatModel(model)
                     .name("SitterCardClerk")
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .build();
             var list = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
                     .name("FridgeChecklist")
-                    .outputKey("checklist")
+                    .outputKey(Checklist.class)
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(clerk, list).outputKey("checklist").listener(listener).build();
-            var r = app.invokeWithAgenticScope(Map.of("message", input));
+                    .subAgents(clerk, list).outputKey(Checklist.class).listener(listener).build();
+            var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("sequential", "Sequential", "workflow",

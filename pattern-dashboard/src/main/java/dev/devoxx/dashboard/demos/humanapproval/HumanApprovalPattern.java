@@ -4,6 +4,7 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,12 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
+import dev.devoxx.dashboard.demos.conditional.Keys.Category;
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos.conditional.WorryRouter;
+import dev.devoxx.dashboard.demos.humanapproval.Keys.Decision;
+import dev.devoxx.dashboard.demos.humanapproval.Keys.Draft;
+import dev.devoxx.dashboard.demos.humanapproval.Keys.Instruction;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -56,28 +62,30 @@ public final class HumanApprovalPattern {
             var router = AgenticServices.agentBuilder(WorryRouter.class)
                     .chatModel(model)
                     .name("WorryRouter")
-                    .outputKey("category")
+                    .outputKey(Category.class)
                     .build();
             var care = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
                     .name("EverydayCare")
-                    .outputKey("draft")
+                    .outputKey(Draft.class)
                     .build();
             var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                     .chatModel(model)
                     .name("DogTrainer")
-                    .outputKey("draft")
+                    .outputKey(Draft.class)
                     .build();
             var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                     .chatModel(model)
                     .name("EmergencyVet")
-                    .outputKey("draft")
+                    .outputKey(Draft.class)
                     .build();
             UntypedAgent triage = AgenticServices.conditionalBuilder()
-                    .subAgents(s -> category(s.readState("category", "")).equals("everyday"), care)
-                    .subAgents(s -> category(s.readState("category", "")).equals("training"),
+                    .subAgents(s -> category(s.readState(Category.class)).equals("everyday"),
+                            care)
+                    .subAgents(s -> category(s.readState(Category.class)).equals("training"),
                             trainer)
-                    .subAgents(s -> category(s.readState("category", "")).equals("emergency"), vet)
+                    .subAgents(s -> category(s.readState(Category.class)).equals("emergency"),
+                            vet)
                     .build();
 
             // 2. The new step, and the only new thing on this page. A HumanInTheLoop is a non-AI
@@ -85,28 +93,31 @@ public final class HumanApprovalPattern {
             //    above it, except that the thing producing the answer is a person.
             var owner = AgenticServices.humanInTheLoopBuilder()
                     .description("The owner, who decides what the sitter is actually told to do")
-                    .inputKey(String.class, "draft")
-                    .outputKey("decision")
+                    // HumanInTheLoopBuilder has no TypedKey overload — unlike AgentBuilder and
+                    // the workflow builders — so the key is asked for its own name here. Worth
+                    // noticing on stage: the typing is as good as the narrowest API you touch.
+                    .inputKey(String.class, new Draft().name())
+                    .outputKey(new Decision().name())
                     .responseProvider(scope -> listener.askHuman("You", """
                             This is what the desk says, and your sitter is waiting on it. \
                             Approve it, change it, or refuse it — nothing is passed on until \
                             you say.
 
-                            """ + scope.readState("draft", "")))
+                            """ + requireNonNullElse(scope.readState(Draft.class), "")))
                     .build();
 
             var last = AgenticServices.agentBuilder(FinalNote.class)
                     .chatModel(model)
                     .name("FinalNote")
-                    .outputKey("instruction")
+                    .outputKey(Instruction.class)
                     .build();
 
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, triage, owner, last)
-                    .outputKey("instruction")
+                    .outputKey(Instruction.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("worry", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
 
             // Show what was drafted and what the person said, not only the outcome: the whole
             // point of the pattern is the gap between those two.
@@ -114,11 +125,13 @@ public final class HumanApprovalPattern {
             if (scope == null) {
                 return String.valueOf(r.result());
             }
-            String draft = scope.readState("draft", "")
+            String draft = requireNonNullElse(scope.readState(Draft.class), "")
                     .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+            String decisionText = requireNonNullElse(scope.readState(Decision.class), "");
+            String instructionText = requireNonNullElse(scope.readState(Instruction.class), "");
             return "**The desk drafted**\n\n" + draft
-                    + "\n\n**You said**\n\n" + scope.readState("decision", "")
-                    + "\n\n**So the sitter is told**\n\n" + scope.readState("instruction", "");
+                    + "\n\n**You said**\n\n" + decisionText
+                    + "\n\n**So the sitter is told**\n\n" + instructionText;
         };
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",

@@ -9,11 +9,13 @@ import java.util.Locale;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
+import dev.devoxx.dashboard.catalog.PatternDef.Runner;
+import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
-import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.conditional.Keys.Answer;
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgentInvocation;
@@ -52,27 +54,27 @@ public final class CustomPlannerPattern {
             var book = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
                     .name("EverydayCare")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                     .chatModel(model)
                     .name("DogTrainer")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                     .chatModel(model)
                     .name("EmergencyVet")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(book, trainer, vet)
                     // Same builder as every pattern above it. The only difference is that this
                     // planner is forty lines in this repo instead of forty lines in the library.
                     .planner(EscalationPlanner::new)
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("worry", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
             // Report WHICH rung settled it and how many were asked. Returning just the answer
             // would hide the only thing this pattern does differently from a sequence — the
             // scope's invocation history is what makes that reportable without threading state

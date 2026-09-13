@@ -10,16 +10,24 @@ import java.util.List;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.demos.parallel.MealPlanner;
-import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
-import dev.devoxx.dashboard.demos.parallel.WalkPlanner;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
+import dev.devoxx.dashboard.demos.conditional.Keys.Answer;
+import dev.devoxx.dashboard.demos.conditional.Keys.Category;
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos.conditional.WorryRouter;
 import dev.devoxx.dashboard.demos.loop.FridgeRuleCheck;
+import dev.devoxx.dashboard.demos.loop.Keys.Score;
+import dev.devoxx.dashboard.demos.parallel.Keys.Meals;
+import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
+import dev.devoxx.dashboard.demos.parallel.Keys.Walks;
+import dev.devoxx.dashboard.demos.parallel.MealPlanner;
+import dev.devoxx.dashboard.demos.parallel.WalkPlanner;
+import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 
@@ -61,39 +69,42 @@ public final class SitterNotePattern {
             var router = AgenticServices.agentBuilder(WorryRouter.class)
                     .chatModel(model)
                     .name("WorryRouter")
-                    .outputKey("category")
+                    .outputKey(Category.class)
                     .build();
             var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                     .chatModel(model)
                     .name("EmergencyVet")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                     .chatModel(model)
                     .name("DogTrainer")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             var care = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
                     .name("EverydayCare")
-                    .outputKey("answer")
+                    .outputKey(Answer.class)
                     .build();
             UntypedAgent triage = AgenticServices.conditionalBuilder()
-                    .subAgents(s -> category(s.readState("category", "")).equals("emergency"), vet)
-                    .subAgents(s -> category(s.readState("category", "")).equals("training"), trainer)
-                    .subAgents(s -> category(s.readState("category", "")).equals("everyday"), care)
+                    .subAgents(s -> category(s.readState(Category.class)).equals("emergency"),
+                            vet)
+                    .subAgents(s -> category(s.readState(Category.class)).equals("training"),
+                            trainer)
+                    .subAgents(s -> category(s.readState(Category.class)).equals("everyday"),
+                            care)
                     .build();
 
             // 2. Parallel — meals and walks do not need each other, so fan them out.
             var meals = AgenticServices.agentBuilder(MealPlanner.class)
                     .chatModel(model)
                     .name("MealPlanner")
-                    .outputKey("meals")
+                    .outputKey(Meals.class)
                     .build();
             var walks = AgenticServices.agentBuilder(WalkPlanner.class)
                     .chatModel(model)
                     .name("WalkPlanner")
-                    .outputKey("walks")
+                    .outputKey(Walks.class)
                     .build();
             UntypedAgent plan = AgenticServices.parallelBuilder()
                     .subAgents(meals, walks)
@@ -106,17 +117,17 @@ public final class SitterNotePattern {
             var tighten = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
                     .name("FridgeChecklist")
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .build();
             var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
                     .chatModel(model)
                     .name("FridgeRuleCheck")
-                    .outputKey("score")
+                    .outputKey(Score.class)
                     .build();
             UntypedAgent refine = AgenticServices.loopBuilder()
                     .subAgents(tighten, check)
                     .maxIterations(3)
-                    .exitCondition(s -> score(s.readState("score", "")) >= 0.8)
+                    .exitCondition(s -> score(s.readState(Score.class)) >= 0.8)
                     .testExitAtLoopEnd(true)
                     .build();
 
@@ -124,11 +135,11 @@ public final class SitterNotePattern {
             var merge = AgenticServices.agentBuilder(SitterNoteMerger.class)
                     .chatModel(model)
                     .name("SitterNoteMerger")
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, triage, plan, merge, refine)
-                    .outputKey("notes")
+                    .outputKey(Notes.class)
                     .listener(listener)
                     .build();
             // The same text under two keys, and not by accident: the router and the three
@@ -136,7 +147,8 @@ public final class SitterNotePattern {
             // Reusing an agent means accepting the key IT already declared — this one line is
             // the seam the caveat is about, and getting it wrong is a MissingArgumentException
             // pointing at a step that looks unrelated.
-            var r = app.invokeWithAgenticScope(Map.of("worry", input, "stay", input));
+            var r = app.invokeWithAgenticScope(
+                    Map.of(new Worry().name(), input, new Stay().name(), input));
             return String.valueOf(r.result());
         };
 

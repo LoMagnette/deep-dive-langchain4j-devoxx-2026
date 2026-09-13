@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos.goap;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,10 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.goap.Keys.Garden;
+import dev.devoxx.dashboard.demos.goap.Keys.Goal;
+import dev.devoxx.dashboard.demos.goap.Keys.Indoor;
+import dev.devoxx.dashboard.demos.goap.Keys.Park;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
@@ -35,17 +40,17 @@ public final class GoapPattern {
             var indoor = AgenticServices.agentBuilder(IndoorRecall.class)
                     .chatModel(model)
                     .name("IndoorRecall")
-                    .outputKey("indoor")
+                    .outputKey(Indoor.class)
                     .build();
             var garden = AgenticServices.agentBuilder(GardenRecall.class)
                     .chatModel(model)
                     .name("GardenRecall")
-                    .outputKey("garden")
+                    .outputKey(Garden.class)
                     .build();
             var park = AgenticServices.agentBuilder(ParkRecall.class)
                     .chatModel(model)
                     .name("ParkRecall")
-                    .outputKey("park")
+                    .outputKey(Park.class)
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     // Registered BACKWARDS on purpose, and it still runs indoor → garden → park.
@@ -55,13 +60,16 @@ public final class GoapPattern {
                     // GOAP is visibly not a sequence with extra ceremony.
                     .subAgents(park, garden, indoor)
                     .planner(GoalOrientedPlanner::new)
-                    .outputKey("park")
+                    .outputKey(Park.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("goal", input));
-            return "**Indoors** — " + r.agenticScope().readState("indoor", "")
-                    + "\n\n**Garden** — " + r.agenticScope().readState("garden", "")
-                    + "\n\n**Park** — " + r.agenticScope().readState("park", "");
+            var r = app.invokeWithAgenticScope(Map.of(new Goal().name(), input));
+            String indoorText = requireNonNullElse(r.agenticScope().readState(Indoor.class), "");
+            String gardenText = requireNonNullElse(r.agenticScope().readState(Garden.class), "");
+            String parkText = requireNonNullElse(r.agenticScope().readState(Park.class), "");
+            return "**Indoors** — " + indoorText
+                    + "\n\n**Garden** — " + gardenText
+                    + "\n\n**Park** — " + parkText;
         };
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 // The beat this demo plays in the running narration.

@@ -10,6 +10,8 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.debate.Keys.Motion;
+import dev.devoxx.dashboard.demos.debate.Keys.Verdict;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
@@ -44,15 +46,15 @@ public final class DebatePattern {
             var verdict = AgenticServices.agentBuilder(HolidayVerdict.class)
                     .chatModel(model)
                     .name("HolidayVerdict")
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(take, leave, verdict) // last sub-agent is the judge
                     .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
-                    .outputKey("verdict")
+                    .outputKey(Verdict.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("motion", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Motion().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("debate", "Debate", "pattern-zoo",

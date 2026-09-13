@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos.voting;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,11 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.humanapproval.Keys.Decision;
+import dev.devoxx.dashboard.demos.voting.Keys.Household;
+import dev.devoxx.dashboard.demos.voting.Keys.MoneyVote;
+import dev.devoxx.dashboard.demos.voting.Keys.SpaceVote;
+import dev.devoxx.dashboard.demos.voting.Keys.ZaoVote;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
@@ -56,33 +62,37 @@ public final class VotingPattern {
             var space = AgenticServices.agentBuilder(SpaceAndTime.class)
                     .chatModel(model)
                     .name("SpaceAndTime")
-                    .outputKey("spaceVote")
+                    .outputKey(SpaceVote.class)
                     .build();
             var money = AgenticServices.agentBuilder(MoneyAndVet.class)
                     .chatModel(model)
                     .name("MoneyAndVet")
-                    .outputKey("moneyVote")
+                    .outputKey(MoneyVote.class)
                     .build();
             var zao = AgenticServices.agentBuilder(AskZaoHimself.class)
                     .chatModel(model)
                     .name("AskZaoHimself")
-                    .outputKey("zaoVote")
+                    .outputKey(ZaoVote.class)
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(space, money, zao)
                     .planner(() -> new VotingPlanner(VotingStrategy.majority()))
-                    .outputKey("decision")
+                    .outputKey(Decision.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("household", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Household().name(), input));
             var scope = r.agenticScope();
             if (scope == null) {
                 return String.valueOf(r.result());
             }
-            return "**Majority: " + scope.readState("decision", "") + "**\n\n"
-                    + "- Space and hours alone: " + scope.readState("spaceVote", "") + "\n"
-                    + "- Money: " + scope.readState("moneyVote", "") + "\n"
-                    + "- Zao himself: " + scope.readState("zaoVote", "");
+            String decision = requireNonNullElse(scope.readState(Decision.class), "");
+            String spaceVote = requireNonNullElse(scope.readState(SpaceVote.class), "");
+            String moneyVote = requireNonNullElse(scope.readState(MoneyVote.class), "");
+            String zaoVote = requireNonNullElse(scope.readState(ZaoVote.class), "");
+            return "**Majority: " + decision + "**\n\n"
+                    + "- Space and hours alone: " + spaceVote + "\n"
+                    + "- Money: " + moneyVote + "\n"
+                    + "- Zao himself: " + zaoVote;
         };
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
                 // The beat this demo plays in the running narration.

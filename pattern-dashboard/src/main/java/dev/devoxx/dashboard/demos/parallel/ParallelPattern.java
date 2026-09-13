@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos.parallel;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 import static java.util.stream.Collectors.joining;
 
 import java.util.List;
@@ -12,6 +13,9 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.parallel.Keys.Meals;
+import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
+import dev.devoxx.dashboard.demos.parallel.Keys.Walks;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 
@@ -39,23 +43,24 @@ public final class ParallelPattern {
             var meals = AgenticServices.agentBuilder(MealPlanner.class)
                     .chatModel(model)
                     .name("MealPlanner")
-                    .outputKey("meals")
+                    .outputKey(Meals.class)
                     .build();
             var walks = AgenticServices.agentBuilder(WalkPlanner.class)
                     .chatModel(model)
                     .name("WalkPlanner")
-                    .outputKey("walks")
+                    .outputKey(Walks.class)
                     .build();
             UntypedAgent app = AgenticServices.parallelBuilder()
                     .subAgents(meals, walks)
                     // The join is plain Java over what the two agents wrote. Assembling two
                     // halves needs no model, and putting one there would be a demo lying about
                     // where the work happens.
-                    .output(s -> "**Meals**\n\n" + s.readState("meals", "")
-                            + "\n\n**Walks**\n\n" + s.readState("walks", ""))
+                    .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
+                            + "\n\n**Walks**\n\n"
+                                    + requireNonNullElse(s.readState(Walks.class), ""))
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("stay", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("parallel", "Parallel", "workflow",

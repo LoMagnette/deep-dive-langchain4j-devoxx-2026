@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos.bdi;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,10 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.bdi.Keys.Fed;
+import dev.devoxx.dashboard.demos.bdi.Keys.Hour;
+import dev.devoxx.dashboard.demos.bdi.Keys.Out;
+import dev.devoxx.dashboard.demos.bdi.Keys.Session;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.bdi.BDIPlanner;
@@ -40,17 +45,17 @@ public final class BdiPattern {
             var out = AgenticServices.agentBuilder(ToiletTrip.class)
                     .chatModel(model)
                     .name("ToiletTrip")
-                    .outputKey("out")
+                    .outputKey(Out.class)
                     .build();
             var fed = AgenticServices.agentBuilder(FirstMeal.class)
                     .chatModel(model)
                     .name("FirstMeal")
-                    .outputKey("fed")
+                    .outputKey(Fed.class)
                     .build();
             var train = AgenticServices.agentBuilder(FirstTraining.class)
                     .chatModel(model)
                     .name("FirstTraining")
-                    .outputKey("session")
+                    .outputKey(Session.class)
                     .build();
             // Priorities, not order. Nobody needs telling that a puppy goes out before he is fed
             // and long before he is taught anything — so the room can see the planner making the
@@ -58,27 +63,33 @@ public final class BdiPattern {
             // behaviour does not change, which is the point of BDI and impossible to show with
             // two agents in the only order they could ever have run.
             List<Desire> desires = List.of(
-                    Desire.of("out-first", 30, s -> true, s -> s.hasState("out"),
+                    Desire.of("out-first", 30, s -> true, s -> s.hasState(Out.class),
                             ToiletTrip.class),
-                    Desire.of("then-feed", 20, s -> s.hasState("out"), s -> s.hasState("fed"),
+                    Desire.of("then-feed", 20,
+                            s -> s.hasState(Out.class), s -> s.hasState(Fed.class),
                             FirstMeal.class),
                     Desire.of("then-teach", 5,
-                            s -> s.hasState("out") && s.hasState("fed"),
-                            s -> s.hasState("session"), FirstTraining.class));
+                            s -> s.hasState(Out.class) && s.hasState(Fed.class),
+                            s -> s.hasState(Session.class), FirstTraining.class));
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(out, fed, train)
                     .planner(() -> new BDIPlanner(desires))
-                    .outputKey("session")
+                    .outputKey(Session.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("hour", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Hour().name(), input));
             var scope = r.agenticScope();
             if (scope == null) {
                 return String.valueOf(r.result());
             }
-            return "**Out first** — " + scope.readState("out", "")
-                    + "\n\n**Then fed** — " + scope.readState("fed", "")
-                    + "\n\n**Then taught** — " + scope.readState("session", "");
+            // Named for what they hold rather than for their keys: `out` and `fed` are already
+            // the agents' variables a few lines up.
+            String wentOut = requireNonNullElse(scope.readState(Out.class), "");
+            String wasFed = requireNonNullElse(scope.readState(Fed.class), "");
+            String taught = requireNonNullElse(scope.readState(Session.class), "");
+            return "**Out first** — " + wentOut
+                    + "\n\n**Then fed** — " + wasFed
+                    + "\n\n**Then taught** — " + taught;
         };
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
                 // The beat this demo plays in the running narration.

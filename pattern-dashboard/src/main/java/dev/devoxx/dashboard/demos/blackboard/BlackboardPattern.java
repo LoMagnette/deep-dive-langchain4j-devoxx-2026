@@ -11,6 +11,11 @@ import java.util.function.Predicate;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.blackboard.Keys.Causes;
+import dev.devoxx.dashboard.demos.blackboard.Keys.Home;
+import dev.devoxx.dashboard.demos.blackboard.Keys.Problem;
+import dev.devoxx.dashboard.demos.blackboard.Keys.Routine;
+import dev.devoxx.dashboard.demos.parallel.Keys.Walks;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
@@ -49,32 +54,32 @@ public final class BlackboardPattern {
             var walks = AgenticServices.agentBuilder(WalkNotes.class)
                     .chatModel(model)
                     .name("WalkNotes")
-                    .outputKey("walks")
+                    .outputKey(Walks.class)
                     .build();
             var routine = AgenticServices.agentBuilder(RoutineNotes.class)
                     .chatModel(model)
                     .name("RoutineNotes")
-                    .outputKey("routine")
+                    .outputKey(Routine.class)
                     .build();
             var home = AgenticServices.agentBuilder(HomeNotes.class)
                     .chatModel(model)
                     .name("HomeNotes")
-                    .outputKey("home")
+                    .outputKey(Home.class)
                     .build();
             var lead = AgenticServices.agentBuilder(TrainerLead.class)
                     .chatModel(model)
                     .name("TrainerLead")
-                    .outputKey("causes")
+                    .outputKey(Causes.class)
                     .build();
-            Predicate<AgenticScope> goal = s -> s.hasState("causes");
+            Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
             UntypedAgent app = AgenticServices.plannerBuilder()
                     .subAgents(walks, routine, home, lead)
                     .planner(() -> new BlackboardPlanner(goal,
                             ConflictResolutionStrategy.declarationOrder()))
-                    .outputKey("causes")
+                    .outputKey(Causes.class)
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("problem", input));
+            var r = app.invokeWithAgenticScope(Map.of(new Problem().name(), input));
             return String.valueOf(r.result());
         };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
