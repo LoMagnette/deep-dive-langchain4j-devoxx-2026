@@ -67,6 +67,8 @@ public final class GoapPattern {
                 // The beat this demo plays in the running narration.
                 "Which starts with the thing you never finished teaching him — coming back "
                         + "when he is called.",
+                // What this demo inherits from the ones before it.
+                null,
                 "The planner orders agents automatically by matching each output to the next "
                         + "input. Nobody has to be told this order: recall works indoors before "
                         + "it works in the garden, and in the garden before it works at the park. "

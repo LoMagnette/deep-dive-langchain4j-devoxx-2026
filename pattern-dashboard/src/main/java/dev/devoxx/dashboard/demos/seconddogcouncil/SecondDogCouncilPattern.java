@@ -146,6 +146,9 @@ public final class SecondDogCouncilPattern {
         return new PatternDef("secondDogCouncil", "Second Dog Council (composite)", "composite",
                 // The beat this demo plays in the running narration.
                 "And the second dog, finally put properly to the household.",
+                // What this demo inherits from the ones before it.
+                "Demo 12's three assessors, now ratifying a motion that has been debated "
+                        + "rather than voting on it cold.",
                 "Settles the question the voting demo only took a snap poll on: a mapper reads "
                         + "three angles of the household at once, one agent turns them into a "
                         + "motion, a debate argues it to a ruling, and the same three assessors "

@@ -28,12 +28,12 @@ public final class SequentialPattern {
                 List.of(node("in", "message", "input"),
                         node("clerk", "SitterCardClerk", "agent"),
                         node("list", "FridgeChecklist", "agent")),
-                List.of(edge("in", "clerk"), edge("clerk", "list", "card")));
+                List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
         Runner runner = (model, input, listener) -> {
             var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
                     .chatModel(model)
                     .name("SitterCardClerk")
-                    .outputKey("card")
+                    .outputKey("notes")
                     .build();
             var list = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
@@ -48,6 +48,8 @@ public final class SequentialPattern {
         return new PatternDef("sequential", "Sequential", "workflow",
                 // The beat this demo plays in the running narration.
                 "They need it on the fridge door, not buried in their phone.",
+                // What this demo inherits from the ones before it.
+                "Demo 1's SitterCardClerk, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "
                         + "a different reader, someone standing in your kitchen at 07:00. That is "

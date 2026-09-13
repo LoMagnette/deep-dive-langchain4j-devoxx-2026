@@ -9,6 +9,9 @@ import java.util.Locale;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
+import dev.devoxx.dashboard.demos.conditional.DogTrainer;
+import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos.conditional.EverydayCare;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.langchain4j.agentic.AgenticServices;
@@ -25,17 +28,17 @@ public final class CustomPlannerPattern {
 
     /** The escalation ladder, cheapest first — the same order the planner is handed. */
     private static final List<String> LADDER =
-            List.of("PuppyBook", "TrainerOnCall", "VetOnCall");
+            List.of("EverydayCare", "DogTrainer", "EmergencyVet");
 
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
                 // The three tiers share one column, stacked, so escalation reads downwards and
                 // each rung's own way out reads across. A plain chain would draw a pipeline that
                 // always runs all three, which is the opposite of what this planner does.
-                List.of(node("in", "question", "input", 0),
-                        node("book", "PuppyBook", "agent", 1),
-                        node("trainer", "TrainerOnCall", "agent", 1),
-                        node("vet", "VetOnCall", "agent", 1),
+                List.of(node("in", "worry", "input", 0),
+                        node("book", "EverydayCare", "agent", 1),
+                        node("trainer", "DogTrainer", "agent", 1),
+                        node("vet", "EmergencyVet", "agent", 1),
                         node("out", "first ANSWERED wins", "join", 2)),
                 List.of(edge("in", "book"),
                         edge("book", "trainer", "ESCALATE"),
@@ -46,19 +49,19 @@ public final class CustomPlannerPattern {
         Runner runner = (model, input, listener) -> {
             // Declaration order IS the cost order — that is the whole configuration of this
             // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
-            var book = AgenticServices.agentBuilder(PuppyBook.class)
+            var book = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
-                    .name("PuppyBook")
+                    .name("EverydayCare")
                     .outputKey("answer")
                     .build();
-            var trainer = AgenticServices.agentBuilder(TrainerOnCall.class)
+            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                     .chatModel(model)
-                    .name("TrainerOnCall")
+                    .name("DogTrainer")
                     .outputKey("answer")
                     .build();
-            var vet = AgenticServices.agentBuilder(VetOnCall.class)
+            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                     .chatModel(model)
-                    .name("VetOnCall")
+                    .name("EmergencyVet")
                     .outputKey("answer")
                     .build();
             UntypedAgent app = AgenticServices.plannerBuilder()
@@ -69,7 +72,7 @@ public final class CustomPlannerPattern {
                     .outputKey("answer")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("question", input));
+            var r = app.invokeWithAgenticScope(Map.of("worry", input));
             // Report WHICH rung settled it and how many were asked. Returning just the answer
             // would hide the only thing this pattern does differently from a sequence — the
             // scope's invocation history is what makes that reportable without threading state
@@ -95,6 +98,9 @@ public final class CustomPlannerPattern {
                 // The beat this demo plays in the running narration.
                 "By now you have learned who to ask, and in what order, before you ring "
                         + "anybody at all.",
+                // What this demo inherits from the ones before it.
+                "Demo 6's three desks a third time. Routing picks one, the supervisor "
+                        + "picks several, and this tries them cheapest-first and stops early.",
                 "Every planner above is an implementation of one small interface — here is one "
                         + "written by hand. The policy is a cost ladder: ask the book, then the "
                         + "trainer, then the vet, and stop at the first rung that can actually "

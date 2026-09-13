@@ -70,11 +70,15 @@ public final class ConditionalPattern {
                     .listener(listener)
                     .build();
             var r = app.invokeWithAgenticScope(Map.of("worry", input));
-            return String.valueOf(r.result());
+            // Each desk ends by saying whether it could answer. That word is what the custom
+            // planner's ladder branches on nine demos later; here it is protocol, not prose.
+            return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
         };
         return new PatternDef("conditional", "Conditional Routing", "workflow",
                 // The beat this demo plays in the running narration.
                 "One of them was a whole bar of dark chocolate. Who do you ring?",
+                // What this demo inherits from the ones before it.
+                "Introduces the three desks that demos 7, 8, 15 and 16 all reuse.",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
                         + "when mis-routing is expensive: everyone in this room knows a dog that "
                         + "has eaten chocolate needs a vet and not a training tip, so everyone "

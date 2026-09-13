@@ -42,10 +42,10 @@ public final class SinglePattern {
             var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
                     .chatModel(model)
                     .name("SitterCardClerk")
-                    .outputKey("card")
+                    .outputKey("notes")
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(clerk).outputKey("card").listener(listener).build();
+                    .subAgents(clerk).outputKey("notes").listener(listener).build();
             var r = app.invokeWithAgenticScope(Map.of("message", input));
             return String.valueOf(r.result());
         };
@@ -53,6 +53,8 @@ public final class SinglePattern {
                 // The beat this demo plays in the running narration.
                 "You are away this weekend, a friend has said yes to having Zao, and you "
                         + "have just sent them a wall of text.",
+                // What this demo inherits from the ones before it.
+                null,
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
                         + "LLM is genuinely best at: turning what a human actually typed into a "
                         + "shape a system can use.",

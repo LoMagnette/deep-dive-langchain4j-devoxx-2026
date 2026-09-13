@@ -129,10 +129,10 @@ class PatternCatalogTest {
     void supervisorDelegatesToBothSpecialists() {
         var def = new PatternCatalog().byId("supervisor").orElseThrow();
         Run r = run(def);
-        assertTrue(r.invoked().contains("RoutinePlanner"),
-                "no routine planning: " + r.invoked());
-        assertTrue(r.invoked().contains("TrainingPlanner"),
-                "no training planning: " + r.invoked());
+        // The same three desks the router chose between — the supervisor calls several.
+        assertTrue(r.invoked().contains("EverydayCare") && r.invoked().contains("DogTrainer")
+                        && r.invoked().contains("EmergencyVet"),
+                "the supervisor should reach more than one desk: " + r.invoked());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
 
@@ -168,13 +168,13 @@ class PatternCatalogTest {
     void theDemoProblemsActuallyDemonstrateTheirPattern() {
         var catalog = new PatternCatalog();
 
-        // Walk him now? Both checks run, and it is the JOIN that vetoes — a fan-out demo whose
-        // combiner only concatenates is missing half the pattern.
-        Run walk = run(catalog.byId("parallel").orElseThrow());
-        assertTrue(walk.invoked().containsAll(List.of("WeatherCheck", "DogCheck")),
-                "both checks must run: " + walk.invoked());
-        assertTrue(walk.result().startsWith("Not now"),
-                "hot pavement must veto the walk: " + walk.result());
+        // Both halves of the note get planned at once and the join brings them back — a fan-out
+        // that never rejoins is only half the pattern.
+        Run halves = run(catalog.byId("parallel").orElseThrow());
+        assertTrue(halves.invoked().containsAll(List.of("MealPlanner", "WalkPlanner")),
+                "both halves must be planned: " + halves.invoked());
+        assertTrue(halves.result().contains("Meals") && halves.result().contains("Walks"),
+                "the join must bring both halves back together: " + halves.result());
 
         // A dog that has eaten chocolate must reach the vet. Routing that to the trainer is
         // precisely the mistake conditional routing is here to prevent, and the room knows it.
@@ -242,21 +242,21 @@ class PatternCatalogTest {
         // A limp is past the book and past the trainer, so the ladder runs to the top.
         Run medical = run(def);
         assertTrue(medical.errors().isEmpty(), medical.errors()::toString);
-        assertEquals(List.of("PuppyBook", "TrainerOnCall", "VetOnCall"),
+        assertEquals(List.of("EverydayCare", "DogTrainer", "EmergencyVet"),
                 medical.invoked().stream().filter(a -> !a.equals("invoke")).toList(),
                 "a limp should escalate all the way, in cost order");
 
         // Ordinary kibble question: the cheapest rung answers it and nothing else is called.
         // This is the assertion that distinguishes the planner from a sequence.
         Run basics = run(def, "which food should I buy for a four-year-old shepherd?");
-        assertEquals(List.of("PuppyBook"), basics.invoked().stream()
+        assertEquals(List.of("EverydayCare"), basics.invoked().stream()
                         .filter(a -> !a.equals("invoke")).toList(),
-                "the book answered, so nobody should have rung the trainer or the vet");
+                "everyday care answered, so nobody should have rung the trainer or the vet");
         assertTrue(basics.result() != null && !basics.result().isBlank(), "no answer returned");
 
         // A behaviour question stops one rung further up — never reaching the vet.
         Run behaviour = run(def, "he pulls like a train on the lead");
-        assertEquals(List.of("PuppyBook", "TrainerOnCall"), behaviour.invoked().stream()
+        assertEquals(List.of("EverydayCare", "DogTrainer"), behaviour.invoked().stream()
                         .filter(a -> !a.equals("invoke")).toList(),
                 "the trainer answered, so the vet should not have been rung");
     }
@@ -276,22 +276,22 @@ class PatternCatalogTest {
         var asked = new ArrayList<String>();
         Run approved = run(def, def.defaultInput(), q -> {
             asked.add(q);
-            return "Fine, but take out the ibuprofen.";
+            return "Yes, but also tell her to take a photo of the wrapper first.";
         });
         assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
         assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
-        assertTrue(asked.get(0).contains("painkiller"),
+        assertTrue(asked.get(0).contains("wrapper"),
                 "the question must carry the draft being approved: " + asked.get(0));
-        assertTrue(instruction(approved).contains("No ibuprofen"),
-                "the change the person asked for must reach the instruction: " + approved.result());
+        assertTrue(approved.invoked().contains("WorryRouter"),
+                "the approval demo is the routing demo plus a person: " + approved.invoked());
 
         // Refusal has to stick. Assert on the INSTRUCTION, not the whole result: the result also
         // echoes what the person said, so a naive contains() passes on their own words and a
         // run that ignored them entirely still looks green.
-        Run refused = run(def, def.defaultInput(), q -> "No. Give him nothing until the vet opens.");
-        assertTrue(instruction(refused).contains("nothing"),
+        Run refused = run(def, def.defaultInput(), q -> "No. Do not ring anyone, wait for me.");
+        assertTrue(instruction(refused).contains("Do not act on it"),
                 "a refusal must survive to the instruction: " + instruction(refused));
-        assertTrue(!instruction(refused).contains("painkiller"),
+        assertTrue(!instruction(refused).contains("Ring the practice now"),
                 "a refusal must not be quietly overridden: " + instruction(refused));
 
         // And the run has to be legible on the page: a question event, then an answer event.
@@ -302,7 +302,7 @@ class PatternCatalogTest {
 
     /** Just the final instruction, without the draft and the answer the result also shows. */
     private static String instruction(Run r) {
-        String marker = "**So the instruction is**";
+        String marker = "**So the sitter is told**";
         int at = r.result().indexOf(marker);
         return at < 0 ? r.result() : r.result().substring(at + marker.length());
     }
@@ -336,8 +336,8 @@ class PatternCatalogTest {
                         .map(e -> e.agent() + "=" + e.millis()).toList());
 
         List<RunEvent> branches = done.stream()
-                .filter(e -> e.agent().endsWith("Check")).toList();
-        assertEquals(2, branches.size(), "both checks should have completed: " + done.stream()
+                .filter(e -> e.agent().endsWith("Planner")).toList();
+        assertEquals(2, branches.size(), "both halves should have been planned: " + done.stream()
                 .map(RunEvent::agent).toList());
         assertTrue(branches.stream().allMatch(e -> e.millis() >= delay),
                 "a branch cannot finish faster than the model it called: " + branches.stream()
@@ -400,6 +400,58 @@ class PatternCatalogTest {
     }
 
     /**
+     * The demos are meant to build on each other: by the capstone, nearly every box on the
+     * diagram is something the room has already watched run on its own. That claim is made in
+     * prose on every page, so it had better be true of the wiring — and it is the first thing a
+     * refactor would quietly break.
+     */
+    @Test
+    void theDemosReuseWhatTheEarlierOnesBuilt() {
+        var catalog = new PatternCatalog();
+
+        // The three desks are introduced by routing and then reused by four later demos, each
+        // putting a different control flow around the same cast. That progression is the spine
+        // of the middle of the talk.
+        for (String id : List.of("conditional", "humanApproval", "supervisor", "customPlanner",
+                "sitterNote")) {
+            assertTrue(labels(catalog, id).containsAll(List.of("EverydayCare", "DogTrainer",
+                            "EmergencyVet")),
+                    id + " should be built from the three desks: " + labels(catalog, id));
+        }
+
+        // The sitter-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
+        // used a third time by the capstone.
+        for (String id : List.of("sequential", "loop", "sitterNote")) {
+            assertTrue(labels(catalog, id).contains("FridgeChecklist"),
+                    id + " should reuse the checklist agent: " + labels(catalog, id));
+        }
+
+        // The capstone's fan-out is demo 4's, unchanged.
+        assertTrue(labels(catalog, "sitterNote").containsAll(List.of("MealPlanner", "WalkPlanner")),
+                "the capstone should reuse the parallel demo's planners");
+
+        // And the council ratifies with the very assessors that voted two demos earlier.
+        assertTrue(labels(catalog, "secondDogCouncil").containsAll(List.of("SpaceAndTime",
+                        "MoneyAndVet", "AskZaoHimself")),
+                "the council should reuse the voting demo's assessors");
+
+        // The supervisor is the strongest case and worth its own assertion: it introduces no
+        // agent at all. Everything it calls came from the routing demo, so the only thing that
+        // changed between the two is who decides.
+        assertTrue(labels(catalog, "supervisor").stream()
+                        .noneMatch(l -> l.endsWith("Planner") || l.equals("Supervisor") ? false
+                                : !List.of("EverydayCare", "DogTrainer", "EmergencyVet")
+                                        .contains(l)),
+                "the supervisor must add no agents of its own: " + labels(catalog, "supervisor"));
+    }
+
+    /** The agent names a pattern's diagram shows, which are the agents it is wired from. */
+    private static List<String> labels(PatternCatalog c, String id) {
+        return c.byId(id).orElseThrow().topology().nodes().stream()
+                .map(Topology.Node::label).toList();
+    }
+
+    /**
      * A topology has to show the mechanism, not just the cast. These are the structural claims
      * each diagram makes; the geometry that renders them lives in the frontend.
      */
@@ -458,7 +510,7 @@ class PatternCatalogTest {
                 "the two lower rungs escalate; the top one has nowhere to escalate to");
 
         // Supervisor and blackboard are loops, not one-way arrows.
-        assertTrue(mutual(catalog, "supervisor", "supervisor", "routine"),
+        assertTrue(mutual(catalog, "supervisor", "supervisor", "care"),
                 "supervisor invokes the planner and reads its result back");
         assertTrue(mutual(catalog, "blackboard", "walks", "board"),
                 "blackboard contributors read as well as write");

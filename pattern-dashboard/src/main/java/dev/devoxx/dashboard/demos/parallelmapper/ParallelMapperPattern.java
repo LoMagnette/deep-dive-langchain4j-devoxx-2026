@@ -66,6 +66,8 @@ public final class ParallelMapperPattern {
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
                 // The beat this demo plays in the running narration.
                 "The picnic. Five things off the blanket before anybody noticed.",
+                // What this demo inherits from the ones before it.
+                null,
                 "Map one agent over a collection in parallel (scatter/gather). Five things off "
                         + "the picnic blanket, one verdict each. The width of the fan-out is "
                         + "data, decided at run time — and you already know all five answers, so "

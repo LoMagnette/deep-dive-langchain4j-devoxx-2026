@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
+import dev.devoxx.dashboard.demos.parallel.MealPlanner;
+import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos.parallel.WalkPlanner;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
@@ -38,7 +41,7 @@ public final class SitterNotePattern {
                         node("meals", "MealPlanner", "agent", 2),
                         node("walks", "WalkPlanner", "agent", 2),
                         node("merge", "SitterNoteMerger", "join", 3),
-                        node("tighten", "NoteTightener", "agent", 4),
+                        node("tighten", "FridgeChecklist", "agent", 4),
                         node("check", "FridgeRuleCheck", "agent", 4)),
                 List.of(edge("in", "router"),
                         edge("router", "vet", "emergency"),
@@ -49,7 +52,7 @@ public final class SitterNotePattern {
                         edge("vet", "merge"), edge("trainer", "merge"),
                         edge("care", "merge", "answer"),
                         edge("meals", "merge"), edge("walks", "merge"),
-                        edge("merge", "tighten", "note"),
+                        edge("merge", "tighten", "notes"),
                         edge("tighten", "check"),
                         edge("check", "tighten", "score < 0.8")));
 
@@ -97,12 +100,13 @@ public final class SitterNotePattern {
                     .build();
 
             // 3. Loop — refine the note until the four fridge-door rules hold, never forever.
-            //    FridgeRuleCheck is the same agent the standalone loop demo uses: a composite
-            //    reuses the parts, it does not re-implement them.
-            var tighten = AgenticServices.agentBuilder(NoteTightener.class)
+            //    This IS demo 3's loop, both agents unchanged: the same checklist writer and
+            //    the same critic, with the merged note fed in instead of a typed one. A
+            //    composite reuses the parts rather than re-implementing them.
+            var tighten = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
-                    .name("NoteTightener")
-                    .outputKey("note")
+                    .name("FridgeChecklist")
+                    .outputKey("notes")
                     .build();
             var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
                     .chatModel(model)
@@ -120,11 +124,11 @@ public final class SitterNotePattern {
             var merge = AgenticServices.agentBuilder(SitterNoteMerger.class)
                     .chatModel(model)
                     .name("SitterNoteMerger")
-                    .outputKey("note")
+                    .outputKey("notes")
                     .build();
             UntypedAgent app = AgenticServices.sequenceBuilder()
                     .subAgents(router, triage, plan, merge, refine)
-                    .outputKey("note")
+                    .outputKey("notes")
                     .listener(listener)
                     .build();
             // The same text under two keys, and not by accident: the router and the three
@@ -139,6 +143,9 @@ public final class SitterNotePattern {
         return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",
                 // The beat this demo plays in the running narration.
                 "Back to that weekend away — this time the whole thing, end to end.",
+                // What this demo inherits from the ones before it.
+                "Almost everything: demo 6's router and desks, demo 4's meal and walk "
+                        + "planners, and demo 3's checklist and critic in the refining loop.",
                 "A real system, not a pattern: the owner's worry is routed to the right person, a "
                         + "parallel step plans the meals and the walks, a sequence merges all "
                         + "three into one note for the fridge door, and a loop tightens it until "

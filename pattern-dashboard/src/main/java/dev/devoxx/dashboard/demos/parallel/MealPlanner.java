@@ -1,4 +1,4 @@
-package dev.devoxx.dashboard.demos.sitternote;
+package dev.devoxx.dashboard.demos.parallel;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.service.UserMessage;

@@ -18,6 +18,6 @@ public interface FridgeRuleCheck {
             under 100 words. Give the fraction of rules that hold as a number from 0.0 to
             1.0 — the number only, no words, no explanation, no markdown.
 
-            Note: {{note}}""")
-    String check(@V("note") String note);
+            What we know so far: {{notes}}""")
+    String check(@V("notes") String notes);
 }

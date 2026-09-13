@@ -49,7 +49,7 @@ public class MockChatModel implements ChatModel {
 
     private final AtomicInteger scoreCounter = new AtomicInteger();
     private final AtomicInteger lineCounter = new AtomicInteger();
-    /** Which step of the supervisor's canned plan we're on (1 = routine, 2 = training, 3+ = done). */
+    /** Which step of the supervisor's canned plan we're on (1-3 = the three desks, 4+ = done). */
     private final AtomicInteger plannerStep = new AtomicInteger();
 
     /** Filler for prompts no rule claims — themed, so an unmatched prompt still looks alive. */
@@ -151,7 +151,8 @@ public class MockChatModel implements ChatModel {
                                 13:00  quick garden visit
                                 18:00  two scoops
                                 19:00  last walk of the day
-                                Never: the dried liver treats. Never: off the lead in the park."""),
+                                Never: the dried liver treats. Never off the lead in the park.
+                                Lead and poo bags: hook by the back door. Vet: 061 22 33 44."""),
                 new Rule(p -> p.contains("sitter card with exactly"),
                         p -> """
                                 Dog: Zao, Belgian shepherd
@@ -206,19 +207,24 @@ public class MockChatModel implements ChatModel {
 
                 // --- 9. The three people a worry can reach. Listed AFTER the composite's rules
                 // because the merger's prompt quotes whichever of these answered.
+                // Each desk ends with the word the escalation ladder branches on. The vet is the
+                // last rung, so it always answers; the other two escalate outside their subject.
                 new Rule(p -> p.contains("emergency vet"),
                         p -> "Ring the practice now and tell them his weight and how much he ate — "
                                 + "dark chocolate is the worst kind. Take the wrapper with you so "
                                 + "they can read the cocoa percentage. Do not wait to see whether "
-                                + "he is sick, and do not try to make him sick yourself."),
+                                + "he is sick, and do not try to make him sick yourself.\n"
+                                + "ANSWERED"),
                 new Rule(p -> p.contains("the dog trainer"),
                         p -> "This week: stop the walk dead every time the lead goes tight, and "
                                 + "only move off when it slackens. Stop: yanking him back, which "
-                                + "teaches him that pulling is how walks feel."),
+                                + "teaches him that pulling is how walks feel.\n"
+                                + (kind(p) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE")),
                 new Rule(p -> p.contains("everyday dog questions"),
                         p -> "Keep it boring and keep it the same: same food, same times, same "
                                 + "route. Most of what looks like a problem in week one is just "
-                                + "a change of routine."),
+                                + "a change of routine.\n"
+                                + (kind(p) == Kind.BASICS ? "ANSWERED" : "ESCALATE")),
 
                 // --- 10. The supervisor's two specialists.
                 new Rule(p -> p.contains("daily routine"),
@@ -301,44 +307,9 @@ public class MockChatModel implements ChatModel {
                                 + "indoors at all. Stand still and say nothing until he goes, "
                                 + "then tell him he is wonderful the second he finishes."),
 
-                // --- 14b. The escalation ladder. Each tier decides from the QUESTION which
-                // kind it is, so the ladder stops at a different rung depending on what is
-                // asked — which is the whole demo. A kibble question stops at the book, a
-                // pulling question at the trainer, a limp goes all the way. Three canned
-                // ladders, all deterministic, so the early exit can be shown offline by just
-                // typing a different question.
-                new Rule(p -> p.contains("puppy book on the shelf"),
-                        p -> kind(p) == Kind.BASICS
-                                ? "Feed a four-year-old shepherd of that size twice a day, a "
-                                        + "measured amount from the bag's chart, and weigh him "
-                                        + "monthly rather than guessing by eye. ANSWERED"
-                                : "There is nothing in here about that — the book only covers "
-                                        + "food, kit, grooming and routine. ESCALATE"),
-                new Rule(p -> p.contains("trainer, reached by telephone"),
-                        p -> kind(p) == Kind.BEHAVIOUR
-                                ? "Stop the walk dead the moment the lead goes tight, and only "
-                                        + "move off when it slackens — he learns that pulling "
-                                        + "makes the walk stop. Ten minutes of that daily beats "
-                                        + "an hour of being dragged. ANSWERED"
-                                : "That is not a training problem and I would be guessing. If he "
-                                        + "is sore or unwell it needs the vet, not me. ESCALATE"),
-                new Rule(p -> p.contains("you are the vet"),
-                        p -> "Keep him still and off stairs, and do not give him any human "
-                                + "painkiller — several are toxic to dogs. A sudden refusal to "
-                                + "weight-bear needs examining today, so ring for an appointment "
-                                + "this morning. ANSWERED"),
-
-                // --- 14c. The approval demo. The draft deliberately includes the thing a
-                // person must strike out — human ibuprofen is toxic to dogs — so the demo has
-                // something real for the human step to catch rather than a rubber stamp.
-                new Rule(p -> p.contains("what is in the cupboard"),
-                        p -> """
-                                Give one of his own painkillers from the last check-up, the dose \
-                                on the label, with food.
-                                Half a tablet of our ibuprofen on top if he is still sore at \
-                                midnight.
-                                Keep him off the stairs and do not walk him tonight.
-                                Ring the vet when they open."""),
+                // --- 14b. The approval demo: what the sitter is finally told, once a person
+                // has had their say. Listed before the desks' own rules because this prompt
+                // quotes whichever desk answered.
                 new Rule(p -> p.contains("honouring the person's decision"),
                         MockChatModel::finalNote),
 
@@ -423,15 +394,19 @@ public class MockChatModel implements ChatModel {
         String req = jsonEscape(between(prompt, "The user request is: '", "'."));
         // Both names are supervisor sub-agents; each takes a single @V("request") argument.
         if (step == 1) {
-            return "{\"agentName\":\"RoutinePlanner\",\"arguments\":{\"request\":\"" + req + "\"}}";
+            return "{\"agentName\":\"EverydayCare\",\"arguments\":{\"worry\":\"" + req + "\"}}";
         }
         if (step == 2) {
-            return "{\"agentName\":\"TrainingPlanner\",\"arguments\":{\"request\":\"" + req
+            return "{\"agentName\":\"DogTrainer\",\"arguments\":{\"worry\":\"" + req
                     + "\"}}";
         }
-        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Two things to start now: "
-                + "move his bed out of your room this month, and teach a settle on a mat. Keep "
-                + "the walks exactly as they are.\"}}";
+        if (step == 3) {
+            return "{\"agentName\":\"EmergencyVet\",\"arguments\":{\"worry\":\"" + req
+                    + "\"}}";
+        }
+        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Three problems, three "
+                + "people: the ear is the vet's and it is today, the postman is the trainer's, "
+                + "and the food goes back to normal once the ear stops hurting.\"}}";
     }
 
     /**
@@ -446,19 +421,18 @@ public class MockChatModel implements ChatModel {
         int at = all.lastIndexOf("what they said:");
         String said = at < 0 ? "" : all.substring(at + "what they said:".length());
         boolean refused = said.contains("no ") || said.startsWith(" no")
-                || said.contains("nothing") || said.contains("don't") || said.contains("refuse");
-        boolean struckIbuprofen = said.contains("ibuprofen") || said.contains("take out")
-                || said.contains("remove") || said.contains("drop");
-        if (refused && !struckIbuprofen) {
-            return "Give him nothing tonight. Keep him off the stairs, no walk, and ring the vet "
-                    + "the moment they open. If he gets worse before then, ring the out-of-hours "
-                    + "line rather than the cupboard.";
+                || said.contains("nothing") || said.contains("don't") || said.contains("refuse")
+                || said.contains("wait");
+        if (refused) {
+            return "Do not act on it. Sit with him, keep him where you can see him, and ring us "
+                    + "— we will decide and ring the vet ourselves if it comes to that.";
         }
-        return "Give one of his own painkillers from the last check-up, the dose on the label, "
-                + "with food."
-                + (struckIbuprofen ? " No ibuprofen — human painkillers are toxic to dogs, and it "
-                        + "has been struck out." : "")
-                + " Keep him off the stairs, no walk tonight, and ring the vet when they open.";
+        boolean changed = said.contains("but") || said.contains("also") || said.contains("add")
+                || said.contains("instead");
+        return "Ring the practice now, tell them his weight and how much he ate, and take the "
+                + "wrapper with you."
+                + (changed ? " And do exactly what they added: " + said.trim() : "")
+                + " Do not wait to see whether he is sick.";
     }
 
     /** Which rung of the escalation ladder a question belongs on. */
@@ -487,11 +461,13 @@ public class MockChatModel implements ChatModel {
      */
     private static Kind kind(String prompt) {
         String lower = prompt.toLowerCase(Locale.ROOT);
-        int at = lower.lastIndexOf("question:");
+        // The escalation tiers say "Question:", the desks say "Worry:" — same idea, and the
+        // ladder now runs on the desks, so both have to be found.
+        int at = Math.max(lower.lastIndexOf("question:"), lower.lastIndexOf("worry:"));
         if (at < 0) {
             return Kind.MEDICAL;
         }
-        String q = lower.substring(at + "question:".length());
+        String q = lower.substring(lower.indexOf(':', at) + 1);
         for (String w : MEDICAL_WORDS) {
             if (q.contains(w)) {
                 return Kind.MEDICAL;

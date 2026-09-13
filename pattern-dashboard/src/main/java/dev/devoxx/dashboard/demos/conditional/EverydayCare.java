@@ -9,6 +9,9 @@ public interface EverydayCare {
     @UserMessage("""
             You answer everyday dog questions — food, grooming, kit, routine. Give a short,
             practical answer.
+            You are the cheapest person to ask and you only know the ordinary things — food,
+            kit, grooming, routine. End with exactly one word on its own line: ANSWERED if you
+            fully covered it, or ESCALATE if it is past you.
 
             Worry: {{worry}}""")
     String handle(@V("worry") String worry);

@@ -9,6 +9,11 @@ import dev.langchain4j.model.chat.ChatModel;
  * wiring. {@link Runner} is that wiring; {@link PatternInfo} is what the page receives as JSON,
  * which is the same thing minus the runnable part.
  *
+ * <p>{@code buildsOn} names what this demo inherits from earlier ones — the agents it reuses
+ * and where they came from — or null when it stands alone. It is shown on the page because the
+ * reuse is the point: by the capstone, almost everything on the diagram is something the room has
+ * already watched run on its own, and nothing says so unless the page does.
+ *
  * <p>{@code story} is the demo's beat in the running narration — where we are in Zao's life and
  * what has just happened. Read in catalogue order the seventeen of them tell one continuous
  * story, which is why the field exists at all: the rail order is the <b>autonomy dial</b>, and
@@ -17,9 +22,9 @@ import dev.langchain4j.model.chat.ChatModel;
  * thesis, and chaining one demo's output into the next one's input would mean a skipped or
  * failed demo strands everything after it. Each demo stays independently runnable.
  */
-public record PatternDef(String id, String name, String category, String story, String useful,
-                         String caveat, Topology.Graph topology, String defaultInput,
-                         Runner runner) {
+public record PatternDef(String id, String name, String category, String story, String buildsOn,
+                         String useful, String caveat, Topology.Graph topology,
+                         String defaultInput, Runner runner) {
 
     /** A pattern's live behaviour: wire the agents, invoke them, return what came back. */
     @FunctionalInterface
@@ -28,12 +33,14 @@ public record PatternDef(String id, String name, String category, String story, 
     }
 
     /** JSON view of a pattern (no runnable code). */
-    public record PatternInfo(String id, String name, String category, String story, String useful,
-                              String caveat, Topology.Graph topology, String defaultInput) {
+    public record PatternInfo(String id, String name, String category, String story,
+                              String buildsOn, String useful, String caveat,
+                              Topology.Graph topology, String defaultInput) {
     }
 
     public PatternInfo toInfo() {
-        return new PatternInfo(id, name, category, story, useful, caveat, topology, defaultInput);
+        return new PatternInfo(id, name, category, story, buildsOn, useful, caveat, topology,
+                defaultInput);
     }
 
     /** Never throws: on failure it emits an error event and returns an explanation. */

@@ -133,25 +133,39 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **Tests mirror the shared packages**: `catalog/PatternCatalogTest` (the pattern runs, the
   demo-integrity claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
   `run/StreamingListenerTest`.
-- **The demos are narrated.** Each `PatternDef` carries a one-sentence `story` — the beat that
-  demo plays — and read in catalogue order the seventeen of them are one continuous passage: a
-  weekend away, a picnic, the chocolate, the closed vet, a baby coming, the bed argument, the
-  barking, the second dog. The tester shows it above the explanation (it is the line the speaker
-  says out loud; `useful` is what they say next), the gallery cards show it instead of `useful`
-  so the grid reads as the story, and `←`/`→` links walk the catalogue in order.
-  **The narration is written to fit the rail order, never the other way round.** That order is the
-  autonomy dial, which is the talk's thesis; if a better story ever seems to want the patterns
-  rearranged, the story is what is wrong. Two consequences worth keeping:
-  - `bdi` is a deliberate flashback ("think back to his very first hour"), because the puppy's
-    first hour is chronologically first and sits near the end of the dial. Signposting it costs a
-    word and buys the whole ordering.
-  - The two composites land as **callbacks** — the sitter note and the second-dog vote both
-    return as whole systems. That is the narrative payoff, and it is why they are last.
-  **Demo inputs are deliberately NOT chained.** Feeding one demo's output into the next reads
-  better and would mean a skipped section (the plan says compress §7 if time runs short), a
-  deep-linked `#/loop` from a slide, or one failed run strands everything after it. Every demo
-  stays independently runnable. `everyDemoHasItsBeatInTheNarration` fails the build on a demo with
-  no beat, or one that has grown into a paragraph.
+- **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
+  `story` (its beat: a weekend away, a picnic, the chocolate, a baby coming, the second dog) and a
+  `buildsOn` naming what it inherits. Read in catalogue order the seventeen beats are one passage;
+  read down the `buildsOn` lines they are one system being assembled. The tester shows both above
+  the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
+  walk the catalogue in order.
+  **Three spines carry the reuse:**
+  - **The sitter note** — `single` introduces `SitterCardClerk`; `sequential` reuses it and adds
+    `FridgeChecklist`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
+    it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
+    demos 2, 3 and 16 — only the control around it, which is the entire argument.
+  - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
+    then four demos put a different control flow around the same cast: routing picks one,
+    `humanApproval` adds a person before the answer is acted on, `supervisor` picks several and
+    decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` contains no
+    agent of its own** — that is the §6 pivot made concrete rather than asserted, and a test
+    asserts it.
+  - **The second dog** — `voting` introduces the three assessors; `secondDogCouncil` has them
+    ratify a debated motion instead of voting cold.
+  `parallelMapper`, `goap`, `p2p`, `blackboard`, `debate` and `bdi` stand alone, honestly: they
+  are about different subjects and forcing a link would damage them.
+  **Two rules that must not be broken:**
+  - **The narration is written to fit the rail order, never the other way round.** That order is
+    the autonomy dial, which is the talk's thesis. `bdi` is a deliberate flashback ("think back to
+    his very first hour") because the puppy's first hour is chronologically first and sits near
+    the end of the dial.
+  - **The chain runs through the DEFAULT INPUTS, not at run time.** `parallel`'s default input is
+    literally what `single` prints. Nothing is passed between demos while they run, so a skipped
+    section, a deep link from a slide, or one failed run never strands what follows.
+  `theDemosReuseWhatTheEarlierOnesBuilt` asserts the reuse from the topologies, and
+  `everyDemoHasItsBeatInTheNarration` fails the build on a demo with no beat. The first of those
+  already caught the capstone quietly using its own `NoteTightener` while claiming to reuse demo
+  3's checklist — the wiring was changed to match the claim, not the claim to match the wiring.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
   inventing a new scenario.

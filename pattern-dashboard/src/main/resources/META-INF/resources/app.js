@@ -115,6 +115,9 @@ function select(id){
   document.querySelectorAll('.rail button').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
   document.getElementById('p-name').textContent = current.name;
   document.getElementById('p-story').textContent = current.story || '';
+  const builds = document.getElementById('p-builds');
+  builds.hidden = !current.buildsOn;
+  if(current.buildsOn) builds.innerHTML = '<b>Builds on</b> · ' + escapeHtml(current.buildsOn);
   document.getElementById('p-useful').textContent = current.useful;
   /* Walking the story: neighbours in catalogue order, which is the order the narration is
      written for. The ends simply have no link rather than a dead one. */

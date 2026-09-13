@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
@@ -26,16 +27,20 @@ public final class LoopPattern {
 
     public static PatternDef define() {
         Topology.Graph topo = graph("loop",
-                List.of(node("in", "note", "input"),
-                        node("writer", "SitterNoteWriter", "agent"),
+                // The same FridgeChecklist the sequential demo used, with a critic added and a
+                // loop drawn round it. The lesson is that nothing about the agent changed.
+                List.of(node("in", "notes", "input"),
+                        node("writer", "FridgeChecklist", "agent"),
                         node("check", "FridgeRuleCheck", "agent")),
-                List.of(edge("in", "writer"), edge("writer", "check", "note"),
+                List.of(edge("in", "writer"), edge("writer", "check", "notes"),
                         edge("check", "writer", "score < 0.8")));
         Runner runner = (model, input, listener) -> {
-            var writer = AgenticServices.agentBuilder(SitterNoteWriter.class)
+            // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
+            // its own previous answer, which is why its input key is 'notes' rather than 'card'.
+            var writer = AgenticServices.agentBuilder(FridgeChecklist.class)
                     .chatModel(model)
-                    .name("SitterNoteWriter")
-                    .outputKey("note")
+                    .name("FridgeChecklist")
+                    .outputKey("notes")
                     .build();
             var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
                     .chatModel(model)
@@ -48,16 +53,19 @@ public final class LoopPattern {
                     .maxIterations(5)
                     .exitCondition(good)
                     .testExitAtLoopEnd(true)
-                    .outputKey("note")
+                    .outputKey("notes")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("note", input));
+            var r = app.invokeWithAgenticScope(Map.of("notes", input));
             return String.valueOf(r.result());
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 // The beat this demo plays in the running narration.
                 "This is the note you actually sent last time. You already know the four "
                         + "things wrong with it.",
+                // What this demo inherits from the ones before it.
+                "Demo 2's FridgeChecklist, unchanged. Nothing about the agent changed; a "
+                        + "critic and a loop were drawn around it.",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "
                         + "persuaded of — every meal with a time and an amount, where the lead "
                         + "is, the vet's number, short enough for the fridge door — so the score "

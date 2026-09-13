@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos.humanapproval;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static dev.devoxx.dashboard.support.Parsing.category;
 
 import java.util.List;
 import java.util.Map;
@@ -10,45 +11,86 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos.conditional.DogTrainer;
+import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos.conditional.EverydayCare;
+import dev.devoxx.dashboard.demos.conditional.WorryRouter;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.scope.AgenticScope;
 
-/** Wiring for the <b>human in the loop</b> demo — a step in the middle that is a person. */
+/**
+ * Wiring for the <b>human in the loop</b> demo — the previous demo, with a person added.
+ *
+ * <p>Literally: the same router and the same three desks, and then one more step before anything
+ * reaches the sitter standing in your kitchen. That is the cleanest way to show what a human step
+ * is, because everything else on this page is unchanged from the demo before it.
+ */
 public final class HumanApprovalPattern {
 
     private HumanApprovalPattern() {
     }
 
     public static PatternDef define() {
-        Topology.Graph topo = graph("chain",
-                // The middle node's role is "human", not "agent", and that is the whole diagram:
+        Topology.Graph topo = graph("stages",
+                // The person's node has role "human", not "agent", and that is the whole diagram:
                 // drawn as another agent box it would say the model decided, which is the one
                 // thing this pattern exists to deny.
-                List.of(node("in", "tonight", "input"),
-                        node("drafter", "DoseDrafter", "agent"),
-                        node("owner", "You", "human"),
-                        node("final", "FinalNote", "agent")),
-                List.of(edge("in", "drafter"),
-                        edge("drafter", "owner", "draft"),
+                List.of(node("in", "worry", "input", 0),
+                        node("router", "WorryRouter", "router", 1),
+                        node("care", "EverydayCare", "agent", 2),
+                        node("trainer", "DogTrainer", "agent", 2),
+                        node("vet", "EmergencyVet", "agent", 2),
+                        node("owner", "You", "human", 3),
+                        node("final", "FinalNote", "agent", 4)),
+                List.of(edge("in", "router"),
+                        edge("router", "care", "everyday"),
+                        edge("router", "trainer", "training"),
+                        edge("router", "vet", "emergency"),
+                        edge("care", "owner"), edge("trainer", "owner"),
+                        edge("vet", "owner", "draft"),
                         edge("owner", "final", "decision")));
 
         Runner runner = (model, input, listener) -> {
-            var drafter = AgenticServices.agentBuilder(DoseDrafter.class)
+            // 1. Demo 6, unchanged: route the worry to whoever can answer it.
+            var router = AgenticServices.agentBuilder(WorryRouter.class)
                     .chatModel(model)
-                    .name("DoseDrafter")
+                    .name("WorryRouter")
+                    .outputKey("category")
+                    .build();
+            var care = AgenticServices.agentBuilder(EverydayCare.class)
+                    .chatModel(model)
+                    .name("EverydayCare")
                     .outputKey("draft")
                     .build();
+            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
+                    .chatModel(model)
+                    .name("DogTrainer")
+                    .outputKey("draft")
+                    .build();
+            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+                    .chatModel(model)
+                    .name("EmergencyVet")
+                    .outputKey("draft")
+                    .build();
+            UntypedAgent triage = AgenticServices.conditionalBuilder()
+                    .subAgents(s -> category(s.readState("category", "")).equals("everyday"), care)
+                    .subAgents(s -> category(s.readState("category", "")).equals("training"),
+                            trainer)
+                    .subAgents(s -> category(s.readState("category", "")).equals("emergency"), vet)
+                    .build();
 
-            // A HumanInTheLoop is a non-AI agent: its "implementation" is a person. From the
-            // sequence's point of view it is just another sub-agent that happens to be slow —
-            // it reads a key from the scope and writes one back, like everything else.
+            // 2. The new step, and the only new thing on this page. A HumanInTheLoop is a non-AI
+            //    agent: it reads a key from the scope and writes one back, exactly like the three
+            //    above it, except that the thing producing the answer is a person.
             var owner = AgenticServices.humanInTheLoopBuilder()
-                    .description("The owner, who decides what actually goes in the dog")
+                    .description("The owner, who decides what the sitter is actually told to do")
                     .inputKey(String.class, "draft")
                     .outputKey("decision")
                     .responseProvider(scope -> listener.askHuman("You", """
-                            The vet is closed and this is what the assistant suggests. \
-                            Approve it, change it, or refuse it — nothing is given until you say.
+                            This is what the desk says, and your sitter is waiting on it. \
+                            Approve it, change it, or refuse it — nothing is passed on until \
+                            you say.
 
                             """ + scope.readState("draft", "")))
                     .build();
@@ -60,43 +102,44 @@ public final class HumanApprovalPattern {
                     .build();
 
             UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(drafter, owner, last)
+                    .subAgents(router, triage, owner, last)
                     .outputKey("instruction")
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("situation", input));
+            var r = app.invokeWithAgenticScope(Map.of("worry", input));
 
-            // Show what was drafted and what the person said, not just the outcome: the whole
-            // point of the pattern is the gap between those two, and a result that showed only
-            // the final line would hide the only interesting thing that happened.
-            var scope = r.agenticScope();
+            // Show what was drafted and what the person said, not only the outcome: the whole
+            // point of the pattern is the gap between those two.
+            AgenticScope scope = r.agenticScope();
             if (scope == null) {
                 return String.valueOf(r.result());
             }
-            return "**The assistant drafted**\n\n" + scope.readState("draft", "")
+            String draft = scope.readState("draft", "")
+                    .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+            return "**The desk drafted**\n\n" + draft
                     + "\n\n**You said**\n\n" + scope.readState("decision", "")
-                    + "\n\n**So the instruction is**\n\n" + scope.readState("instruction", "");
+                    + "\n\n**So the sitter is told**\n\n" + scope.readState("instruction", "");
         };
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
                 // The beat this demo plays in the running narration.
-                "Another night, the vet already closed, and the human medicine cupboard "
-                        + "open in front of you.",
-                "A step in the middle that is a person, not an agent. The model is good at "
-                        + "drafting what to give and how much; deciding whether it actually goes "
-                        + "in the dog is not its call. `HumanInTheLoop` is a non-AI agent — it "
-                        + "reads a key from the scope and writes one back, so the sequence around "
-                        + "it does not know or care that the answer came from a browser.",
+                "The same call again — except this time somebody has to act on the answer, and "
+                        + "it is not you standing there.",
+                // What this demo inherits from the ones before it.
+                "Demo 6 exactly — same router, same three desks — with one person added "
+                        + "before anything reaches the sitter.",
+                "The previous demo with a person added, and nothing else changed: same router, "
+                        + "same three desks, one more step before anything reaches the sitter. "
+                        + "`HumanInTheLoop` is a non-AI agent — it reads a key from the scope and "
+                        + "writes one back, so the sequence around it cannot tell that the answer "
+                        + "came from a browser.",
                 "The brake on the dial, and it costs what brakes cost: the run blocks on a "
                         + "person, so it needs a timeout and a thread you can afford to park. Ask "
                         + "too often and it is a form nobody fills in; ask too rarely and the "
                         + "approval is a rubber stamp. Put it where the action is hard to undo.",
                 topo,
-                // Everyone knows you do not dose a dog out of the human medicine cupboard, so
-                // everyone can judge both the draft and their own answer to it.
-                "Zao is limping and clearly sore, the vet is closed until morning, and there is "
-                        + "half a packet of our own ibuprofen and some leftover dog painkillers "
-                        + "from his last check-up in the cupboard",
+                "he has just eaten a whole bar of dark chocolate off the coffee table, and my "
+                        + "sister is the one standing there, not me",
                 runner);
     }
 }

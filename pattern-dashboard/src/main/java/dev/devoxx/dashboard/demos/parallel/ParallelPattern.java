@@ -25,57 +25,63 @@ public final class ParallelPattern {
 
     public static PatternDef define() {
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "right now", "input"),
-                        node("weather", "WeatherCheck", "agent"),
-                        node("dog", "DogCheck", "agent"),
+                List.of(node("in", "the stay", "input"),
+                        node("meals", "MealPlanner", "agent"),
+                        node("walks", "WalkPlanner", "agent"),
                         // The combiner is the whole second half of "fan out, then join" — and
                         // here it is a rule, not a concatenation: either check can veto the walk.
-                        node("join", "either can veto", "join")),
-                List.of(edge("in", "weather"), edge("in", "dog"),
-                        edge("weather", "join", "weather"), edge("dog", "join", "dog")));
+                        node("join", "both halves", "join")),
+                List.of(edge("in", "meals"), edge("in", "walks"),
+                        edge("meals", "join", "meals"), edge("walks", "join", "walks")));
         Runner runner = (model, input, listener) -> {
-            var weather = AgenticServices.agentBuilder(WeatherCheck.class)
+            // Two halves of the same note, and neither needs the other's answer — which is the
+            // whole test for a fan-out. The capstone reuses both of these agents unchanged.
+            var meals = AgenticServices.agentBuilder(MealPlanner.class)
                     .chatModel(model)
-                    .name("WeatherCheck")
-                    .outputKey("weather")
+                    .name("MealPlanner")
+                    .outputKey("meals")
                     .build();
-            var dog = AgenticServices.agentBuilder(DogCheck.class)
+            var walks = AgenticServices.agentBuilder(WalkPlanner.class)
                     .chatModel(model)
-                    .name("DogCheck")
-                    .outputKey("dog")
+                    .name("WalkPlanner")
+                    .outputKey("walks")
                     .build();
             UntypedAgent app = AgenticServices.parallelBuilder()
-                    .subAgents(weather, dog)
-                    // The decision is plain Java over what the two agents wrote. Nothing about
-                    // "did both checks pass" needs a model, and putting it in one would be a
-                    // demo lying about where the judgement actually lives.
-                    .output(s -> {
-                        String w = s.readState("weather", "");
-                        String d = s.readState("dog", "");
-                        boolean veto = (w + " " + d).toUpperCase(Locale.ROOT).contains("FAIL");
-                        return (veto ? "Not now" : "Fine — get the lead")
-                                + "\n\n- Weather and ground: " + w + "\n- Zao himself: " + d;
-                    })
+                    .subAgents(meals, walks)
+                    // The join is plain Java over what the two agents wrote. Assembling two
+                    // halves needs no model, and putting one there would be a demo lying about
+                    // where the work happens.
+                    .output(s -> "**Meals**\n\n" + s.readState("meals", "")
+                            + "\n\n**Walks**\n\n" + s.readState("walks", ""))
                     .listener(listener)
                     .build();
-            var r = app.invokeWithAgenticScope(Map.of("walk", input));
+            var r = app.invokeWithAgenticScope(Map.of("stay", input));
             return String.valueOf(r.result());
         };
         return new PatternDef("parallel", "Parallel", "workflow",
                 // The beat this demo plays in the running narration.
-                "Before you go anywhere he wants his walk — and it is two o'clock on a July "
-                        + "afternoon.",
-                "Fan out independent work concurrently, then join. The weather does not depend on "
-                        + "the dog and the dog does not depend on the weather, but you cannot put "
-                        + "the lead on until both have answered — which is exactly when "
-                        + "fan-out-and-join is the right shape.",
-                "Only for truly independent sub-tasks; joining is on you — and the join is where "
-                        + "the real rule lives, so keep it in Java where you can test it.",
+                "The note needs two halves that have nothing to do with each other: what he "
+                        + "eats, and when he goes out.",
+                // What this demo inherits from the ones before it.
+                "Takes the card demo 1 produced. Both planners come back in the capstone.",
+                "Fan out independent work concurrently, then join. The meals do not depend on "
+                        + "the walks and the walks do not depend on the meals, but the note needs "
+                        + "both before it can be written — which is exactly when "
+                        + "fan-out-and-join is the right shape. Both agents come back unchanged "
+                        + "in the capstone, with a router and a refinement loop around them.",
+                "Only for truly independent sub-tasks, and the joining is on you. Watch the two "
+                        + "timings against the run's: that gap is the entire reason to reach for "
+                        + "this instead of a sequence.",
                 topo,
-                // Everyone in the room already knows the answer: not at two in the afternoon in
-                // July. So they can grade the run instead of taking it on trust.
-                "two o'clock on a July afternoon, 31 degrees, the pavement has been in the sun "
-                        + "all day. Zao is four, he ate an hour ago, nothing else wrong with him",
+                // Literally what the first demo prints. The chain runs through the DEFAULT
+                // INPUTS, not at run time, so skipping a demo on stage never strands the next
+                // one and a deep link from a slide still works on its own.
+                """
+                        Dog: Zao, Belgian shepherd
+                        Meals: two scoops morning and evening, food in the tub by the back door
+                        Walks: not given
+                        Watch out for: no dried liver treats; never off the lead in the park
+                        Vet: 061 22 33 44""",
                 runner);
     }
 }
