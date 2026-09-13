@@ -118,7 +118,10 @@ function select(id){
   const builds = document.getElementById('p-builds');
   builds.hidden = !current.buildsOn;
   if(current.buildsOn) builds.innerHTML = '<b>Builds on</b> · ' + escapeHtml(current.buildsOn);
-  document.getElementById('p-useful').textContent = current.useful;
+  /* Rendered, not set as text: these two carry **bold** and `code` that used to show as
+     literal asterisks and backticks. renderMarkdown escapes before it introduces any tag, so
+     catalogue prose cannot inject markup. */
+  document.getElementById('p-useful').innerHTML = renderMarkdown(current.useful);
   /* Walking the story: neighbours in catalogue order, which is the order the narration is
      written for. The ends simply have no link rather than a dead one. */
   const at = patterns.findIndex(p => p.id === id);
@@ -128,8 +131,11 @@ function select(id){
   };
   step(document.getElementById('p-prev'), patterns[at - 1], '←');
   step(document.getElementById('p-next'), patterns[at + 1], '→');
-  const cav = document.getElementById('p-caveat');
-  cav.style.display='block'; cav.innerHTML = '⚠ <b>Caveat:</b> ' + current.caveat;
+  /* Closed by default, but if you opened it once you are probably comparing patterns — so it
+     behaves like the dock and the rail and stays how you left it. */
+  document.getElementById('p-notes').open = !!loadPrefs().notesOpen;
+  document.getElementById('p-caveat').innerHTML =
+      '<b>⚠ Caveat</b>' + renderMarkdown(current.caveat);
   document.getElementById('input').value = current.defaultInput || '';
   reset();
   // Result and scope were just cleared, so land on the tab that has something to show.
@@ -143,6 +149,7 @@ function reset(){
   lastScope={}; expandedVars.clear();
   document.getElementById('result').innerHTML='<span class="empty">No run yet.</span>';
   document.getElementById('result-dot').hidden=true;
+  document.getElementById('p-time').hidden=true;
   document.querySelectorAll('.node').forEach(n=>n.classList.remove('active','done'));
 }
 
@@ -153,6 +160,22 @@ function fmtMs(ms){
   if(ms==null) return '';
   if(ms < 1000) return ms + ' ms';
   return (ms/1000).toFixed(ms < 10000 ? 1 : 0) + ' s';
+}
+
+/* The whole run, and beside it how long the agents were busy in total. The gap between the two
+   IS the parallelism — two 900ms branches inside a 950ms run — so they are shown together or
+   the number means very little on its own. */
+function showRuntime(totalMs){
+  const badge=document.getElementById('p-time');
+  if(totalMs==null){ badge.hidden=true; return; }
+  const busy = agentMsSum > 0
+    ? `<span>agents busy ${fmtMs(agentMsSum)}</span>` : '';
+  badge.innerHTML = `<b>${fmtMs(totalMs)}</b>${busy}`;
+  badge.title = agentMsSum > 0
+    ? `The whole run took ${fmtMs(totalMs)}. The agents inside it were busy for `
+      + `${fmtMs(agentMsSum)} altogether — the difference is work that overlapped.`
+    : `The whole run took ${fmtMs(totalMs)}.`;
+  badge.hidden = false;
 }
 
 function log(ev){
@@ -256,6 +279,7 @@ function run(){
       revealResult();
     } else if(ev.type==='run-done'){
       hideAsk();
+      showRuntime(ev.millis);
       es.close(); es=null; document.getElementById('run').disabled=false;
     }
   };
@@ -416,6 +440,8 @@ document.getElementById('rail-toggle').onclick = () =>
 })();
 
 document.getElementById('run').onclick=run;
+document.getElementById('p-notes').addEventListener('toggle', e =>
+  savePrefs({notesOpen: e.target.open}));
 document.getElementById('ask-send').onclick=sendAnswer;
 document.getElementById('ask-text').addEventListener('keydown', e=>{
   if(e.key==='Enter'){ e.preventDefault(); sendAnswer(); }

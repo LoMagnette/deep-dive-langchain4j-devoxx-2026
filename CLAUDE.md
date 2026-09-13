@@ -109,8 +109,12 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **Every step is timed, and the two numbers on screen are an argument.** `RunEvent.millis` is
   filled in for `agent-after`, `agent-error`, `human-answer`, `run-result` and `run-done`, and the
   page shows it three ways: under each node on the diagram, at the right of each line in the Run
-  events pane, and as `whole run: X · agents busy for Y` beneath the result. The gap between those
-  last two is the whole case for half the catalogue, and it needs no explaining on stage:
+  events pane, and as a **badge beside the Run and Reset buttons** carrying the whole run with
+  how long the agents were busy inside it. The badge sits with the controls rather than in a dock
+  tab so it is readable whichever pane is open, and it is **hidden until there has been a run** —
+  `reset()` hides it, so switching pattern or resetting never leaves a stale number next to a Run
+  button, where it would read as this run's. The gap between its two numbers is the whole case
+  for half the catalogue, and it needs no explaining on stage:
   ```
   sequential       whole run 387 ms   agents busy 328 ms
   parallel         whole run 162 ms   agents busy 304 ms
@@ -407,6 +411,23 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   **Server log** (`/api/logs`, with a level filter). A dot flags a WARN/ERROR — or a finished result —
   on a tab you haven't looked at. Finishing a run switches to Result automatically, *unless* the viewer
   picked a tab themselves during that run (`tabPinned`) — never yank the view out from under someone.
+- **`[hidden]{display:none !important}` is declared once in `app.css`, and it has to be.** The
+  `hidden` attribute is only `[hidden]{display:none}` in the browser's own stylesheet, so any
+  author rule that sets `display` on the same element silently beats it. The runtime badge
+  (`.ran{display:inline-flex}`) sat in the controls as an empty pill before the first run for
+  exactly that reason. Eight elements on this page are toggled with `el.hidden` — the badge, the
+  builds-on line, the human-in-the-loop panel, the two unread dots and the three dock panes — so
+  this is a rule about the page, not about one bug.
+- **The tester leads with the story; the teaching text is folded away.** `useful` and `caveat`
+  live in a native `<details class="notes">`, **closed by default** — on stage the story beat is
+  what gets said out loud, and the explanation is what you open when somebody asks. Native
+  `<details>` rather than a JS toggle, so it needs no script and the keyboard works. The
+  open/closed state persists with the other layout prefs (`notesOpen`), because someone who opens
+  it once is usually comparing patterns and should not have to re-open it on every navigation.
+  Both fields are run through `renderMarkdown` rather than set as text: the catalogue prose
+  carries `**bold**` and `` `code` `` that used to show as literal asterisks and backticks.
+  That is safe — `renderMarkdown` escapes before it introduces any tag — and it is the reason the
+  order of those two steps in `render.js` must not be swapped.
   `renderMarkdown` is ~40 lines with no dependency (a CDN is the one thing sure to fail on conference
   wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
   keep that order if you extend it. Known simplification: nested bullets flatten to one level.

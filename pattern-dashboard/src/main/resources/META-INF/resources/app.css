@@ -59,6 +59,13 @@ body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;visibility:hidden;
 .rail button.active{background:var(--accent-soft);color:var(--accent);font-weight:700}
 /* center */
 .main{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0;padding:0 18px 18px;gap:12px}
+/* The `hidden` attribute is only `[hidden]{display:none}` in the browser's own stylesheet, so
+   ANY author rule that sets `display` silently beats it — which is how the runtime badge came to
+   sit in the controls as an empty pill before the first run had happened. Declared once, here,
+   with !important, so that class of bug cannot come back the next time something toggles
+   `el.hidden` and also has a display of its own. */
+[hidden]{display:none !important}
+
 /* Two routes share this column: the gallery (#/) and one pattern (#/<id>). */
 body.on-grid .head, body.on-grid .controls, body.on-grid .graphwrap, body.on-grid .dock{display:none}
 body:not(.on-grid) .gallery{display:none}
@@ -139,6 +146,21 @@ body:not(.on-grid) .gallery{display:none}
 .builds{font-size:13.5px;color:var(--muted);margin:0 0 8px;padding-left:11px;
   border-left:2px solid var(--accent)}
 .builds b{color:var(--accent);font-weight:700}
+/* Closed by default — see index.html. The summary is a quiet control, not a button: it should
+   be findable without competing with the pattern's name or the story beneath it. */
+.notes{margin:2px 0 4px}
+.notes > summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;width:fit-content;
+  color:var(--muted);font-size:13px;list-style:none;padding:3px 0;user-select:none}
+.notes > summary::-webkit-details-marker{display:none}
+.notes > summary::before{content:"";width:0;height:0;border:4px solid transparent;
+  border-left-color:currentColor;transition:transform .12s ease;transform-origin:2px 50%}
+.notes[open] > summary::before{transform:rotate(90deg)}
+.notes > summary:hover{color:var(--accent)}
+.notes > summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.notes .useful{margin-top:6px}
+.notes .useful p{margin:0 0 6px}
+.notes .useful p:last-child{margin-bottom:0}
+.caveat p{margin:4px 0 0}
 .head .useful{color:var(--muted);font-size:15px}
 .caveat{margin-top:10px;background:var(--accent-soft);border:0;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:8px 12px;font-size:14px}
 /* The run has stopped and is waiting for a person. Deliberately the loudest thing on the page
@@ -199,6 +221,14 @@ table.vars tr.changed .name::before{content:'';position:absolute;left:-10px;top:
 .btn-reset{background:var(--panel2);color:var(--muted)}
 .btn-reset:hover{color:var(--accent)}
 .controls button:disabled{opacity:.5;cursor:not-allowed}
+/* The last run's clock, sitting with the controls rather than in a dock tab, so it is readable
+   whichever pane you are on. Tabular numerals so the digits do not jiggle between runs. */
+.ran{display:inline-flex;align-items:baseline;gap:7px;padding:7px 14px;border-radius:999px;
+  background:var(--panel2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ran b{font-size:15px;font-weight:700;color:var(--ink)}
+.ran span{font-size:12.5px;color:var(--muted)}
+@media (max-width:560px){ .controls{flex-wrap:wrap} }
+
 .pale{color:var(--muted);font-weight:600}
 .head h2{font-family:var(--display)}
 /* bottom dock: run events + server log */
@@ -225,8 +255,6 @@ body.resizing{cursor:ns-resize;user-select:none}
 .empty{color:var(--muted);font-style:italic}
 .seq,.time{color:var(--term-dim)}
 .took{float:right;color:var(--term-dim);font-variant-numeric:tabular-nums;padding-left:10px}
-.took-total{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);
-  font-size:12.5px;font-variant-numeric:tabular-nums}
 .logger{color:#c4a6f5}
 .lvl-ERROR{color:#f87171;font-weight:700}
 .lvl-WARN{color:#fbbf24;font-weight:700}
