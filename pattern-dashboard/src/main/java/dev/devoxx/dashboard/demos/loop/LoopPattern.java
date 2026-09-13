@@ -55,6 +55,9 @@ public final class LoopPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
+                // The beat this demo plays in the running narration.
+                "This is the note you actually sent last time. You already know the four "
+                        + "things wrong with it.",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "
                         + "persuaded of — every meal with a time and an amount, where the lead "
                         + "is, the vet's number, short enough for the fridge door — so the score "

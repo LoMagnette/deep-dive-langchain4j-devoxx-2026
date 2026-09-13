@@ -14,6 +14,11 @@ pass two tests at once, and both are load-bearing:
    puppy goes to the garden before he gets a training session. Recall works in the garden before
    it works at the park. Neither half of a couple outranks the other about the bed.
 
+Every step is timed, and the page shows it under each node, against each event, and as
+`whole run: X · agents busy for Y` beneath the result. That second pair is the point: a sequential
+run's two numbers are nearly equal, the parallel one's differ by 2x, and the mapper's by 5x — the
+patterns argue for themselves without a slide.
+
 The second test is the one that is easy to fail: a scenario that needs a sentence of setup needs
 it fifteen times over, and then the room spends the talk learning the domain instead of the
 patterns.
@@ -75,7 +80,8 @@ java -jar target/quarkus-app/quarkus-run.jar -Ddashboard.model=mock
 - `GET /api/patterns` — JSON metadata + static topology for all 15 patterns and both composites.
 - `GET /api/patterns/{id}/run?input=...` — `text/event-stream` of `RunEvent`s
   (`run-start`, `agent-before`, `agent-after`, `agent-error`, `human-ask`, `human-answer`,
-  `run-result`, `run-done`). `run-start` carries a `runId`.
+  `run-result`, `run-done`). `run-start` carries a `runId`; the events that finish something
+  carry `millis`.
 - `POST /api/patterns/runs/{runId}/answer?text=...` — the other half of a human-in-the-loop run.
   SSE is one-way, so the person's answer comes back as its own request.
 

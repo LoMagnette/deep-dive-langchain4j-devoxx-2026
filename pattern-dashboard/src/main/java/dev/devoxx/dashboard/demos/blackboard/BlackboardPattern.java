@@ -78,6 +78,9 @@ public final class BlackboardPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "Meanwhile the neighbour has complained twice. He barks all day now and "
+                        + "nobody knows why.",
                 "Contributors read and write a shared board until a goal state exists. This is "
                         + "debugging, which is what a blackboard is for: barking while you are "
                         + "out is an exercise question, a what-changed question and a "

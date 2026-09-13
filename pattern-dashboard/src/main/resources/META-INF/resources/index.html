@@ -53,8 +53,15 @@
       <div class="groups" id="grid"></div>
     </section>
     <div class="head">
-      <a class="back" href="#/">← All patterns</a>
+      <!-- The demos read in catalogue order as one continuous story, so you can walk the whole
+           thing without going back to the grid. Real links, so Back and the keyboard work. -->
+      <div class="walk">
+        <a class="step" id="p-prev" href="#/"></a>
+        <a class="back" href="#/">All patterns</a>
+        <a class="step" id="p-next" href="#/"></a>
+      </div>
       <h2 id="p-name">Select a pattern</h2>
+      <div class="story" id="p-story"></div>
       <div class="useful" id="p-useful"></div>
       <div class="caveat" id="p-caveat" style="display:none"></div>
     </div>

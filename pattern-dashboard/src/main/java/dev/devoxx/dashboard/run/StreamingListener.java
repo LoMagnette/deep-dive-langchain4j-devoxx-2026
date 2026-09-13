@@ -27,6 +27,14 @@ public class StreamingListener implements AgentListener {
     private final Consumer<RunEvent> sink;
     private final java.util.concurrent.atomic.AtomicLong seq;
     private final AskHuman human;
+    /**
+     * When each in-flight invocation started, so an {@code agent-after} can say how long it took.
+     *
+     * <p>Keyed by {@code agentId()} rather than the agent's name, because a loop invokes the same
+     * name several times and a mapper fans one agent out over every item at once — names repeat,
+     * ids do not. Concurrent by necessity: a parallel step calls back from several threads.
+     */
+    private final java.util.Map<String, Long> startedNanos = new java.util.concurrent.ConcurrentHashMap<>();
 
     public StreamingListener(Consumer<RunEvent> sink, java.util.concurrent.atomic.AtomicLong seq) {
         this(sink, seq, AskHuman.NOBODY);
@@ -48,8 +56,11 @@ public class StreamingListener implements AgentListener {
      */
     public String askHuman(String agent, String question) {
         emit("human-ask", agent, question, null, null);
+        long from = System.nanoTime();
         String answer = human.ask(question);
-        emit("human-answer", agent, answer, null, null);
+        // Worth timing too, and worth showing: it is the honest cost of putting a person in the
+        // loop, and it is always the largest number on the page.
+        emit("human-answer", agent, answer, null, null, (System.nanoTime() - from) / 1_000_000);
         return answer;
     }
 
@@ -60,13 +71,17 @@ public class StreamingListener implements AgentListener {
 
     @Override
     public void beforeAgentInvocation(AgentRequest r) {
+        startedNanos.put(r.agentId(), System.nanoTime());
         emit("agent-before", r.agentName(), "invoking " + r.agentName(), r.agenticScope(), null);
     }
 
     @Override
     public void afterAgentInvocation(AgentResponse r) {
         Object out = r.output();
-        emit("agent-after", r.agentName(), "completed " + r.agentName(), r.agenticScope(), truncate(out));
+        Long took = elapsed(r.agentId());
+        emit("agent-after", r.agentName(),
+                "completed " + r.agentName() + (took == null ? "" : " in " + took + " ms"),
+                r.agenticScope(), truncate(out), took);
     }
 
     @Override
@@ -74,7 +89,13 @@ public class StreamingListener implements AgentListener {
         // The whole cause chain, not just getMessage(): see Errors.
         String msg = e.error() == null ? "error" : Errors.explain(e.error());
         emit("agent-error", e.agentName(), "error in " + e.agentName() + ": " + msg,
-                e.agenticScope(), null);
+                e.agenticScope(), null, elapsed(e.agentId()));
+    }
+
+    /** Milliseconds since this invocation started, or null if we never saw it start. */
+    private Long elapsed(String agentId) {
+        Long from = startedNanos.remove(agentId);
+        return from == null ? null : (System.nanoTime() - from) / 1_000_000;
     }
 
     /** Manually push an error event (used when a pattern run throws). */
@@ -83,7 +104,13 @@ public class StreamingListener implements AgentListener {
     }
 
     private void emit(String type, String agent, String message, AgenticScope scope, Object data) {
-        sink.accept(RunEvent.of(seq.getAndIncrement(), type, agent, message, snapshot(scope), data));
+        emit(type, agent, message, scope, data, null);
+    }
+
+    private void emit(String type, String agent, String message, AgenticScope scope, Object data,
+                      Long millis) {
+        sink.accept(RunEvent.of(seq.getAndIncrement(), type, agent, message, snapshot(scope),
+                data, millis));
     }
 
     /**

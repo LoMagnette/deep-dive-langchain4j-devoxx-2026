@@ -53,6 +53,8 @@ public final class P2pPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "And the argument the two of you have been avoiding for a year. The bed.",
                 "Peers refine a shared state until an exit condition holds. The case for it: "
                         + "every household has had this argument, and the reason it is not a "
                         + "supervisor is that neither half can overrule the other — so the only "

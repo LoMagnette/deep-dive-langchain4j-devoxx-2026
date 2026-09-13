@@ -79,6 +79,9 @@ public final class HumanApprovalPattern {
         };
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
+                // The beat this demo plays in the running narration.
+                "Another night, the vet already closed, and the human medicine cupboard "
+                        + "open in front of you.",
                 "A step in the middle that is a person, not an agent. The model is good at "
                         + "drafting what to give and how much; deciding whether it actually goes "
                         + "in the dog is not its call. `HumanInTheLoop` is a non-AI agent — it "

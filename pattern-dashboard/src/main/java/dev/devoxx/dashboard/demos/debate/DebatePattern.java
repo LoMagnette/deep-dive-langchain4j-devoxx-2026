@@ -56,6 +56,8 @@ public final class DebatePattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("debate", "Debate", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "And before any of it, two weeks in Tuscany in August. Does he come?",
                 "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
                         + "drama: ask one agent and it picks a side and then rationalises it, "
                         + "whereas a debate forces the case against the winner to be said out "

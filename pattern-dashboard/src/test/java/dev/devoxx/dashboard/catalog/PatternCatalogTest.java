@@ -12,6 +12,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import dev.devoxx.dashboard.model.MockChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.devoxx.dashboard.run.AskHuman;
 import dev.devoxx.dashboard.run.RunEvent;
 import dev.devoxx.dashboard.run.StreamingListener;
@@ -302,6 +305,98 @@ class PatternCatalogTest {
         String marker = "**So the instruction is**";
         int at = r.result().indexOf(marker);
         return at < 0 ? r.result() : r.result().substring(at + marker.length());
+    }
+
+    /**
+     * Timing is shown on the page, so it had better be measured rather than decorative — and the
+     * one claim worth asserting is the one the talk makes out loud: a parallel step really does
+     * overlap. Against a model where every call costs 150ms, two branches cost 300ms of agent
+     * time inside a run that takes barely more than one of them.
+     *
+     * <p>This also pins down the keying. Durations are recorded per {@code agentId()}, and if
+     * those collided across a fan-out the mapper's five items would report four times or garbage.
+     */
+    @Test
+    void everyStepIsTimedAndParallelStepsActuallyOverlap() {
+        var catalog = new PatternCatalog();
+        long delay = 150;
+
+        // Two independent checks; run one after another they would cost ~300ms.
+        var parallel = catalog.byId("parallel").orElseThrow();
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        parallel.run(slowModel(delay), parallel.defaultInput(),
+                new StreamingListener(events::add, new AtomicLong()));
+
+        // The Parallel step is itself reported as an agent, so its own duration is the wall clock
+        // of the fan-out — a better number to assert on than anything measured out here.
+        List<RunEvent> done = events.stream()
+                .filter(e -> "agent-after".equals(e.type())).toList();
+        assertTrue(done.stream().allMatch(e -> e.millis() != null),
+                "every agent-after must carry a duration: " + done.stream()
+                        .map(e -> e.agent() + "=" + e.millis()).toList());
+
+        List<RunEvent> branches = done.stream()
+                .filter(e -> e.agent().endsWith("Check")).toList();
+        assertEquals(2, branches.size(), "both checks should have completed: " + done.stream()
+                .map(RunEvent::agent).toList());
+        assertTrue(branches.stream().allMatch(e -> e.millis() >= delay),
+                "a branch cannot finish faster than the model it called: " + branches.stream()
+                        .map(RunEvent::millis).toList());
+
+        long sum = branches.stream().mapToLong(RunEvent::millis).sum();
+        long step = done.stream().filter(e -> "Parallel".equals(e.agent()))
+                .mapToLong(RunEvent::millis).max().orElseThrow();
+        assertTrue(step < sum * 0.8,
+                "the two branches must overlap: the step took " + step + "ms against " + sum
+                        + "ms of agent time");
+
+        // A fan-out over five items must report five distinct durations, not one reused.
+        var mapper = catalog.byId("parallelMapper").orElseThrow();
+        List<RunEvent> mapped = Collections.synchronizedList(new ArrayList<>());
+        mapper.run(new MockChatModel(), mapper.defaultInput(),
+                new StreamingListener(mapped::add, new AtomicLong()));
+        long timed = mapped.stream().filter(e -> "agent-after".equals(e.type())
+                && e.agent().startsWith("FoodSafetyCheck") && e.millis() != null).count();
+        assertEquals(5, timed, "each mapped item needs its own timing: " + mapped.stream()
+                .filter(e -> "agent-after".equals(e.type())).map(RunEvent::agent).toList());
+    }
+
+    /** A model that takes its time, so a duration has something to measure. */
+    private static ChatModel slowModel(long millis) {
+        return new MockChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest request) {
+                try {
+                    Thread.sleep(millis);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return super.chat(request);
+            }
+        };
+    }
+
+    /**
+     * The demos read in catalogue order as one continuous story, so a new one cannot join the
+     * catalogue without a beat — an unnarrated demo is a hole in the middle of the talk, and it
+     * would show up on stage rather than here.
+     *
+     * <p>The beats are written to fit the rail order, which is the <b>autonomy dial</b>. If a
+     * better story ever seems to want the patterns reordered, that is the story being wrong: the
+     * order is the thesis.
+     */
+    @Test
+    void everyDemoHasItsBeatInTheNarration() {
+        var missing = new ArrayList<String>();
+        for (var info : new PatternCatalog().infos()) {
+            if (info.story() == null || info.story().isBlank()) {
+                missing.add(info.id() + " has no story");
+            } else if (info.story().length() > 140) {
+                // A beat is a sentence the speaker says out loud, not a paragraph they read.
+                missing.add(info.id() + " reads as a paragraph (" + info.story().length() + " chars)");
+            }
+        }
+        assertTrue(missing.isEmpty(), () -> String.join("\n", missing));
     }
 
     /**

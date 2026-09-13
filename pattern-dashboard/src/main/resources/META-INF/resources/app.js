@@ -96,7 +96,10 @@ function buildGallery(){
       a.className = 'card';
       a.href = '#/' + encodeURIComponent(p.id);
       a.dataset.id = p.id;
-      a.innerHTML = `<h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.useful)}</p>`
+      /* The card shows the STORY, not the `useful` line: scanned top to bottom the gallery is
+         then the narration itself, and the tester page carries the explanation. */
+      a.innerHTML = `<h3>${escapeHtml(p.name)}</h3>`
+        + `<p class="story">${escapeHtml(p.story || p.useful)}</p>`
         + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`;
       cards.appendChild(a);
       drawThumb(a.querySelector('.thumb'), p.topology);
@@ -111,7 +114,17 @@ function select(id){
   current = patterns.find(p => p.id===id);
   document.querySelectorAll('.rail button').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
   document.getElementById('p-name').textContent = current.name;
+  document.getElementById('p-story').textContent = current.story || '';
   document.getElementById('p-useful').textContent = current.useful;
+  /* Walking the story: neighbours in catalogue order, which is the order the narration is
+     written for. The ends simply have no link rather than a dead one. */
+  const at = patterns.findIndex(p => p.id === id);
+  const step = (el, p, arrow) => {
+    el.textContent = p ? (arrow === '←' ? '← ' + p.name : p.name + ' →') : '';
+    el.href = p ? '#/' + encodeURIComponent(p.id) : '#/';
+  };
+  step(document.getElementById('p-prev'), patterns[at - 1], '←');
+  step(document.getElementById('p-next'), patterns[at + 1], '→');
   const cav = document.getElementById('p-caveat');
   cav.style.display='block'; cav.innerHTML = '⚠ <b>Caveat:</b> ' + current.caveat;
   document.getElementById('input').value = current.defaultInput || '';
@@ -131,12 +144,21 @@ function reset(){
 }
 
 /* ---------- run / SSE ---------- */
+/* Times are the cheapest observability there is, and the one number that makes a parallel step
+   argue for itself. Rounded the way a reader thinks: milliseconds until it stops being useful. */
+function fmtMs(ms){
+  if(ms==null) return '';
+  if(ms < 1000) return ms + ' ms';
+  return (ms/1000).toFixed(ms < 10000 ? 1 : 0) + ' s';
+}
+
 function log(ev){
   const c=document.getElementById('console');
   const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
-  div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--accent2)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>`;
+  const took = ev.millis==null ? '' : `<span class="took">${fmtMs(ev.millis)}</span>`;
+  div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--accent2)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>${took}`;
   c.appendChild(div); c.scrollTop=c.scrollHeight;
 }
 
@@ -182,6 +204,7 @@ function revealResult(){
 /* The id the server gave this run, so an answer can be posted back against it: the SSE stream
    is one-way, so the human's reply cannot travel down the pipe the question came from. */
 let runId=null;
+let agentMsSum=0;
 
 function showAsk(question){
   const box=document.getElementById('ask');
@@ -213,11 +236,16 @@ function run(){
   es.onmessage=e=>{
     let ev; try{ ev=JSON.parse(e.data); }catch(_){ return; }
     log(ev); updateScope(ev.scope);
-    if(ev.type==='run-start') runId=ev.data||null;
+    if(ev.type==='run-start'){ runId=ev.data||null; agentMsSum=0; }
     else if(ev.type==='human-ask'){ showAsk(ev.message); markNode(ev.agent,'active'); }
     else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
     else if(ev.type==='agent-before') markNode(ev.agent,'active');
-    else if(ev.type==='agent-after') markNode(ev.agent,'done');
+    else if(ev.type==='agent-after'){
+      /* Summed, not wall-clock: printed next to the run total, the gap between the two IS the
+         parallelism. Two 900ms branches in a 950ms run is the whole lesson in two numbers. */
+      if(ev.millis!=null) agentMsSum += ev.millis;
+      markNode(ev.agent,'done', ev.millis==null?null:fmtMs(ev.millis));
+    }
     else if(ev.type==='run-result'){
       document.getElementById('result').innerHTML = ev.data!=null
         ? '<div class="md">' + renderMarkdown(ev.data) + '</div>'

@@ -81,6 +81,9 @@ public final class BdiPattern {
                     + "\n\n**Then taught** — " + scope.readState("session", "");
         };
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "Think back to his very first hour in this house. Every habit you have been "
+                        + "arguing about started there.",
                 "The agent pursues prioritised desires, always acting on the highest-priority one "
                         + "that is achievable and not yet met. The puppy's first hour: out ranks "
                         + "food, food ranks training — and that is declared as a priority, not "

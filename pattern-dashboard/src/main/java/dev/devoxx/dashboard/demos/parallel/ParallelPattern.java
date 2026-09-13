@@ -62,6 +62,9 @@ public final class ParallelPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("parallel", "Parallel", "workflow",
+                // The beat this demo plays in the running narration.
+                "Before you go anywhere he wants his walk — and it is two o'clock on a July "
+                        + "afternoon.",
                 "Fan out independent work concurrently, then join. The weather does not depend on "
                         + "the dog and the dog does not depend on the weather, but you cannot put "
                         + "the lead on until both have answered — which is exactly when "

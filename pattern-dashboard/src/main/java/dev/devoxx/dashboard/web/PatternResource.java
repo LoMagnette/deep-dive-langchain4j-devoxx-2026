@@ -82,11 +82,15 @@ public class PatternResource {
                 em.emit(RunEvent.of(seq.getAndIncrement(), "run-start", def.name(),
                         "running '" + def.id() + "' [model: " + models.activeModel()
                                 + "] with input: " + in, Map.of(), runId));
+                // Wall clock, deliberately: it is what the room experiences, and the gap between
+                // it and the sum of the agent times is exactly what a parallel step buys you.
+                long from = System.nanoTime();
                 String out = def.run(model, in, listener);
+                long took = (System.nanoTime() - from) / 1_000_000;
                 em.emit(RunEvent.of(seq.getAndIncrement(), "run-result", def.name(),
-                        "final result", Map.of(), out));
+                        "final result", Map.of(), out, took));
                 em.emit(RunEvent.of(seq.getAndIncrement(), "run-done", def.name(),
-                        "done", Map.of(), null));
+                        "done in " + took + " ms", Map.of(), null, took));
             } catch (Throwable t) {
                 em.emit(RunEvent.of(seq.getAndIncrement(), "agent-error", def.name(),
                         "run failed: " + t, Map.of(), null));

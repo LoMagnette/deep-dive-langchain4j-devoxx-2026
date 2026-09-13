@@ -73,6 +73,8 @@ public final class ConditionalPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("conditional", "Conditional Routing", "workflow",
+                // The beat this demo plays in the running narration.
+                "One of them was a whole bar of dark chocolate. Who do you ring?",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
                         + "when mis-routing is expensive: everyone in this room knows a dog that "
                         + "has eaten chocolate needs a vet and not a training tip, so everyone "

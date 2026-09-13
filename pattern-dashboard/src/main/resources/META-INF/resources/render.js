@@ -283,7 +283,7 @@ function fitEdgeLabels(svg){
   svg.style.setProperty('--edge-fs', px.toFixed(2)+'px');
 }
 
-function markNode(agent, cls){
+function markNode(agent, cls, took){
   if(!agent) return;
   /* Fan-out agents report indexed names (FoodSafetyCheck_0, AngleScout$1); the topology
      node is labelled with the bare type, so strip the index before matching. */
@@ -292,8 +292,30 @@ function markNode(agent, cls){
     if(g.dataset.tok && (g.dataset.tok===agent || g.dataset.tok===base)){
       if(cls==='active'){ g.classList.add('active'); }
       else { g.classList.remove('active'); g.classList.add('done'); }
+      if(took) stampNode(g, took);
     }
   });
+}
+
+/* The time under the box. Written straight onto the diagram rather than left in the events pane
+   because that is where the eye already is, and because seeing two fan-out branches each say
+   900 ms while the run says 950 ms is the parallel lesson delivered without a word.
+   A node invoked more than once (a loop's editor, a mapper's item) accumulates: the label shows
+   the latest time and how many times it has run, so a loop cannot pretend it went round once. */
+function stampNode(g, took){
+  let t = g.querySelector('.nodetime');
+  if(!t){
+    t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('class','nodetime');
+    const r = g.querySelector('rect');
+    t.setAttribute('x', +r.getAttribute('x') + (+r.getAttribute('width'))/2);
+    t.setAttribute('y', +r.getAttribute('y') + (+r.getAttribute('height')) + 13);
+    g.appendChild(t);
+    g.dataset.runs = '0';
+  }
+  const runs = (+g.dataset.runs || 0) + 1;
+  g.dataset.runs = String(runs);
+  t.textContent = runs > 1 ? `${took} · ×${runs}` : took;
 }
 
 function drawThumb(svg, topo){

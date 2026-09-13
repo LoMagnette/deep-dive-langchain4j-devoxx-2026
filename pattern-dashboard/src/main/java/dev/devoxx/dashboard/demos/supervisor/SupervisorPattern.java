@@ -52,6 +52,9 @@ public final class SupervisorPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
+                // The beat this demo plays in the running narration.
+                "Then the bigger news: a baby in three months, and nobody has asked the "
+                        + "dog.",
                 "An LLM supervisor dynamically decides which specialist to invoke, and when to "
                         + "stop. The right shape when the request does not say what it needs: a "
                         + "baby arriving might mean changing the routine, teaching him new "

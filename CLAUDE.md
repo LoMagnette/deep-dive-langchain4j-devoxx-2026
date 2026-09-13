@@ -106,12 +106,52 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **`PatternCatalog` is the registry and nothing else**: sixteen `XxxPattern.define()` calls in
   the talk's running order, grouped by comments for the four rail categories. Adding a demo is a
   new package plus one line here.
+- **Every step is timed, and the two numbers on screen are an argument.** `RunEvent.millis` is
+  filled in for `agent-after`, `agent-error`, `human-answer`, `run-result` and `run-done`, and the
+  page shows it three ways: under each node on the diagram, at the right of each line in the Run
+  events pane, and as `whole run: X · agents busy for Y` beneath the result. The gap between those
+  last two is the whole case for half the catalogue, and it needs no explaining on stage:
+  ```
+  sequential       whole run 387 ms   agents busy 328 ms
+  parallel         whole run 162 ms   agents busy 304 ms
+  parallelMapper   whole run 165 ms   agents busy 783 ms
+  ```
+  Two details that are load-bearing:
+  - **Durations are keyed by `agentId()`, not the agent's name.** A loop invokes the same name
+    several times and a mapper fans one agent out over every item at once — names repeat, ids do
+    not. The map is concurrent because a parallel step calls back from several threads.
+  - **A workflow step is itself reported as an agent** (`Sequential`, `Parallel`,
+    `ParallelMapper`, `Loop`), so its duration is the wall clock of that step. That is the number
+    `everyStepIsTimedAndParallelStepsActuallyOverlap` asserts on — the library's own measurement
+    rather than one taken around the call — and it is what makes "the branches really do overlap"
+    a test rather than a claim.
+  A node invoked more than once shows the latest time and a `×n` count, so a loop cannot look
+  like it went round once.
 - **`run` is deliberately not part of `web`.** A run is observable whether or not anything is
   watching over HTTP, which is exactly what lets the tests assert on the same `RunEvent`s the
   browser animates. `catalog` and every demo depend on `run`; nothing depends on `web`.
 - **Tests mirror the shared packages**: `catalog/PatternCatalogTest` (the pattern runs, the
   demo-integrity claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
   `run/StreamingListenerTest`.
+- **The demos are narrated.** Each `PatternDef` carries a one-sentence `story` — the beat that
+  demo plays — and read in catalogue order the seventeen of them are one continuous passage: a
+  weekend away, a picnic, the chocolate, the closed vet, a baby coming, the bed argument, the
+  barking, the second dog. The tester shows it above the explanation (it is the line the speaker
+  says out loud; `useful` is what they say next), the gallery cards show it instead of `useful`
+  so the grid reads as the story, and `←`/`→` links walk the catalogue in order.
+  **The narration is written to fit the rail order, never the other way round.** That order is the
+  autonomy dial, which is the talk's thesis; if a better story ever seems to want the patterns
+  rearranged, the story is what is wrong. Two consequences worth keeping:
+  - `bdi` is a deliberate flashback ("think back to his very first hour"), because the puppy's
+    first hour is chronologically first and sits near the end of the dial. Signposting it costs a
+    word and buys the whole ordering.
+  - The two composites land as **callbacks** — the sitter note and the second-dog vote both
+    return as whole systems. That is the narrative payoff, and it is why they are last.
+  **Demo inputs are deliberately NOT chained.** Feeding one demo's output into the next reads
+  better and would mean a skipped section (the plan says compress §7 if time runs short), a
+  deep-linked `#/loop` from a slide, or one failed run strands everything after it. Every demo
+  stays independently runnable. `everyDemoHasItsBeatInTheNarration` fails the build on a demo with
+  no beat, or one that has grown into a paragraph.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
   inventing a new scenario.

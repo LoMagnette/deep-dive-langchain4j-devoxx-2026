@@ -121,6 +121,18 @@ body:not(.on-grid) .gallery{display:none}
 .back:hover{color:var(--accent)}
 .head{padding:16px 4px 0;flex:0 0 auto}
 .head h2{margin:0 0 4px;font-size:25px;letter-spacing:-.02em}
+/* The demo's beat in the running narration. Set above the explanation and in the page's display
+   face, because on stage it is the sentence the speaker actually says out loud — the `useful`
+   line below it is what they say next. */
+.story{font-family:var(--display);font-size:19px;line-height:1.35;letter-spacing:-.01em;
+  margin:2px 0 8px;max-width:62ch}
+.walk{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.walk .step{color:var(--muted);font-size:13px;text-decoration:none;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:30ch}
+.walk .step:hover{color:var(--accent)}
+.walk .step:empty{visibility:hidden}
+.walk #p-next{margin-left:auto;text-align:right}
+.card .story{font-family:inherit;font-size:13.5px;line-height:1.4;margin:0;color:var(--muted)}
 .head .useful{color:var(--muted);font-size:15px}
 .caveat{margin-top:10px;background:var(--accent-soft);border:0;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:8px 12px;font-size:14px}
 /* The run has stopped and is waiting for a person. Deliberately the loudest thing on the page
@@ -206,6 +218,9 @@ body.resizing{cursor:ns-resize;user-select:none}
 .pane .line{white-space:pre-wrap;word-break:break-word}
 .empty{color:var(--muted);font-style:italic}
 .seq,.time{color:var(--term-dim)}
+.took{float:right;color:var(--term-dim);font-variant-numeric:tabular-nums;padding-left:10px}
+.took-total{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);
+  font-size:12.5px;font-variant-numeric:tabular-nums}
 .logger{color:#c4a6f5}
 .lvl-ERROR{color:#f87171;font-weight:700}
 .lvl-WARN{color:#fbbf24;font-weight:700}
@@ -233,6 +248,10 @@ body.resizing{cursor:ns-resize;user-select:none}
    about 1.3:1 on the canvas in both themes. That is fine for the outline of a filled box, and
    invisible for a hairline arrow at the back of a room — and the arrows ARE the topology. These
    reach ~3:1, the non-text minimum, without turning the diagram into a wiring schematic. */
+/* The duration under a node. Muted and small on purpose: it must be readable from the back of a
+   room without competing with the agent's name, which is still the thing you read first. */
+.nodetime{fill:var(--muted);font-size:11px;text-anchor:middle;font-variant-numeric:tabular-nums}
+.node.done .nodetime{fill:var(--node-done-line)}
 .edge{stroke:var(--edge-line);stroke-width:1.7;fill:none;marker-end:url(#arrow)}
 .edge.back{stroke:var(--accent2);stroke-dasharray:5 4}
 /* An edge label is the only thing that says WHAT flows along an arrow, so it is the one bit of

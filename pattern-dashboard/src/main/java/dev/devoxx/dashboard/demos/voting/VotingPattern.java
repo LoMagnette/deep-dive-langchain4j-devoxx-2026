@@ -85,6 +85,8 @@ public final class VotingPattern {
                     + "- Zao himself: " + scope.readState("zaoVote", "");
         };
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "The question that will not go away: would he be happier with another dog?",
                 "Several agents answer independently; a strategy aggregates (majority, average, "
                         + "highest). Worth the tokens when one judgement is not trustworthy "
                         + "enough to act on — and this household is a genuine split, because the "

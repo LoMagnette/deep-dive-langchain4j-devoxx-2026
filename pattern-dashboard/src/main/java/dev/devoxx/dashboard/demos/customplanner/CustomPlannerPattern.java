@@ -92,6 +92,9 @@ public final class CustomPlannerPattern {
                     + "** · asked " + asked.size() + " of " + LADDER.size() + " rungs\n\n" + shown;
         };
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
+                // The beat this demo plays in the running narration.
+                "By now you have learned who to ask, and in what order, before you ring "
+                        + "anybody at all.",
                 "Every planner above is an implementation of one small interface — here is one "
                         + "written by hand. The policy is a cost ladder: ask the book, then the "
                         + "trainer, then the vet, and stop at the first rung that can actually "
