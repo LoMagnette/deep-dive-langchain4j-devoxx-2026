@@ -125,35 +125,61 @@ class PatternCatalogTest {
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
 
+    /**
+     * The claim this demo makes is not "it calls more than one agent" — a fan-out does that. It
+     * is that the <b>second call exists because of what the first one said</b>, which neither a
+     * router nor a fan-out can produce.
+     *
+     * <p>The hand-off deliberately does NOT rest on a specialist refusing a case. That version
+     * shipped, and it called one agent on a real model: a refusal is a conditional exception
+     * underneath a positive instruction, and a model takes the positive instruction. The nurse
+     * hands on because handing on is her job, which is a thing a model gets right.
+     */
     @Test
-    void supervisorDelegatesToBothSpecialists() {
+    void theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid() {
         var def = new PatternCatalog().byId("supervisor").orElseThrow();
         Run r = run(def);
-        // The same three desks the router chose between — the supervisor calls several.
-        assertTrue(r.invoked().contains("EverydayCare") && r.invoked().contains("DogTrainer")
-                        && r.invoked().contains("EmergencyVet"),
-                "the supervisor should reach more than one desk: " + r.invoked());
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-    }
-
-    @Test
-    void theCouncilCarriesTwoZooPatternsEndToEnd() {
-        var def = new PatternCatalog().byId("secondDogCouncil").orElseThrow();
-        Run r = run(def);
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
 
-        var invoked = r.invoked();
-        // The mapper fans one agent over three angles, so the scout is invoked more than once.
-        assertTrue(invoked.stream().filter(a -> a.startsWith("AngleScout")).count() >= 3,
-                "the mapper did not scatter: " + invoked);
-        assertTrue(invoked.contains("CouncilBriefer"), "findings were never turned into a motion");
-        assertTrue(invoked.contains("SecondDogFor") && invoked.contains("SecondDogAgainst"),
-                "the debate did not happen: " + invoked);
-        assertTrue(invoked.contains("HouseholdVerdict"), "nobody ruled: " + invoked);
-        assertTrue(invoked.contains("SpaceAndTime") && invoked.contains("MoneyAndVet")
-                        && invoked.contains("AskZaoHimself"),
-                "the vote did not reach all three assessors: " + invoked);
-        assertTrue(r.result() != null && !r.result().isBlank(), "no ruling produced");
+        var called = r.invoked().stream()
+                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                        .contains(a))
+                .toList();
+        assertEquals(List.of("TriageNurse", "EmergencyVet"), called,
+                "the nurse takes the call, and who she names is called next: " + r.invoked());
+
+        // One answer with a route, not a set of opinions — printing every call as a peer block
+        // is what a parallel workflow produces, and it made this demo read as one.
+        assertTrue(r.result().startsWith("**TriageNurse → EmergencyVet**"),
+                "the route has to lead, as a chain: " + r.result());
+        assertTrue(r.result().contains("named EmergencyVet, so that is who the supervisor called"),
+                "the result must say why the second call happened: " + r.result());
+        // The protocol words the planner acts on must never reach the reader.
+        assertTrue(!r.result().contains("NEEDS:") && !r.result().contains("ESCALATE"),
+                "protocol markers leaked into the answer: " + r.result());
+        int answerAt = r.result().indexOf("The nurse is right to send him");
+        int reasonAt = r.result().indexOf("did not answer it");
+        assertTrue(answerAt > 0 && reasonAt > answerAt,
+                "the final answer must come first and the route beneath it: " + r.result());
+
+        // Who she names decides who is called — not a script. A behaviour problem goes to the
+        // trainer instead, on the same wiring.
+        var behaviour = run(def, "he pulls like a train on the lead and barks at the postman")
+                .invoked().stream()
+                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                        .contains(a))
+                .toList();
+        assertEquals(List.of("TriageNurse", "DogTrainer"), behaviour,
+                "the same run should reach a different specialist: " + behaviour);
+
+        // And when nobody else is needed it stops, or "it called two" is just a longer script.
+        var settled = run(def, "he ate a bit of grass and was sick once, then asked for his tea")
+                .invoked().stream()
+                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                        .contains(a))
+                .toList();
+        assertEquals(List.of("TriageNurse"), settled,
+                "the nurse settled this one, so nobody else should have been called: " + settled);
     }
 
     /**
@@ -400,6 +426,36 @@ class PatternCatalogTest {
     }
 
     /**
+     * The supervisor's hand-off lives in two files that have to agree, and nothing at run time
+     * forces them to: the trainer's prompt has to be willing to refuse, and the supervisor's
+     * context has to say what a refusal means. This test exists because they once disagreed —
+     * the scenario was changed from "three separate problems" to "one problem handed on" and the
+     * context was left describing the old one, so a live planner did exactly as instructed,
+     * called one agent and stopped. Every test here still passed, because the mock had the
+     * hand-off special-cased.
+     */
+    @Test
+    void theHandOffIsSpelledOutWhereThePlannerAndTheTrainerCanBothSeeIt() {
+        var catalog = new PatternCatalog();
+
+        // The supervisor must explain what an escalation IS — a planner cannot act on a marker
+        // nobody has defined for it.
+        String useful = catalog.byId("supervisor").orElseThrow().useful();
+        assertTrue(useful.contains("that answer is what makes"),
+                "the supervisor's own description must state the dependency: " + useful);
+
+        // And the trainer has to be told to refuse the case, or it will helpfully answer it and
+        // there will be nothing to hand on. The rule is in its @UserMessage.
+        String prompt = dev.devoxx.dashboard.demos.conditional.DogTrainer.class
+                .getMethods()[0].getAnnotation(dev.langchain4j.service.UserMessage.class)
+                .value()[0];
+        assertTrue(prompt.contains("ESCALATE"),
+                "the trainer must have a way to decline: " + prompt);
+        assertTrue(prompt.toLowerCase().contains("until a vet"),
+                "the trainer must be told WHEN to decline, or it will just answer: " + prompt);
+    }
+
+    /**
      * The demos are meant to build on each other: by the capstone, nearly every box on the
      * diagram is something the room has already watched run on its own. That claim is made in
      * prose on every page, so it had better be true of the wiring — and it is the first thing a
@@ -435,14 +491,15 @@ class PatternCatalogTest {
                         "MoneyAndVet", "AskZaoHimself")),
                 "the council should reuse the voting demo's assessors");
 
-        // The supervisor is the strongest case and worth its own assertion: it introduces no
-        // agent at all. Everything it calls came from the routing demo, so the only thing that
-        // changed between the two is who decides.
-        assertTrue(labels(catalog, "supervisor").stream()
-                        .noneMatch(l -> l.endsWith("Planner") || l.equals("Supervisor") ? false
-                                : !List.of("EverydayCare", "DogTrainer", "EmergencyVet")
-                                        .contains(l)),
-                "the supervisor must add no agents of its own: " + labels(catalog, "supervisor"));
+        // The supervisor adds exactly one agent — the nurse, who makes the hand-off reliable —
+        // and reuses the routing demo's three. Anything more and the "same cast, different
+        // decider" point stops being true.
+        var extra = labels(catalog, "supervisor").stream()
+                .filter(l -> !l.equals("Supervisor"))
+                .filter(l -> !List.of("EverydayCare", "DogTrainer", "EmergencyVet").contains(l))
+                .toList();
+        assertEquals(List.of("TriageNurse"), extra,
+                "the supervisor should add only the nurse: " + labels(catalog, "supervisor"));
     }
 
     /** The agent names a pattern's diagram shows, which are the agents it is wired from. */

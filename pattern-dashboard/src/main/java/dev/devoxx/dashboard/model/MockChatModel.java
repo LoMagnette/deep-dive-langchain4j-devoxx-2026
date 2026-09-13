@@ -49,7 +49,7 @@ public class MockChatModel implements ChatModel {
 
     private final AtomicInteger scoreCounter = new AtomicInteger();
     private final AtomicInteger lineCounter = new AtomicInteger();
-    /** Which step of the supervisor's canned plan we're on (1-3 = the three desks, 4+ = done). */
+    /** How far the supervisor's reactive plan has got. */
     private final AtomicInteger plannerStep = new AtomicInteger();
 
     /** Filler for prompts no rule claims — themed, so an unmatched prompt still looks alive. */
@@ -209,21 +209,15 @@ public class MockChatModel implements ChatModel {
                 // because the merger's prompt quotes whichever of these answered.
                 // Each desk ends with the word the escalation ladder branches on. The vet is the
                 // last rung, so it always answers; the other two escalate outside their subject.
+                // The nurse always does her job and always names who is needed — which is why
+                // the hand-off does not depend on anybody being willing to refuse.
+                new Rule(p -> p.contains("out-of-hours line"), MockChatModel::nurse),
+
                 new Rule(p -> p.contains("emergency vet"),
-                        p -> "Ring the practice now and tell them his weight and how much he ate — "
-                                + "dark chocolate is the worst kind. Take the wrapper with you so "
-                                + "they can read the cocoa percentage. Do not wait to see whether "
-                                + "he is sick, and do not try to make him sick yourself.\n"
-                                + "ANSWERED"),
-                new Rule(p -> p.contains("the dog trainer"),
-                        p -> "This week: stop the walk dead every time the lead goes tight, and "
-                                + "only move off when it slackens. Stop: yanking him back, which "
-                                + "teaches him that pulling is how walks feel.\n"
-                                + (kind(p) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE")),
+                        p -> vet(p) + "\nANSWERED"),
+                new Rule(p -> p.contains("the dog trainer"), MockChatModel::trainer),
                 new Rule(p -> p.contains("everyday dog questions"),
-                        p -> "Keep it boring and keep it the same: same food, same times, same "
-                                + "route. Most of what looks like a problem in week one is just "
-                                + "a change of routine.\n"
+                        p -> everyday(p) + "\n"
                                 + (kind(p) == Kind.BASICS ? "ANSWERED" : "ESCALATE")),
 
                 // --- 10. The supervisor's two specialists.
@@ -380,33 +374,40 @@ public class MockChatModel implements ChatModel {
      * "response" argument to finish. We walk both sub-agents and then finish, so the demo shows
      * a supervisor delegating twice rather than looping on one agent.
      */
+    /**
+     * The canned supervisor plan — and it is deliberately a <b>reactive</b> one.
+     *
+     * <p>It does not replay a fixed list. It calls the trainer first, then reads what came back:
+     * if the trainer said ESCALATE, it calls the vet, and otherwise it stops. That is the same
+     * decision a real planner makes, so the offline demo shows the thing the demo claims — the
+     * second call happening <i>because of</i> the first — rather than a script that would look
+     * identical if the first agent had said something else.
+     *
+     * <p>Try it: an input the trainer can answer ends after one call.
+     */
     private String supervisorPlan(String prompt) {
         boolean firstRound = prompt.toLowerCase(Locale.ROOT)
                 .contains("last received response is: ''");
-        // Round 1 resets the counter, so every run replays the same three-step plan.
-        int step;
+        String req = jsonEscape(between(prompt, "The user request is: '", "'."));
         if (firstRound) {
             plannerStep.set(1);
-            step = 1;
-        } else {
-            step = plannerStep.incrementAndGet();
+            return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"worry\":\"" + req + "\"}}";
         }
-        String req = jsonEscape(between(prompt, "The user request is: '", "'."));
-        // Both names are supervisor sub-agents; each takes a single @V("request") argument.
-        if (step == 1) {
-            return "{\"agentName\":\"EverydayCare\",\"arguments\":{\"worry\":\"" + req + "\"}}";
-        }
-        if (step == 2) {
-            return "{\"agentName\":\"DogTrainer\",\"arguments\":{\"worry\":\"" + req
+        // ONLY the last response, never the whole prompt. The supervisor context spells out what
+        // the nurse can say, so the whole prompt contains every one of those phrases — scanning
+        // it would make the planner pick the same specialist every time. Third occurrence of
+        // this exact mistake in this file: read the slice, not the page.
+        String last = between(prompt, "last received response is: '", "'").toLowerCase(Locale.ROOT);
+        String needs = last.contains("needs: vet") ? "EmergencyVet"
+                : last.contains("needs: trainer") ? "DogTrainer"
+                : last.contains("needs: everyday") ? "EverydayCare"
+                : null;
+        if (needs != null && plannerStep.incrementAndGet() == 2) {
+            return "{\"agentName\":\"" + needs + "\",\"arguments\":{\"worry\":\"" + req
                     + "\"}}";
         }
-        if (step == 3) {
-            return "{\"agentName\":\"EmergencyVet\",\"arguments\":{\"worry\":\"" + req
-                    + "\"}}";
-        }
-        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Three problems, three "
-                + "people: the ear is the vet's and it is today, the postman is the trainer's, "
-                + "and the food goes back to normal once the ear stops hurting.\"}}";
+        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"The nurse named who it "
+                + "needed and they have answered.\"}}";
     }
 
     /**
@@ -433,6 +434,137 @@ public class MockChatModel implements ChatModel {
                 + "wrapper with you."
                 + (changed ? " And do exactly what they added: " + said.trim() : "")
                 + " Do not wait to see whether he is sick.";
+    }
+
+
+
+    /** What the nurse makes of the call, and who she says it needs. */
+    private static String nurse(String prompt) {
+        String q = worry(prompt);
+        if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
+            return "A dog who has never done this before and now does is the one that worries "
+                    + "me. In a four-year-old that is pain until somebody rules it out — teeth "
+                    + "and ears first, then hips and back.\nNEEDS: vet";
+        }
+        if (has(q, "ear", "ears") || q.contains("limp") || q.contains("chocolate")
+                || q.contains("blood") || q.contains("swollen")) {
+            return "That is physical and it is not going to wait until Monday.\nNEEDS: vet";
+        }
+        if (q.contains("pull") || q.contains("bark") || q.contains("postman")
+                || q.contains("lunging")) {
+            return "Nothing here sounds like pain — he is well in himself and this is about what "
+                    + "he has learned to do.\nNEEDS: trainer";
+        }
+        if (q.contains("food") || q.contains("switch") || q.contains("groom")) {
+            return "Ordinary stuff, nothing urgent in it.\nNEEDS: everyday care";
+        }
+        return "He is bright, eating, and nothing about this needs anybody tonight. Ring us in "
+                + "the morning if it has not settled.\nNEEDS: nobody";
+    }
+
+    /**
+     * The three desks answer what they were actually ASKED, not one canned line each.
+     *
+     * <p>Mostly {@code contains}, because the keywords are stems and the worry says "snapping"
+     * rather than "snap" — but "ear" goes through {@link #has}, because it is a substring of
+     * "near" and a worry about snapping "near his bed" was being answered with a lecture about
+     * ear infections. Short keywords need word boundaries; stems need the opposite. Both traps
+     * are live in the same method.
+     *
+     * <p>That matters because the same three agents serve four demos now: routing sends one
+     * worry to one of them, the supervisor puts a three-part message to all three, and the
+     * escalation ladder walks them in order. A fixed reply per desk made the supervisor's
+     * roll-call read "called 3 of 3" over three answers about the wrong problems.
+     */
+    private static String vet(String prompt) {
+        String q = worry(prompt);
+        if (q.contains("chocolate") || q.contains("ate a") || q.contains("poison")) {
+            return "Ring the practice now and tell them his weight and how much he ate — dark "
+                    + "chocolate is the worst kind. Take the wrapper so they can read the cocoa "
+                    + "percentage. Do not wait to see whether he is sick.";
+        }
+        if (has(q, "ear", "ears")) {
+            return "That is an infection until a vet says otherwise, and a smell means it has "
+                    + "been going a while. Book today, do not poke anything down there, and stop "
+                    + "him scratching it open — a buster collar tonight if you have one.";
+        }
+        if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
+            return "The nurse is right to send him. A dog that snaps where he never used to is "
+                    + "telling you something hurts, and at four the usual suspects are teeth and "
+                    + "ears. Book a full examination — mouth, ears, hips, spine — and keep the "
+                    + "children away from his bed entirely until he has been seen.";
+        }
+        if (q.contains("limp") || q.contains("sore")) {
+            return "Keep him still and off stairs, and give him nothing from your own cupboard. "
+                    + "A dog that will not weight-bear needs examining today.";
+        }
+        return "Nothing here needs me tonight, but ring the practice in the morning if it has "
+                + "not settled.";
+    }
+
+    private static String trainer(String prompt) {
+        String q = worry(prompt);
+        // The one every trainer knows: a behaviour that appeared out of nowhere is a medical
+        // question until somebody rules it out. This is what makes the supervisor call a second
+        // agent — not a script, but what the first agent said.
+        if ((q.contains("snap") || q.contains("growl") || q.contains("grumpy"))
+                && (q.contains("never") || q.contains("suddenly") || q.contains("started"))) {
+            return "I will not train this yet, and you should not either. A dog that has never "
+                    + "snapped and now does has usually started hurting somewhere — teeth, ears, "
+                    + "hips, back. Training a dog out of telling you it is in pain is how you get "
+                    + "a dog that bites without warning first. Get him examined, then call me.\n"
+                    + "ESCALATE";
+        }
+        if (q.contains("postman") || q.contains("letterbox") || q.contains("lunging")) {
+            return "Block the hallway so he cannot reach the door, and feed him something good "
+                    + "the moment the post lands — he learns the noise pays. Never let him "
+                    + "rehearse the lunge; every time he does it, it works, because the postman "
+                    + "always leaves.";
+        }
+        if (q.contains("pull") || q.contains("lead")) {
+            return "Stop the walk dead every time the lead goes tight, and only move off when it "
+                    + "slackens. Stop yanking him back, which teaches him that pulling is how "
+                    + "walks feel.\n"
+                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
+        }
+        if (q.contains("bark")) {
+            return "Find out what he is barking at before you train anything — the answer is "
+                    + "usually a window he should not be able to see out of.\n"
+                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
+        }
+        return "Nothing here is a training problem.\n"
+                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
+    }
+
+    private static String everyday(String prompt) {
+        String q = worry(prompt);
+        if (q.contains("food") || q.contains("switch") || q.contains("puppy food")) {
+            return "Move him onto an adult food of the same brand over a week: a quarter new on "
+                    + "day one, half by day three, all of it by day seven. Switching in one go is "
+                    + "what upsets stomachs, not the food itself.";
+        }
+        if (q.contains("groom") || q.contains("brush") || q.contains("coat")) {
+            return "Twice a week normally, daily while he is dropping coat, and do it somewhere "
+                    + "you do not mind hoovering.";
+        }
+        return "Keep it boring and keep it the same: same food, same times, same route.";
+    }
+
+    /**
+     * Just what was asked, never the agent's own instructions — see {@link #kind}.
+     *
+     * <p>Every label a prompt uses for its input has to be listed here. The nurse's template ends
+     * "The call:" rather than "Worry:", and the one line missing from this list was enough to
+     * make her fall through to her catch-all answer, name nobody, and quietly turn the whole
+     * supervisor demo back into a single call.
+     */
+    private static final List<String> ASKED_LABELS =
+            List.of("worry:", "question:", "the call:");
+
+    private static String worry(String prompt) {
+        String lower = prompt.toLowerCase(Locale.ROOT);
+        int at = ASKED_LABELS.stream().mapToInt(lower::lastIndexOf).max().orElse(-1);
+        return at < 0 ? "" : lower.substring(lower.indexOf(':', at) + 1);
     }
 
     /** Which rung of the escalation ladder a question belongs on. */

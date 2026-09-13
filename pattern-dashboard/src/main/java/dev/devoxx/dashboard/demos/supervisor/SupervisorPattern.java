@@ -5,6 +5,7 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
+import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.PatternDef.Runner;
@@ -13,8 +14,10 @@ import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
-import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
+import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 
 /**
  * Wiring for the <b>supervisor</b> demo — the same three people the router chose between, except
@@ -30,20 +33,90 @@ public final class SupervisorPattern {
     private SupervisorPattern() {
     }
 
+    /** Everyone this supervisor may call: the nurse it adds, then the routing demo's three. */
+    private static final List<String> DESKS =
+            List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet");
+
+    /**
+     * Who was actually called, and what each of them said.
+     *
+     * <p>The count is the whole point of the demo. With only the last answer on screen — which is
+     * what {@code SupervisorResponseStrategy.LAST} gives you — three calls and one call look
+     * identical, and the pattern reads as a router with extra steps.
+     */
+    private static String answerWithItsRoute(AgenticScope scope) {
+        var calls = scope.agentInvocations().stream()
+                .filter(i -> DESKS.contains(i.agentName()))
+                .toList();
+        if (calls.isEmpty()) {
+            return "The supervisor called nobody.";
+        }
+
+        // Only the LAST answer is the answer. Everything before it was the supervisor working
+        // out who to ask — and printing those as peer blocks is what made this read as a
+        // fan-out: three answers of equal weight is exactly what a parallel workflow produces.
+        var settled = calls.get(calls.size() - 1);
+        String answer = strip(settled.output());
+        if (calls.size() == 1) {
+            return "**" + settled.agentName() + " answered it.**\n\n" + answer;
+        }
+
+        String path = calls.stream().map(AgentInvocation::agentName)
+                .collect(java.util.stream.Collectors.joining(" → "));
+        StringBuilder out = new StringBuilder("**" + path + "**\n\n" + answer + "\n\n---\n");
+        // The earlier calls appear once, small, as the REASON the next one happened — never as
+        // an answer in their own right, because they were not one.
+        for (int i = 0; i < calls.size() - 1; i++) {
+            out.append("\n*").append(calls.get(i).agentName()).append(" did not answer it — \"")
+                    .append(firstSentence(strip(calls.get(i).output())))
+                    .append("\" — and named ").append(calls.get(i + 1).agentName())
+                    .append(", so that is who the supervisor called.*\n");
+        }
+        return out.toString();
+    }
+
+    /**
+     * The answer without the protocol on the end of it. Both markers have to go: the desks sign
+     * off with ANSWERED or ESCALATE, and the nurse ends by naming who is needed — words the
+     * planner acts on and a reader should never have to see.
+     */
+    private static String strip(Object output) {
+        return String.valueOf(output)
+                .replaceAll("(?is)\\s*NEEDS:\\s*\\w[\\w ]*$", "")
+                .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "")
+                .strip();
+    }
+
+    /** Enough of a declined answer to see why it was declined, and no more. */
+    private static String firstSentence(String text) {
+        int stop = text.indexOf(". ");
+        return stop < 0 || stop > 160 ? text.substring(0, Math.min(160, text.length())).strip()
+                : text.substring(0, stop).strip();
+    }
+
     public static PatternDef define() {
         Topology.Graph topo = graph("star",
                 List.of(node("supervisor", "Supervisor", "supervisor"),
+                        node("nurse", "TriageNurse", "agent"),
                         node("care", "EverydayCare", "agent"),
                         node("trainer", "DogTrainer", "agent"),
                         node("vet", "EmergencyVet", "agent")),
                 // Both directions: the supervisor invokes, reads the result, then decides again.
                 // One-way arrows would draw a static fan-out instead of a planning loop.
-                List.of(edge("supervisor", "care", "invoke"), edge("care", "supervisor", "result"),
+                List.of(edge("supervisor", "nurse", "invoke"),
+                        edge("nurse", "supervisor", "what it needs"),
+                        edge("supervisor", "care", "invoke"), edge("care", "supervisor", "result"),
                         edge("supervisor", "trainer", "invoke"),
                         edge("trainer", "supervisor", "result"),
                         edge("supervisor", "vet", "invoke"), edge("vet", "supervisor", "result")));
 
         Runner runner = (model, input, listener) -> {
+            // The one new agent, and the first one called. Everything else here the room has
+            // already watched run in the routing demo.
+            var nurse = AgenticServices.agentBuilder(TriageNurse.class)
+                    .chatModel(model)
+                    .name("TriageNurse")
+                    .build();
             var care = AgenticServices.agentBuilder(EverydayCare.class)
                     .chatModel(model)
                     .name("EverydayCare")
@@ -57,33 +130,70 @@ public final class SupervisorPattern {
                     .name("EmergencyVet")
                     .build();
             SupervisorAgent sup = AgenticServices.supervisorBuilder()
-                    .subAgents(care, trainer, vet)
+                    .subAgents(nurse, care, trainer, vet)
                     .chatModel(model)                 // planner LLM lives on the supervisor
-                    .responseStrategy(SupervisorResponseStrategy.LAST)
+                    // Told once, in plain English, that a request can hold several separate
+                    // problems and that each desk only covers its own. This is the difference
+                    // between a supervisor and a router: a router is asked "which one?", a
+                    // supervisor is asked "who does this need, and are we done yet?".
+                    // Says what a hand-off looks like, and that is the whole configuration.
+                    // An earlier version of this text described a message holding several
+                    // separate problems — left over from a different scenario — and the planner
+                    // did exactly as told: one problem, one answer, stop. It called one agent
+                    // and the demo quietly stopped demonstrating anything.
+                    .supervisorContext("""
+                            Always call the nurse first: she takes the call, works out what is \
+                            going on, and ends by naming who it needs. She never treats and \
+                            never trains, so her answer is NEVER the answer to give back — it \
+                            tells you who to call next. When she says NEEDS: vet, call the vet \
+                            with the original worry; NEEDS: trainer, call the trainer; NEEDS: \
+                            everyday care, call everyday care. Only when she says NEEDS: nobody \
+                            is her own answer enough. You are finished once the specialist she \
+                            named has answered.""")
+                    // The planner has to be able to READ the previous answer to act on it —
+                    // which is the whole mechanism here, so it is set explicitly rather than
+                    // left to the default.
+                    .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                     .maxAgentsInvocations(4)
+                    // Composed here rather than left to a response strategy: the last answer is
+                    // THE answer, and the calls before it are shown as the route to it rather
+                    // than as opinions of their own. A run that only needed one desk says so.
+                    .output(SupervisorPattern::answerWithItsRoute)
                     .listener(listener)
                     .build();
             var r = sup.invokeWithAgenticScope(input);
-            return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+            return String.valueOf(r.result());
         };
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
                 // The beat this demo plays in the running narration.
-                "Then everything at once, and no idea which of them to ring first.",
+                "Then something that is not like him at all, and you cannot tell whether it is "
+                        + "behaviour or something worse.",
                 // What this demo inherits from the ones before it.
                 "Demo 6's three desks again, and not one new agent. Routing picks one of "
                         + "them; this picks several and decides when to stop.",
-                "An LLM supervisor decides which specialist to invoke, and when to stop. These are "
-                        + "the same three agents the router chose between two demos ago — not one "
-                        + "new line of agent code — so the only thing that changed is who decides. "
-                        + "Routing picks one. This picks several, in an order nobody wrote down, "
-                        + "and stops when it judges the job done.",
-                "Non-deterministic and needs a capable planner LLM; bound invocations to stay "
-                        + "safe. Ask yourself first whether you could have written the steps "
-                        + "down — if you could, a sequence is cheaper and debuggable.",
+                "An LLM supervisor decides which specialist to invoke, and when to stop — the "
+                        + "same three agents the router chose between two demos ago, not one new "
+                        + "line of agent code. Watch the order: it asks the trainer, the trainer "
+                        + "says this is not a training problem, and **that answer is what makes "
+                        + "it call the vet.** A router gets one call and stops. A fan-out would "
+                        + "have asked all three at once and learned nothing from any of them. "
+                        + "Neither can produce a second call that exists only because of what "
+                        + "the first one said. Note what the result shows: **one answer**, with "
+                        + "the route to it underneath. The trainer did not give an opinion worth "
+                        + "keeping — it declined, and declining is work, not output.",
+                "Non-deterministic, and the roll-call is honest about it: a weaker planner will "
+                        + "sometimes take the trainer's first sentence and stop. Bound the "
+                        + "invocations. And ask the hard question first — if you can write down "
+                        + "\"trainer, then vet if they say so\", that is a sequence with a "
+                        + "condition, and it is cheaper and debuggable. Reach for this when you "
+                        + "genuinely cannot enumerate who is needed.",
                 topo,
-                "he has been off his food for two days, he is scratching one ear raw, and he has "
-                        + "started barking at the postman — I do not know who to ring first",
+                // Reads as a training problem, and is not one — which nobody can know until the
+                // trainer has looked at it. That is the point: the second call is not in anyone's
+                // plan at the start, it is caused by the first agent's answer.
+                "he is four and he has started snapping when the children go near his bed. He has "
+                        + "never done that before in his life.",
                 runner);
     }
 }

@@ -150,6 +150,37 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` contains no
     agent of its own** — that is the §6 pivot made concrete rather than asserted, and a test
     asserts it.
+    The supervisor's claim is not "it calls more than one" — a fan-out does that. It is that
+    **the second call exists because of what the first one said**, which neither routing nor a
+    fan-out can produce. It took three attempts to make that land on a real model, and the
+    failures are the useful part:
+    - **Do not build a hand-off on an agent refusing.** The first version had the trainer decline
+      cases that smelled of pain. It reads beautifully and it called one agent on a live model: a
+      refusal is a *conditional exception* sitting under a positive instruction ("give the owner
+      one thing to change this week"), and a model — a small local one especially — takes the
+      positive instruction every time.
+    - **So the first call is a `TriageNurse`, whose job IS to hand on.** She never treats and
+      never trains; she assesses and ends by naming who is needed (`NEEDS: vet`). She always
+      succeeds at what she was asked, so the supervisor's next decision rests on a fact it was
+      given rather than a judgement the model had to volunteer. This is the one agent the demo
+      adds; the three it calls are the routing demo's, unchanged.
+    - **`supervisorContext(...)` must match the scenario it is written for.** An earlier version
+      described a message holding *several separate problems* — left over from a previous
+      scenario — and a live planner did exactly as told: one problem, one answer, stop.
+    - **The result is one answer with its route, not a set of opinions.**
+      `output(SupervisorPattern::answerWithItsRoute)` leads with the path
+      (`TriageNurse → EmergencyVet`), then the **last** answer in full, then the earlier call in
+      italics as the *reason* the next one happened. Printing every call as a peer block is what
+      a parallel workflow produces, and it made this demo read as one. Only the final answer is
+      output; an assessment is work.
+    Same wiring, three routes, decided by what the nurse names: a sudden behaviour change reaches
+    the vet, pulling and barking reach the trainer, and grass-eating settles with the nurse and
+    stops there. `theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid` asserts all three,
+    plus that no protocol marker (`NEEDS:`, `ESCALATE`) leaks into the answer.
+    **A warning about the mock**: it had the hand-off special-cased, so every test passed while
+    the live demo called one agent and stopped. A deterministic stand-in proves the wiring, never
+    that a real model will follow a prompt — check this demo against Ollama after touching any of
+    these prompts.
   - **The second dog** — `voting` introduces the three assessors; `secondDogCouncil` has them
     ratify a debated motion instead of voting cold.
   `parallelMapper`, `goap`, `p2p`, `blackboard`, `debate` and `bdi` stand alone, honestly: they
