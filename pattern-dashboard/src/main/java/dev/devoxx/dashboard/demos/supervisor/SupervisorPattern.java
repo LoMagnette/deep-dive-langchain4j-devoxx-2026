@@ -132,15 +132,8 @@ public final class SupervisorPattern {
             SupervisorAgent sup = AgenticServices.supervisorBuilder()
                     .subAgents(nurse, care, trainer, vet)
                     .chatModel(model)                 // planner LLM lives on the supervisor
-                    // Told once, in plain English, that a request can hold several separate
-                    // problems and that each desk only covers its own. This is the difference
-                    // between a supervisor and a router: a router is asked "which one?", a
-                    // supervisor is asked "who does this need, and are we done yet?".
-                    // Says what a hand-off looks like, and that is the whole configuration.
-                    // An earlier version of this text described a message holding several
-                    // separate problems — left over from a different scenario — and the planner
-                    // did exactly as told: one problem, one answer, stop. It called one agent
-                    // and the demo quietly stopped demonstrating anything.
+                    // This text IS the configuration, and it has to describe the scenario the
+                    // demo actually runs — the planner will follow it and stop early otherwise.
                     .supervisorContext("""
                             Always call the nurse first: she takes the call, works out what is \
                             going on, and ends by naming who it needs. She never treats and \
@@ -150,14 +143,9 @@ public final class SupervisorPattern {
                             everyday care, call everyday care. Only when she says NEEDS: nobody \
                             is her own answer enough. You are finished once the specialist she \
                             named has answered.""")
-                    // The planner has to be able to READ the previous answer to act on it —
-                    // which is the whole mechanism here, so it is set explicitly rather than
-                    // left to the default.
+                    // Explicit, because the planner reading the previous answer IS the mechanism.
                     .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                     .maxAgentsInvocations(4)
-                    // Composed here rather than left to a response strategy: the last answer is
-                    // THE answer, and the calls before it are shown as the route to it rather
-                    // than as opinions of their own. A run that only needed one desk says so.
                     .output(SupervisorPattern::answerWithItsRoute)
                     .listener(listener)
                     .build();
@@ -166,10 +154,8 @@ public final class SupervisorPattern {
         };
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
-                // The beat this demo plays in the running narration.
                 "Then something that is not like him at all, and you cannot tell whether it is "
                         + "behaviour or something worse.",
-                // What this demo inherits from the ones before it.
                 "Demo 6's three desks again, and not one new agent. Routing picks one of "
                         + "them; this picks several and decides when to stop.",
                 "An LLM supervisor decides which specialist to invoke, and when to stop — the "

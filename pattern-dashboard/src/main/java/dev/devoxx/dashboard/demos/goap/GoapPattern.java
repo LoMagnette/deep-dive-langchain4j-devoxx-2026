@@ -72,10 +72,8 @@ public final class GoapPattern {
                     + "\n\n**Park** — " + parkText;
         };
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
-                // The beat this demo plays in the running narration.
                 "Which starts with the thing you never finished teaching him — coming back "
                         + "when he is called.",
-                // What this demo inherits from the ones before it.
                 null,
                 "The planner orders agents automatically by matching each output to the next "
                         + "input. Nobody has to be told this order: recall works indoors before "

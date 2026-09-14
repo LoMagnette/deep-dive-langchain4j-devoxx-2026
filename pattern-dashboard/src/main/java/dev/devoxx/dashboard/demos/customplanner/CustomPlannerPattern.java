@@ -97,10 +97,8 @@ public final class CustomPlannerPattern {
                     + "** · asked " + asked.size() + " of " + LADDER.size() + " rungs\n\n" + shown;
         };
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
-                // The beat this demo plays in the running narration.
                 "By now you have learned who to ask, and in what order, before you ring "
                         + "anybody at all.",
-                // What this demo inherits from the ones before it.
                 "Demo 6's three desks a third time. Routing picks one, the supervisor "
                         + "picks several, and this tries them cheapest-first and stops early.",
                 "Every planner above is an implementation of one small interface — here is one "

@@ -50,15 +50,10 @@ public final class VotingPattern {
                         edge("space", "vote", "YES / LATER"),
                         edge("money", "vote"), edge("zao", "vote")));
         Runner runner = (model, input, listener) -> {
-            // Three DIFFERENT criteria over the same household — space and hours, money, and
-            // what the dog you already have would say. Three copies of one prompt (what this
-            // demo used to be) always agree, so the tally was decoration. Here money says yes
-            // while the other two say later, which is the only situation where a majority means
-            // anything.
-            //
-            // Each voter also writes its own key. The strategy does not need them — it tallies
-            // what the agents returned — but the result pane does: one word on its own hides the
-            // only interesting thing, which is whether they split.
+            // Three DIFFERENT criteria over the same household: money says yes while the other
+            // two say later. Three copies of one prompt always agree, and then the tally is
+            // decoration. Each voter also writes its own key — the strategy does not need them,
+            // but the result pane does, or a split is invisible.
             var space = AgenticServices.agentBuilder(SpaceAndTime.class)
                     .chatModel(model)
                     .name("SpaceAndTime")
@@ -95,9 +90,7 @@ public final class VotingPattern {
                     + "- Zao himself: " + zaoVote;
         };
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
-                // The beat this demo plays in the running narration.
                 "The question that will not go away: would he be happier with another dog?",
-                // What this demo inherits from the ones before it.
                 "Introduces the three assessors the council reuses in demo 17.",
                 "Several agents answer independently; a strategy aggregates (majority, average, "
                         + "highest). Worth the tokens when one judgement is not trustworthy "

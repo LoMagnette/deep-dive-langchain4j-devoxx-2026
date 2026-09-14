@@ -209,8 +209,7 @@ public class MockChatModel implements ChatModel {
                 // because the merger's prompt quotes whichever of these answered.
                 // Each desk ends with the word the escalation ladder branches on. The vet is the
                 // last rung, so it always answers; the other two escalate outside their subject.
-                // The nurse always does her job and always names who is needed — which is why
-                // the hand-off does not depend on anybody being willing to refuse.
+                // She always names who is needed, so the hand-off never depends on a refusal.
                 new Rule(p -> p.contains("out-of-hours line"), MockChatModel::nurse),
 
                 new Rule(p -> p.contains("emergency vet"),
@@ -301,9 +300,7 @@ public class MockChatModel implements ChatModel {
                                 + "indoors at all. Stand still and say nothing until he goes, "
                                 + "then tell him he is wonderful the second he finishes."),
 
-                // --- 14b. The approval demo: what the sitter is finally told, once a person
-                // has had their say. Listed before the desks' own rules because this prompt
-                // quotes whichever desk answered.
+                // Before the desks' own rules: this prompt quotes whichever desk answered.
                 new Rule(p -> p.contains("honouring the person's decision"),
                         MockChatModel::finalNote),
 
@@ -393,10 +390,8 @@ public class MockChatModel implements ChatModel {
             plannerStep.set(1);
             return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"worry\":\"" + req + "\"}}";
         }
-        // ONLY the last response, never the whole prompt. The supervisor context spells out what
-        // the nurse can say, so the whole prompt contains every one of those phrases — scanning
-        // it would make the planner pick the same specialist every time. Third occurrence of
-        // this exact mistake in this file: read the slice, not the page.
+        // ONLY the last response, never the whole prompt: the supervisor context spells out
+        // every phrase the nurse can use, so scanning the page would match them all.
         String last = between(prompt, "last received response is: '", "'").toLowerCase(Locale.ROOT);
         String needs = last.contains("needs: vet") ? "EmergencyVet"
                 : last.contains("needs: trainer") ? "DogTrainer"
@@ -412,10 +407,8 @@ public class MockChatModel implements ChatModel {
 
     /**
      * The instruction, after a person has had their say. Reads only what they said — and note
-     * that the reply lambda is handed the RAW prompt, not the lowercased one the rule matched on,
-     * which is a trap worth knowing: {@code indexOf("what they said:")} against raw text silently
-     * returns -1, the slice lands somewhere arbitrary, and the refusal path quietly produces the
-     * approved answer. That looked like a working demo and was caught by a dump, not by a test.
+     * that the reply lambda is handed the RAW prompt, not the lowercased one the rule matched
+     * on, so {@code indexOf("what they said:")} against raw text returns -1.
      */
     private static String finalNote(String prompt) {
         String all = prompt.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
@@ -466,10 +459,8 @@ public class MockChatModel implements ChatModel {
      * The three desks answer what they were actually ASKED, not one canned line each.
      *
      * <p>Mostly {@code contains}, because the keywords are stems and the worry says "snapping"
-     * rather than "snap" — but "ear" goes through {@link #has}, because it is a substring of
-     * "near" and a worry about snapping "near his bed" was being answered with a lecture about
-     * ear infections. Short keywords need word boundaries; stems need the opposite. Both traps
-     * are live in the same method.
+     * rather than "snap". The exception is "ear", which goes through {@link #has}: it is a
+     * substring of "near". Stems need prefix matching, short words need boundaries.
      *
      * <p>That matters because the same three agents serve four demos now: routing sends one
      * worry to one of them, the supervisor puts a three-part message to all three, and the
@@ -553,10 +544,8 @@ public class MockChatModel implements ChatModel {
     /**
      * Just what was asked, never the agent's own instructions — see {@link #kind}.
      *
-     * <p>Every label a prompt uses for its input has to be listed here. The nurse's template ends
-     * "The call:" rather than "Worry:", and the one line missing from this list was enough to
-     * make her fall through to her catch-all answer, name nobody, and quietly turn the whole
-     * supervisor demo back into a single call.
+     * <p>Every label a prompt uses for its input must be listed here. A missing one makes that
+     * agent fall through to its catch-all answer, with no error anywhere.
      */
     private static final List<String> ASKED_LABELS =
             List.of("worry:", "question:", "the call:");

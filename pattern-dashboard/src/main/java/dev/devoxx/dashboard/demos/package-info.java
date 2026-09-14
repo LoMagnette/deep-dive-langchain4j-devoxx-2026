@@ -37,5 +37,16 @@
  * {@link dev.devoxx.dashboard.model.MockChatModel} returns parseable output (scores, labels, PASS/FAIL lines, votes). Change the wording and check
  * the rule that matched it — the mock's table keys off phrases like "0.0", "classify this worry",
  * "YES or LATER".
+ *
+ * <p><b>Scope keys are {@code TypedKey} records</b>, one {@code Keys.java} per demo, imported by
+ * later demos the way agents are. A key is the contract between two agents that never see each
+ * other, and nothing checks the spellings match. Four things to know before writing one:
+ * they must be records (the framework instantiates a key to ask its name, so an interface fails
+ * with "doesn't have a no-args constructor"); each overrides {@code name()} to return the
+ * lowercase string, which is why the {@code @V} parameters and the placeholders in the prompts
+ * are untouched; the input side is still bound by name, so {@code @V} and
+ * {@code HumanInTheLoopBuilder.outputKey} take {@code new Draft().name()}; and a typed read
+ * returns {@code null} when the key is absent rather than falling back to
+ * {@code defaultValue()}, which is a builder-level mechanism.
  */
 package dev.devoxx.dashboard.demos;

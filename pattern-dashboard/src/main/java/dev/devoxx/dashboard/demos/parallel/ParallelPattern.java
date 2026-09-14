@@ -64,10 +64,8 @@ public final class ParallelPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("parallel", "Parallel", "workflow",
-                // The beat this demo plays in the running narration.
                 "The note needs two halves that have nothing to do with each other: what he "
                         + "eats, and when he goes out.",
-                // What this demo inherits from the ones before it.
                 "Takes the card demo 1 produced. Both planners come back in the capstone.",
                 "Fan out independent work concurrently, then join. The meals do not depend on "
                         + "the walks and the walks do not depend on the meals, but the note needs "

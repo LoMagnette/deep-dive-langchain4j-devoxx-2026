@@ -52,10 +52,8 @@ public final class SinglePattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("single", "Single Agent", "workflow",
-                // The beat this demo plays in the running narration.
                 "You are away this weekend, a friend has said yes to having Zao, and you "
                         + "have just sent them a wall of text.",
-                // What this demo inherits from the ones before it.
                 null,
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
                         + "LLM is genuinely best at: turning what a human actually typed into a "

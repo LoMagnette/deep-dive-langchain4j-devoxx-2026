@@ -153,9 +153,7 @@ public final class SitterNotePattern {
         };
 
         return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",
-                // The beat this demo plays in the running narration.
                 "Back to that weekend away — this time the whole thing, end to end.",
-                // What this demo inherits from the ones before it.
                 "Almost everything: demo 6's router and desks, demo 4's meal and walk "
                         + "planners, and demo 3's checklist and critic in the refining loop.",
                 "A real system, not a pattern: the owner's worry is routed to the right person, a "

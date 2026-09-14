@@ -49,9 +49,7 @@ public final class SequentialPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("sequential", "Sequential", "workflow",
-                // The beat this demo plays in the running narration.
                 "They need it on the fridge door, not buried in their phone.",
-                // What this demo inherits from the ones before it.
                 "Demo 1's SitterCardClerk, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "

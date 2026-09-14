@@ -135,10 +135,8 @@ public final class HumanApprovalPattern {
         };
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
-                // The beat this demo plays in the running narration.
                 "The same call again — except this time somebody has to act on the answer, and "
                         + "it is not you standing there.",
-                // What this demo inherits from the ones before it.
                 "Demo 6 exactly — same router, same three desks — with one person added "
                         + "before anything reaches the sitter.",
                 "The previous demo with a person added, and nothing else changed: same router, "

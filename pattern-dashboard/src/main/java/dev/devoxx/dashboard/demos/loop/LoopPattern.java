@@ -63,10 +63,8 @@ public final class LoopPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
-                // The beat this demo plays in the running narration.
                 "This is the note you actually sent last time. You already know the four "
                         + "things wrong with it.",
-                // What this demo inherits from the ones before it.
                 "Demo 2's FridgeChecklist, unchanged. Nothing about the agent changed; a "
                         + "critic and a loop were drawn around it.",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "

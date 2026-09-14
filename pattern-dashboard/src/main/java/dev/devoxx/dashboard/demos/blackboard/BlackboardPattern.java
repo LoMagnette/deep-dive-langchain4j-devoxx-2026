@@ -48,9 +48,8 @@ public final class BlackboardPattern {
                         edge("lead", "board", "ranked causes"), edge("board", "lead")));
         Runner runner = (model, input, listener) -> {
             // The three note-takers read ONLY 'problem', so any of them can go first and the
-            // board accumulates three different KINDS of knowledge. Chain them instead — each
-            // reading the last one's output — and you have written a sequence wearing a
-            // blackboard's coat, which is what this demo used to be.
+            // board accumulates three different KINDS of knowledge. Chain them — each reading the
+            // last one's output — and you have a sequence wearing a blackboard's coat.
             var walks = AgenticServices.agentBuilder(WalkNotes.class)
                     .chatModel(model)
                     .name("WalkNotes")
@@ -83,10 +82,8 @@ public final class BlackboardPattern {
             return String.valueOf(r.result());
         };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
-                // The beat this demo plays in the running narration.
                 "Meanwhile the neighbour has complained twice. He barks all day now and "
                         + "nobody knows why.",
-                // What this demo inherits from the ones before it.
                 null,
                 "Contributors read and write a shared board until a goal state exists. This is "
                         + "debugging, which is what a blackboard is for: barking while you are "

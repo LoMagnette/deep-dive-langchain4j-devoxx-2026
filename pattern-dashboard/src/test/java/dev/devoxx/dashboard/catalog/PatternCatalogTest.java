@@ -126,14 +126,9 @@ class PatternCatalogTest {
     }
 
     /**
-     * The claim this demo makes is not "it calls more than one agent" — a fan-out does that. It
-     * is that the <b>second call exists because of what the first one said</b>, which neither a
-     * router nor a fan-out can produce.
-     *
-     * <p>The hand-off deliberately does NOT rest on a specialist refusing a case. That version
-     * shipped, and it called one agent on a real model: a refusal is a conditional exception
-     * underneath a positive instruction, and a model takes the positive instruction. The nurse
-     * hands on because handing on is her job, which is a thing a model gets right.
+     * The claim is not "it calls more than one agent" — a fan-out does that. It is that the
+     * <b>second call exists because of what the first one said</b>, which neither a router nor a
+     * fan-out can produce.
      */
     @Test
     void theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid() {
@@ -183,12 +178,9 @@ class PatternCatalogTest {
     }
 
     /**
-     * The demos have to demonstrate something, and the audience has to be able to tell. Every
-     * assertion here is a claim the speaker makes out loud, and each one used to be false of
-     * this dashboard: a vote whose voters could not disagree, a scatter/gather whose items came
-     * back identical, a "planner" with only one possible order to find. If one of these goes
-     * red, a prompt change has quietly turned a pattern back into decoration — which no "it ran
-     * without erroring" test would notice.
+     * Every assertion here is a claim the speaker makes out loud. If one goes red, a prompt
+     * change has turned a pattern back into decoration — which no "it ran without erroring"
+     * test would notice.
      */
     @Test
     void theDemoProblemsActuallyDemonstrateTheirPattern() {
@@ -334,13 +326,10 @@ class PatternCatalogTest {
     }
 
     /**
-     * Timing is shown on the page, so it had better be measured rather than decorative — and the
-     * one claim worth asserting is the one the talk makes out loud: a parallel step really does
-     * overlap. Against a model where every call costs 150ms, two branches cost 300ms of agent
-     * time inside a run that takes barely more than one of them.
-     *
-     * <p>This also pins down the keying. Durations are recorded per {@code agentId()}, and if
-     * those collided across a fan-out the mapper's five items would report four times or garbage.
+     * A parallel step really does overlap: against a model where every call costs 150ms, two
+     * branches cost 300ms of agent time inside a run barely longer than one of them. Also pins
+     * the keying — durations are per {@code agentId()}, and colliding ids would make the
+     * mapper's five items report garbage.
      */
     @Test
     void everyStepIsTimedAndParallelStepsActuallyOverlap() {
@@ -403,13 +392,9 @@ class PatternCatalogTest {
     }
 
     /**
-     * The demos read in catalogue order as one continuous story, so a new one cannot join the
-     * catalogue without a beat — an unnarrated demo is a hole in the middle of the talk, and it
-     * would show up on stage rather than here.
-     *
-     * <p>The beats are written to fit the rail order, which is the <b>autonomy dial</b>. If a
-     * better story ever seems to want the patterns reordered, that is the story being wrong: the
-     * order is the thesis.
+     * A new demo cannot join the catalogue without a beat. The beats are written to fit the rail
+     * order, which is the <b>autonomy dial</b> — if a better story seems to want the patterns
+     * reordered, the story is what is wrong.
      */
     @Test
     void everyDemoHasItsBeatInTheNarration() {
@@ -426,13 +411,10 @@ class PatternCatalogTest {
     }
 
     /**
-     * The supervisor's hand-off lives in two files that have to agree, and nothing at run time
-     * forces them to: the trainer's prompt has to be willing to refuse, and the supervisor's
-     * context has to say what a refusal means. This test exists because they once disagreed —
-     * the scenario was changed from "three separate problems" to "one problem handed on" and the
-     * context was left describing the old one, so a live planner did exactly as instructed,
-     * called one agent and stopped. Every test here still passed, because the mock had the
-     * hand-off special-cased.
+     * The hand-off lives in two files that have to agree and nothing at run time forces them to:
+     * the nurse's prompt must name who is needed, and the supervisor's context must say what to
+     * do with that. When they disagree a live planner calls one agent and stops, and every other
+     * test here still passes — the mock cannot see it.
      */
     @Test
     void theHandOffIsSpelledOutWhereThePlannerAndTheTrainerCanBothSeeIt() {
