@@ -76,6 +76,13 @@ run/             RunEvent · StreamingListener — observing a run
 web/             PatternResource · LogResource · LogStream — REST and SSE
 ```
 
+- **Every `XxxPattern` is two methods, in this order: `run` then `define`.** `run(model, input,
+  listener)` is the wiring and nothing else — the agents, the builder, the invocation. It is what
+  gets opened on stage, so it comes first in the file and carries no topology or catalogue text.
+  `define()` holds the `Topology.Graph` and the `PatternDef`: how the page draws this demo and
+  what the gallery says about it, which is the dashboard talking to itself. `define()` hands the
+  wiring over as a method reference (`LoopPattern::run`), so the two never tangle. Anything else
+  a demo needs — result formatting, a constant — goes **below** `run`, not above it.
 - **The demo wiring shows the LangChain4j API, never a wrapper around it.** This is a talk about
   that API, so every call the room needs to learn is written out at the call site:
   `AgenticServices.agentBuilder(X.class).chatModel(model).name("X").outputKey("k").build()`,
@@ -531,9 +538,9 @@ stream back as `RunEvent`s → the page animates the topology and updates the sc
 ## Adding a pattern (the common task)
 
 1. Make a package `demos/<id>/`, named after the pattern id in lowercase.
-2. Put one file per agent in it (one `@Agent` interface each), an `XxxPattern` with a
-   `public static PatternDef define()`, and a `package-info.java` saying what the demo shows.
-   Then add one line to `PatternCatalog.build()`.
+2. Put one file per agent in it (one `@Agent` interface each), a `Keys.java` for any scope keys
+   it introduces, an `XxxPattern`, and a `package-info.java` saying what the demo shows. Then add
+   one line to `PatternCatalog.build()`.
 3. If running under the mock, add a rule to `MockChatModel`'s table — and mind where you put it:
    the table is ordered, and a rule keyed on a word that appears in quoted content will hijack
    another agent's prompt.

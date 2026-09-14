@@ -8,12 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.single.Keys.Message;
 import dev.devoxx.dashboard.demos.single.Keys.Notes;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>single</b> demo — one call, one job.
@@ -35,22 +36,25 @@ public final class SinglePattern {
                     + "him off the lead in the park he won't come back yet. vet is 061 22 33 44 "
                     + "if anything happens. he'll cry the first night, ignore it, he's fine!!";
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+                .chatModel(model)
+                .name("SitterCardClerk")
+                .outputKey(Notes.class)
+                .build();
+        UntypedAgent app = AgenticServices.sequenceBuilder()
+                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
+        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
+        return String.valueOf(r.result());
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "message", "input"),
                         node("clerk", "SitterCardClerk", "agent")),
                 List.of(edge("in", "clerk")));
-        Runner runner = (model, input, listener) -> {
-            var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
-                    .chatModel(model)
-                    .name("SitterCardClerk")
-                    .outputKey(Notes.class)
-                    .build();
-            UntypedAgent app = AgenticServices.sequenceBuilder()
-                    .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
-            var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
-            return String.valueOf(r.result());
-        };
         return new PatternDef("single", "Single Agent", "workflow",
                 "You are away this weekend, a friend has said yes to having Zao, and you "
                         + "have just sent them a wall of text.",
@@ -66,6 +70,6 @@ public final class SinglePattern {
                 // (nobody said when to walk him), so the room can check whether the agent obeys
                 // "write not given" or quietly makes something up.
                 SITTER_MESSAGE,
-                runner);
+                SinglePattern::run);
     }
 }

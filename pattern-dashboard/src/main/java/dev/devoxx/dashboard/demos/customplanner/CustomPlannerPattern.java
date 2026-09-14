@@ -9,16 +9,17 @@ import java.util.Locale;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
 import dev.devoxx.dashboard.demos.conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>custom planner</b> demo — the escalation ladder. See EscalationPlanner.
@@ -32,6 +33,57 @@ public final class CustomPlannerPattern {
     private static final List<String> LADDER =
             List.of("EverydayCare", "DogTrainer", "EmergencyVet");
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        // Declaration order IS the cost order — that is the whole configuration of this
+        // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
+        var book = AgenticServices.agentBuilder(EverydayCare.class)
+                .chatModel(model)
+                .name("EverydayCare")
+                .outputKey(Answer.class)
+                .build();
+        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
+                .chatModel(model)
+                .name("DogTrainer")
+                .outputKey(Answer.class)
+                .build();
+        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+                .chatModel(model)
+                .name("EmergencyVet")
+                .outputKey(Answer.class)
+                .build();
+        UntypedAgent app = AgenticServices.plannerBuilder()
+                .subAgents(book, trainer, vet)
+                // Same builder as every pattern above it. The only difference is that this
+                // planner is forty lines in this repo instead of forty lines in the library.
+                .planner(EscalationPlanner::new)
+                .outputKey(Answer.class)
+                .listener(listener)
+                .build();
+        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
+        // Report WHICH rung settled it and how many were asked. Returning just the answer
+        // would hide the only thing this pattern does differently from a sequence — the
+        // scope's invocation history is what makes that reportable without threading state
+        // out of the planner.
+        String answer = String.valueOf(r.result());
+        var scope = r.agenticScope();
+        if (scope == null) {
+            return answer;
+        }
+        List<String> asked = scope.agentInvocations().stream()
+                .map(AgentInvocation::agentName).filter(LADDER::contains).distinct().toList();
+        boolean settled = answer.toUpperCase(Locale.ROOT).lastIndexOf("ANSWERED")
+                > answer.toUpperCase(Locale.ROOT).lastIndexOf("ESCALATE");
+        String rung = asked.isEmpty() ? "nobody" : asked.get(asked.size() - 1);
+        // The marker is protocol, not prose: the planner read it, the Scope tab still shows
+        // it on the raw value, and the reader does not need it in the answer.
+        String shown = answer.replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+        return "**" + (settled ? "Answered by " + rung
+                    : "Nobody could answer — best effort from " + rung)
+                + "** · asked " + asked.size() + " of " + LADDER.size() + " rungs\n\n" + shown;
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
                 // The three tiers share one column, stacked, so escalation reads downwards and
@@ -48,54 +100,6 @@ public final class CustomPlannerPattern {
                         edge("book", "out", "ANSWERED"),
                         edge("trainer", "out"),
                         edge("vet", "out")));
-        Runner runner = (model, input, listener) -> {
-            // Declaration order IS the cost order — that is the whole configuration of this
-            // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
-            var book = AgenticServices.agentBuilder(EverydayCare.class)
-                    .chatModel(model)
-                    .name("EverydayCare")
-                    .outputKey(Answer.class)
-                    .build();
-            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                    .chatModel(model)
-                    .name("DogTrainer")
-                    .outputKey(Answer.class)
-                    .build();
-            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
-                    .chatModel(model)
-                    .name("EmergencyVet")
-                    .outputKey(Answer.class)
-                    .build();
-            UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(book, trainer, vet)
-                    // Same builder as every pattern above it. The only difference is that this
-                    // planner is forty lines in this repo instead of forty lines in the library.
-                    .planner(EscalationPlanner::new)
-                    .outputKey(Answer.class)
-                    .listener(listener)
-                    .build();
-            var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
-            // Report WHICH rung settled it and how many were asked. Returning just the answer
-            // would hide the only thing this pattern does differently from a sequence — the
-            // scope's invocation history is what makes that reportable without threading state
-            // out of the planner.
-            String answer = String.valueOf(r.result());
-            var scope = r.agenticScope();
-            if (scope == null) {
-                return answer;
-            }
-            List<String> asked = scope.agentInvocations().stream()
-                    .map(AgentInvocation::agentName).filter(LADDER::contains).distinct().toList();
-            boolean settled = answer.toUpperCase(Locale.ROOT).lastIndexOf("ANSWERED")
-                    > answer.toUpperCase(Locale.ROOT).lastIndexOf("ESCALATE");
-            String rung = asked.isEmpty() ? "nobody" : asked.get(asked.size() - 1);
-            // The marker is protocol, not prose: the planner read it, the Scope tab still shows
-            // it on the raw value, and the reader does not need it in the answer.
-            String shown = answer.replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
-            return "**" + (settled ? "Answered by " + rung
-                        : "Nobody could answer — best effort from " + rung)
-                    + "** · asked " + asked.size() + " of " + LADDER.size() + " rungs\n\n" + shown;
-        };
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
                 "By now you have learned who to ask, and in what order, before you ring "
                         + "anybody at all.",
@@ -118,6 +122,6 @@ public final class CustomPlannerPattern {
                 // "which food should I buy for a four-year-old shepherd?" and it stops at the
                 // book; try "he pulls like a train on the lead" and it stops at the trainer.
                 "he's suddenly limping on his back left leg and won't put weight on it",
-                runner);
+                CustomPlannerPattern::run);
     }
 }

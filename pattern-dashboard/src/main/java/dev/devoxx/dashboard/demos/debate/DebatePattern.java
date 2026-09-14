@@ -8,14 +8,15 @@ import java.util.List;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.debate.Keys.Motion;
 import dev.devoxx.dashboard.demos.debate.Keys.Verdict;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
 import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>debate</b> demo — two strong cases, and a ruling the room can check.
@@ -25,6 +26,32 @@ public final class DebatePattern {
     private DebatePattern() {
     }
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        var take = AgenticServices.agentBuilder(TakeHimAdvocate.class)
+                .chatModel(model)
+                .name("TakeHimAdvocate")
+                .build();
+        var leave = AgenticServices.agentBuilder(LeaveHimAdvocate.class)
+                .chatModel(model)
+                .name("LeaveHimAdvocate")
+                .build();
+        var verdict = AgenticServices.agentBuilder(HolidayVerdict.class)
+                .chatModel(model)
+                .name("HolidayVerdict")
+                .outputKey(Verdict.class)
+                .build();
+        UntypedAgent app = AgenticServices.plannerBuilder()
+                .subAgents(take, leave, verdict) // last sub-agent is the judge
+                .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
+                .outputKey(Verdict.class)
+                .listener(listener)
+                .build();
+        var r = app.invokeWithAgenticScope(Map.of(new Motion().name(), input));
+        return String.valueOf(r.result());
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("mesh",
                 List.of(node("in", "motion", "input"),
@@ -34,29 +61,6 @@ public final class DebatePattern {
                 List.of(edge("in", "take"), edge("in", "leave"),
                         edge("take", "leave", "rebut"), edge("leave", "take", "rebut"),
                         edge("take", "verdict"), edge("leave", "verdict")));
-        Runner runner = (model, input, listener) -> {
-            var take = AgenticServices.agentBuilder(TakeHimAdvocate.class)
-                    .chatModel(model)
-                    .name("TakeHimAdvocate")
-                    .build();
-            var leave = AgenticServices.agentBuilder(LeaveHimAdvocate.class)
-                    .chatModel(model)
-                    .name("LeaveHimAdvocate")
-                    .build();
-            var verdict = AgenticServices.agentBuilder(HolidayVerdict.class)
-                    .chatModel(model)
-                    .name("HolidayVerdict")
-                    .outputKey(Verdict.class)
-                    .build();
-            UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(take, leave, verdict) // last sub-agent is the judge
-                    .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
-                    .outputKey(Verdict.class)
-                    .listener(listener)
-                    .build();
-            var r = app.invokeWithAgenticScope(Map.of(new Motion().name(), input));
-            return String.valueOf(r.result());
-        };
         return new PatternDef("debate", "Debate", "pattern-zoo",
                 "And before any of it, two weeks in Tuscany in August. Does he come?",
                 null,
@@ -73,6 +77,6 @@ public final class DebatePattern {
                 "two weeks in Tuscany in August: take Zao, or leave him with a sitter? It is a "
                         + "twelve-hour drive, the house has no shade, and he has never been left "
                         + "for more than two nights.",
-                runner);
+                DebatePattern::run);
     }
 }

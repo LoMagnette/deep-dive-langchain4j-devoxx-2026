@@ -11,13 +11,14 @@ import java.util.Locale;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos.parallel.Keys.Walks;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>parallel</b> demo — two independent checks, and a join that DECIDES.
@@ -27,6 +28,35 @@ public final class ParallelPattern {
     private ParallelPattern() {
     }
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        // Two halves of the same note, and neither needs the other's answer — which is the
+        // whole test for a fan-out. The capstone reuses both of these agents unchanged.
+        var meals = AgenticServices.agentBuilder(MealPlanner.class)
+                .chatModel(model)
+                .name("MealPlanner")
+                .outputKey(Meals.class)
+                .build();
+        var walks = AgenticServices.agentBuilder(WalkPlanner.class)
+                .chatModel(model)
+                .name("WalkPlanner")
+                .outputKey(Walks.class)
+                .build();
+        UntypedAgent app = AgenticServices.parallelBuilder()
+                .subAgents(meals, walks)
+                // The join is plain Java over what the two agents wrote. Assembling two
+                // halves needs no model, and putting one there would be a demo lying about
+                // where the work happens.
+                .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
+                        + "\n\n**Walks**\n\n"
+                                + requireNonNullElse(s.readState(Walks.class), ""))
+                .listener(listener)
+                .build();
+        var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
+        return String.valueOf(r.result());
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "the stay", "input"),
@@ -37,32 +67,6 @@ public final class ParallelPattern {
                         node("join", "both halves", "join")),
                 List.of(edge("in", "meals"), edge("in", "walks"),
                         edge("meals", "join", "meals"), edge("walks", "join", "walks")));
-        Runner runner = (model, input, listener) -> {
-            // Two halves of the same note, and neither needs the other's answer — which is the
-            // whole test for a fan-out. The capstone reuses both of these agents unchanged.
-            var meals = AgenticServices.agentBuilder(MealPlanner.class)
-                    .chatModel(model)
-                    .name("MealPlanner")
-                    .outputKey(Meals.class)
-                    .build();
-            var walks = AgenticServices.agentBuilder(WalkPlanner.class)
-                    .chatModel(model)
-                    .name("WalkPlanner")
-                    .outputKey(Walks.class)
-                    .build();
-            UntypedAgent app = AgenticServices.parallelBuilder()
-                    .subAgents(meals, walks)
-                    // The join is plain Java over what the two agents wrote. Assembling two
-                    // halves needs no model, and putting one there would be a demo lying about
-                    // where the work happens.
-                    .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
-                            + "\n\n**Walks**\n\n"
-                                    + requireNonNullElse(s.readState(Walks.class), ""))
-                    .listener(listener)
-                    .build();
-            var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
-            return String.valueOf(r.result());
-        };
         return new PatternDef("parallel", "Parallel", "workflow",
                 "The note needs two halves that have nothing to do with each other: what he "
                         + "eats, and when he goes out.",
@@ -85,6 +89,6 @@ public final class ParallelPattern {
                         Walks: not given
                         Watch out for: no dried liver treats; never off the lead in the park
                         Vet: 061 22 33 44""",
-                runner);
+                ParallelPattern::run);
     }
 }

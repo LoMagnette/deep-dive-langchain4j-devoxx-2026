@@ -9,18 +9,19 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.blackboard.Keys.Causes;
 import dev.devoxx.dashboard.demos.blackboard.Keys.Home;
 import dev.devoxx.dashboard.demos.blackboard.Keys.Problem;
 import dev.devoxx.dashboard.demos.blackboard.Keys.Routine;
 import dev.devoxx.dashboard.demos.parallel.Keys.Walks;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
 import dev.langchain4j.agentic.patterns.blackboard.ConflictResolutionStrategy;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>blackboard</b> demo — three kinds of knowledge, contributed in any order.
@@ -30,6 +31,44 @@ public final class BlackboardPattern {
     private BlackboardPattern() {
     }
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        // The three note-takers read ONLY 'problem', so any of them can go first and the
+        // board accumulates three different KINDS of knowledge. Chain them — each reading the
+        // last one's output — and you have a sequence wearing a blackboard's coat.
+        var walks = AgenticServices.agentBuilder(WalkNotes.class)
+                .chatModel(model)
+                .name("WalkNotes")
+                .outputKey(Walks.class)
+                .build();
+        var routine = AgenticServices.agentBuilder(RoutineNotes.class)
+                .chatModel(model)
+                .name("RoutineNotes")
+                .outputKey(Routine.class)
+                .build();
+        var home = AgenticServices.agentBuilder(HomeNotes.class)
+                .chatModel(model)
+                .name("HomeNotes")
+                .outputKey(Home.class)
+                .build();
+        var lead = AgenticServices.agentBuilder(TrainerLead.class)
+                .chatModel(model)
+                .name("TrainerLead")
+                .outputKey(Causes.class)
+                .build();
+        Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
+        UntypedAgent app = AgenticServices.plannerBuilder()
+                .subAgents(walks, routine, home, lead)
+                .planner(() -> new BlackboardPlanner(goal,
+                        ConflictResolutionStrategy.declarationOrder()))
+                .outputKey(Causes.class)
+                .listener(listener)
+                .build();
+        var r = app.invokeWithAgenticScope(Map.of(new Problem().name(), input));
+        return String.valueOf(r.result());
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("star",
                 // The only pattern that still draws the shared state: here it is not plumbing,
@@ -46,41 +85,6 @@ public final class BlackboardPattern {
                         edge("routine", "board", "changes"), edge("board", "routine"),
                         edge("home", "board", "the house"), edge("board", "home"),
                         edge("lead", "board", "ranked causes"), edge("board", "lead")));
-        Runner runner = (model, input, listener) -> {
-            // The three note-takers read ONLY 'problem', so any of them can go first and the
-            // board accumulates three different KINDS of knowledge. Chain them — each reading the
-            // last one's output — and you have a sequence wearing a blackboard's coat.
-            var walks = AgenticServices.agentBuilder(WalkNotes.class)
-                    .chatModel(model)
-                    .name("WalkNotes")
-                    .outputKey(Walks.class)
-                    .build();
-            var routine = AgenticServices.agentBuilder(RoutineNotes.class)
-                    .chatModel(model)
-                    .name("RoutineNotes")
-                    .outputKey(Routine.class)
-                    .build();
-            var home = AgenticServices.agentBuilder(HomeNotes.class)
-                    .chatModel(model)
-                    .name("HomeNotes")
-                    .outputKey(Home.class)
-                    .build();
-            var lead = AgenticServices.agentBuilder(TrainerLead.class)
-                    .chatModel(model)
-                    .name("TrainerLead")
-                    .outputKey(Causes.class)
-                    .build();
-            Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
-            UntypedAgent app = AgenticServices.plannerBuilder()
-                    .subAgents(walks, routine, home, lead)
-                    .planner(() -> new BlackboardPlanner(goal,
-                            ConflictResolutionStrategy.declarationOrder()))
-                    .outputKey(Causes.class)
-                    .listener(listener)
-                    .build();
-            var r = app.invokeWithAgenticScope(Map.of(new Problem().name(), input));
-            return String.valueOf(r.result());
-        };
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
                 "Meanwhile the neighbour has complained twice. He barks all day now and "
                         + "nobody knows why.",
@@ -96,6 +100,6 @@ public final class BlackboardPattern {
                 "he's started barking all day while we're at work and the neighbour has "
                         + "complained twice. He never used to. Nothing has changed except my new "
                         + "shift and we moved his bed under the front window.",
-                runner);
+                BlackboardPattern::run);
     }
 }

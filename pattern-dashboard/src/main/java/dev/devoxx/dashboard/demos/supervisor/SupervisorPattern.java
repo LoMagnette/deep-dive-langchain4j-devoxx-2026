@@ -8,16 +8,17 @@ import java.util.List;
 import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.conditional.DogTrainer;
 import dev.devoxx.dashboard.demos.conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos.conditional.EverydayCare;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>supervisor</b> demo — the same three people the router chose between, except
@@ -36,6 +37,52 @@ public final class SupervisorPattern {
     /** Everyone this supervisor may call: the nurse it adds, then the routing demo's three. */
     private static final List<String> DESKS =
             List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet");
+
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        // The one new agent, and the first one called. Everything else here the room has
+        // already watched run in the routing demo.
+        var nurse = AgenticServices.agentBuilder(TriageNurse.class)
+                .chatModel(model)
+                .name("TriageNurse")
+                .build();
+        var care = AgenticServices.agentBuilder(EverydayCare.class)
+                .chatModel(model)
+                .name("EverydayCare")
+                .build();
+        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
+                .chatModel(model)
+                .name("DogTrainer")
+                .build();
+        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+                .chatModel(model)
+                .name("EmergencyVet")
+                .build();
+        SupervisorAgent sup = AgenticServices.supervisorBuilder()
+                .subAgents(nurse, care, trainer, vet)
+                .chatModel(model)                 // planner LLM lives on the supervisor
+                // This text IS the configuration, and it has to describe the scenario the
+                // demo actually runs — the planner will follow it and stop early otherwise.
+                .supervisorContext("""
+                        Always call the nurse first: she takes the call, works out what is \
+                        going on, and ends by naming who it needs. She never treats and \
+                        never trains, so her answer is NEVER the answer to give back — it \
+                        tells you who to call next. When she says NEEDS: vet, call the vet \
+                        with the original worry; NEEDS: trainer, call the trainer; NEEDS: \
+                        everyday care, call everyday care. Only when she says NEEDS: nobody \
+                        is her own answer enough. You are finished once the specialist she \
+                        named has answered.""")
+                // Explicit, because the planner reading the previous answer IS the mechanism.
+                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
+                .maxAgentsInvocations(4)
+                .output(SupervisorPattern::answerWithItsRoute)
+                .listener(listener)
+                .build();
+        var r = sup.invokeWithAgenticScope(input);
+        return String.valueOf(r.result());
+    }
+
+    // ---- how the result is presented; the wiring above is the demo ----
 
     /**
      * Who was actually called, and what each of them said.
@@ -94,6 +141,7 @@ public final class SupervisorPattern {
                 : text.substring(0, stop).strip();
     }
 
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("star",
                 List.of(node("supervisor", "Supervisor", "supervisor"),
@@ -109,49 +157,6 @@ public final class SupervisorPattern {
                         edge("supervisor", "trainer", "invoke"),
                         edge("trainer", "supervisor", "result"),
                         edge("supervisor", "vet", "invoke"), edge("vet", "supervisor", "result")));
-
-        Runner runner = (model, input, listener) -> {
-            // The one new agent, and the first one called. Everything else here the room has
-            // already watched run in the routing demo.
-            var nurse = AgenticServices.agentBuilder(TriageNurse.class)
-                    .chatModel(model)
-                    .name("TriageNurse")
-                    .build();
-            var care = AgenticServices.agentBuilder(EverydayCare.class)
-                    .chatModel(model)
-                    .name("EverydayCare")
-                    .build();
-            var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                    .chatModel(model)
-                    .name("DogTrainer")
-                    .build();
-            var vet = AgenticServices.agentBuilder(EmergencyVet.class)
-                    .chatModel(model)
-                    .name("EmergencyVet")
-                    .build();
-            SupervisorAgent sup = AgenticServices.supervisorBuilder()
-                    .subAgents(nurse, care, trainer, vet)
-                    .chatModel(model)                 // planner LLM lives on the supervisor
-                    // This text IS the configuration, and it has to describe the scenario the
-                    // demo actually runs — the planner will follow it and stop early otherwise.
-                    .supervisorContext("""
-                            Always call the nurse first: she takes the call, works out what is \
-                            going on, and ends by naming who it needs. She never treats and \
-                            never trains, so her answer is NEVER the answer to give back — it \
-                            tells you who to call next. When she says NEEDS: vet, call the vet \
-                            with the original worry; NEEDS: trainer, call the trainer; NEEDS: \
-                            everyday care, call everyday care. Only when she says NEEDS: nobody \
-                            is her own answer enough. You are finished once the specialist she \
-                            named has answered.""")
-                    // Explicit, because the planner reading the previous answer IS the mechanism.
-                    .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
-                    .maxAgentsInvocations(4)
-                    .output(SupervisorPattern::answerWithItsRoute)
-                    .listener(listener)
-                    .build();
-            var r = sup.invokeWithAgenticScope(input);
-            return String.valueOf(r.result());
-        };
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
                 "Then something that is not like him at all, and you cannot tell whether it is "
@@ -180,6 +185,6 @@ public final class SupervisorPattern {
                 // plan at the start, it is caused by the first agent's answer.
                 "he is four and he has started snapping when the children go near his bed. He has "
                         + "never done that before in his life.",
-                runner);
+                SupervisorPattern::run);
     }
 }

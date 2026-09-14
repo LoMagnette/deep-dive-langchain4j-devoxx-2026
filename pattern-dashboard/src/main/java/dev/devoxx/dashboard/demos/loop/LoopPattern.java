@@ -10,14 +10,15 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
-import dev.devoxx.dashboard.catalog.PatternDef.Runner;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos.loop.Keys.Score;
 import dev.devoxx.dashboard.demos.sequential.FridgeChecklist;
 import dev.devoxx.dashboard.demos.single.Keys.Notes;
+import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>loop</b> demo — refine until four rules the room agrees with are satisfied.
@@ -27,6 +28,34 @@ public final class LoopPattern {
     private LoopPattern() {
     }
 
+    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    static String run(ChatModel model, String input, StreamingListener listener) {
+        // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
+        // its own previous answer, which is why its input key is 'notes' rather than 'card'.
+        var writer = AgenticServices.agentBuilder(FridgeChecklist.class)
+                .chatModel(model)
+                .name("FridgeChecklist")
+                .outputKey(Notes.class)
+                .build();
+        var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
+                .chatModel(model)
+                .name("FridgeRuleCheck")
+                .outputKey(Score.class)
+                .build();
+        Predicate<AgenticScope> good = s -> score(s.readState(Score.class)) >= 0.8;
+        UntypedAgent app = AgenticServices.loopBuilder()
+                .subAgents(writer, check)
+                .maxIterations(5)
+                .exitCondition(good)
+                .testExitAtLoopEnd(true)
+                .outputKey(Notes.class)
+                .listener(listener)
+                .build();
+        var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
+        return String.valueOf(r.result());
+    }
+
+    /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("loop",
                 // The same FridgeChecklist the sequential demo used, with a critic added and a
@@ -36,32 +65,6 @@ public final class LoopPattern {
                         node("check", "FridgeRuleCheck", "agent")),
                 List.of(edge("in", "writer"), edge("writer", "check", "notes"),
                         edge("check", "writer", "score < 0.8")));
-        Runner runner = (model, input, listener) -> {
-            // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
-            // its own previous answer, which is why its input key is 'notes' rather than 'card'.
-            var writer = AgenticServices.agentBuilder(FridgeChecklist.class)
-                    .chatModel(model)
-                    .name("FridgeChecklist")
-                    .outputKey(Notes.class)
-                    .build();
-            var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
-                    .chatModel(model)
-                    .name("FridgeRuleCheck")
-                    .outputKey(Score.class)
-                    .build();
-            Predicate<AgenticScope> good =
-                    s -> score(s.readState(Score.class)) >= 0.8;
-            UntypedAgent app = AgenticServices.loopBuilder()
-                    .subAgents(writer, check)
-                    .maxIterations(5)
-                    .exitCondition(good)
-                    .testExitAtLoopEnd(true)
-                    .outputKey(Notes.class)
-                    .listener(listener)
-                    .build();
-            var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
-            return String.valueOf(r.result());
-        };
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 "This is the note you actually sent last time. You already know the four "
                         + "things wrong with it.",
@@ -80,6 +83,6 @@ public final class LoopPattern {
                 // count the failures before the first agent runs.
                 "just feed him twice like normal and take him out when you can, he knows the "
                         + "routine. ring me if anything's up!",
-                runner);
+                LoopPattern::run);
     }
 }
