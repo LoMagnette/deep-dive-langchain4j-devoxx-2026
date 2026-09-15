@@ -69,12 +69,16 @@ public final class ParallelMapperPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
+        // The agent is drawn as a stack: one agent, invoked once per item, all at once. A
+        // single box would say "one call", which is the opposite of what a mapper does.
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "he ate[5]", "input"),
-                        node("check", "FoodSafetyCheck (per item)", "agent"),
-                        node("gather", "one verdict each", "join")),
+                List.of(node("in", "he ate", "input").withSub("5 items"),
+                        node("check", "FoodSafetyCheck", "agent")
+                                .withSub("once per item").asStack(),
+                        node("gather", "gather", "join").withSub("one verdict each")),
                 List.of(edge("in", "check", "scatter"),
                         edge("check", "gather", "verdicts")));
+
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
                 "The picnic. Five things off the blanket before anybody noticed.",
                 null,

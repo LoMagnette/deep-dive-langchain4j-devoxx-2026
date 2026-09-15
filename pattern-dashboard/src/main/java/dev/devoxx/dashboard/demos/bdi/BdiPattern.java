@@ -85,9 +85,9 @@ public final class BdiPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "first hour", "input"),
-                        node("out", "ToiletTrip (p30)", "agent"),
-                        node("fed", "FirstMeal (p20)", "agent"),
-                        node("train", "FirstTraining (p5)", "agent")),
+                        node("out", "ToiletTrip", "agent").withSub("desire · priority 30"),
+                        node("fed", "FirstMeal", "agent").withSub("desire · priority 20"),
+                        node("train", "FirstTraining", "agent").withSub("desire · priority 5")),
                 // The training session is gated on BOTH of the others, which is what makes this a
                 // DAG of desires rather than a chain: 'needs' labels are preconditions, not
                 // hand-offs.

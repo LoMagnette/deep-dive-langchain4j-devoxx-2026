@@ -512,6 +512,10 @@ class PatternCatalogTest {
                 "the supervisor should add only the nurse: " + labels(catalog, "supervisor"));
     }
 
+    private static List<Topology.Node> nodes(PatternCatalog c, String id) {
+        return c.byId(id).orElseThrow().topology().nodes();
+    }
+
     /** The agent names a pattern's diagram shows, which are the agents it is wired from. */
     private static List<String> labels(PatternCatalog c, String id) {
         return c.byId(id).orElseThrow().topology().nodes().stream()
@@ -560,6 +564,25 @@ class PatternCatalogTest {
         assertNull(role(catalog, "conditional", "join"),
                 "only one branch runs, so a join would misrepresent it");
 
+        // GOAP's picture is otherwise pixel-for-pixel a sequence: same boxes, same arrows,
+        // left to right. What distinguishes it is that every box declares the key it needs, so
+        // the arrows read as derived rather than typed. Without these the diagram is a lie.
+        var goapSubs = nodes(catalog, "goap").stream()
+                .filter(n -> n.role().equals("agent")).map(Topology.Node::sub).toList();
+        assertEquals(3, goapSubs.stream().filter(x -> x != null && x.contains("needs")).count(),
+                "every GOAP agent must show what it needs, or this is just a sequence: "
+                        + goapSubs);
+
+        // A mapper is one agent invoked once per item. A single box says "one call".
+        assertTrue(nodes(catalog, "parallelMapper").stream().anyMatch(Topology.Node::stacked),
+                "the mapped agent must be drawn as a stack");
+
+        // The supervisor's nurse is called first and the rest only if she says so; a symmetric
+        // star would say all four are equal peers, which is a fan-out.
+        assertTrue(nodes(catalog, "supervisor").stream()
+                        .anyMatch(n -> "1 · always first".equals(n.sub())),
+                "the supervisor diagram must show which call comes first");
+
         // The person must not be drawn as an agent. A human-in-the-loop diagram whose middle
         // box looks like the two either side says the model decided, which is the one thing the
         // pattern exists to deny.
@@ -577,8 +600,10 @@ class PatternCatalogTest {
                 "the two lower rungs escalate; the top one has nowhere to escalate to");
 
         // Supervisor and blackboard are loops, not one-way arrows.
-        assertTrue(mutual(catalog, "supervisor", "supervisor", "care"),
-                "supervisor invokes the planner and reads its result back");
+        // The nurse edge specifically: the supervisor invokes her and reads what comes back,
+        // which is the edge the whole demo turns on. One-way arrows would draw a fan-out.
+        assertTrue(mutual(catalog, "supervisor", "supervisor", "nurse"),
+                "the supervisor must be shown reading the nurse's answer, not just calling her");
         assertTrue(mutual(catalog, "blackboard", "walks", "board"),
                 "blackboard contributors read as well as write");
     }

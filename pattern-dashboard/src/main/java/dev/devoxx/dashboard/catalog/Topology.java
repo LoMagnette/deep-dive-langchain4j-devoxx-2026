@@ -22,10 +22,28 @@ public final class Topology {
      * which is half the pattern.
      */
     /**
-     * @param stage optional column for the {@code stages} layout, which is what lets a composite
-     *              system be drawn left-to-right by step. Null for the automatic layouts.
+     * @param sub     optional second line inside the box, in smaller muted type. This is what
+     *                lets a diagram say <i>why</i> rather than only <i>who</i>: GOAP's boxes
+     *                carry the key each one needs, which is the only thing distinguishing that
+     *                picture from a plain sequence.
+     * @param stage   optional column for the {@code stages} layout, which is what lets a
+     *                composite system be drawn left-to-right by step. Null for the automatic
+     *                layouts.
+     * @param stacked draw the box as a stack, for one agent invoked many times over a
+     *                collection. Without it a mapper looks like a single call.
      */
-    public record Node(String id, String label, String role, Integer stage) {
+    public record Node(String id, String label, String sub, String role, Integer stage,
+                       boolean stacked) {
+
+        /** The same node with a second line under its name. */
+        public Node withSub(String text) {
+            return new Node(id, label, text, role, stage, stacked);
+        }
+
+        /** The same node drawn as many, for a fan-out over a collection. */
+        public Node asStack() {
+            return new Node(id, label, sub, role, stage, true);
+        }
     }
 
     public record Edge(String from, String to, String label) {
@@ -36,12 +54,12 @@ public final class Topology {
     }
 
     public static Node node(String id, String label, String role) {
-        return new Node(id, label, role, null);
+        return new Node(id, label, null, role, null, false);
     }
 
     /** A node pinned to a column of the {@code stages} layout. */
     public static Node node(String id, String label, String role, int stage) {
-        return new Node(id, label, role, stage);
+        return new Node(id, label, null, role, stage, false);
     }
 
     public static Edge edge(String from, String to) {

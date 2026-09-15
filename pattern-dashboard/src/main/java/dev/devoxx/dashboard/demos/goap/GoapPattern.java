@@ -67,14 +67,18 @@ public final class GoapPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
+        // Every box says what it NEEDS, because that is the only thing distinguishing this
+        // picture from the sequential demo's. The planner was handed these three backwards; the
+        // arrows are what it worked out from the keys, not an order anybody typed.
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "goal", "input"),
-                        node("indoor", "IndoorRecall", "agent"),
-                        node("garden", "GardenRecall", "agent"),
-                        node("park", "ParkRecall", "agent")),
+                        node("indoor", "IndoorRecall", "agent").withSub("needs nothing"),
+                        node("garden", "GardenRecall", "agent").withSub("needs 'indoor'"),
+                        node("park", "ParkRecall", "agent").withSub("needs 'garden'")),
                 List.of(edge("in", "indoor"),
-                        edge("indoor", "garden", "indoor"),
-                        edge("garden", "park", "garden")));
+                        edge("indoor", "garden", "writes 'indoor'"),
+                        edge("garden", "park", "writes 'garden'")));
+
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 "Which starts with the thing you never finished teaching him — coming back "
                         + "when he is called.",

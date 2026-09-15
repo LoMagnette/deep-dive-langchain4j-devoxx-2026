@@ -513,6 +513,22 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   13 topologies, saying nothing about the pattern, and the scope now has its own tab. The one exception
   is Blackboard, where the shared board *is* the pattern — remove it there and you get four
   disconnected agents. The graph layout treats a `board` node as optional and re-centres without it.
+- **A node can carry a second line (`withSub`) and can be drawn as a stack (`asStack`).** Both
+  exist because a diagram of the cast is not a diagram of the mechanism:
+  - `goap` was pixel-for-pixel a sequence — same boxes, same left-to-right arrows. Its boxes now
+    declare the key each one **needs** (`needs 'indoor'`) and its edges what they **write**, so
+    the order reads as derived from the keys rather than typed by hand. That is the pattern's
+    entire claim and it was invisible.
+  - `parallelMapper` was a single box, so it said "one call" — the opposite of what a mapper
+    does. The agent is now drawn as a stack, `once per item`.
+  - `supervisor` was a symmetric star saying "talks to all four equally", which is a fan-out.
+    The nurse is now `1 · always first` with a two-way edge (the supervisor reads her answer),
+    and the three desks are `2 · if she says so` behind one arrow.
+  - `bdi` carried its priorities inside the agent names (`ToiletTrip (p30)`); they are a second
+    line now, which also stopped the names truncating.
+  The sub-line sits *inside* the box with the name shifted up, so every box stays one size and
+  the layout maths is untouched. `everyTopologyShowsWhatItsPatternActuallyDoes` asserts these
+  three claims, because each of them is a distinction that would quietly disappear in a tidy-up.
 - **A topology must show what the pattern actually does, not just who is involved.** The test for a
   diagram is whether someone who can't hear the speaker would infer the mechanism. Concretely:
   - fan-out patterns need their **join** (`role: "join"` — parallel's `combine`, voting's

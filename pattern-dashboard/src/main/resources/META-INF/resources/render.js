@@ -72,6 +72,9 @@ function mdInline(t){
 /* ---------- graph layout & drawing ---------- */
 const W=820,H=440,NW=150,NH=46;
 function leadTok(s){ return (s||'').split(/[\s(]/)[0]; }
+/* Labels are trimmed, not wrapped: a box is a fixed size and two lines of name would
+   crowd out the sub-line that says why the node is there. */
+function fit(text, max){ const t=String(text||''); return t.length>max ? t.slice(0,max-1)+'…' : t; }
 
 function layout(topo){
   const nodes = topo.nodes.map(n=>({...n}));
@@ -191,13 +194,33 @@ function drawGraph(topo){
   nodes.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
     g.setAttribute('class','node '+(n.role==='board'||n.role==='join'||n.role==='human'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
+    /* One agent invoked once per item is drawn as a stack. A single box says "one call", which
+       is the opposite of what a mapper does. */
+    if(n.stacked){
+      for(const d of [8,4]){
+        const b=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        b.setAttribute('class','ghost');
+        b.setAttribute('x',n.x-NW/2+d); b.setAttribute('y',n.y-NH/2-d);
+        b.setAttribute('width',NW); b.setAttribute('height',NH); b.setAttribute('rx',14);
+        g.appendChild(b);
+      }
+    }
     const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
     r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',14);
     g.appendChild(r);
+    /* A second line lets a box say WHY it is there — the key GOAP needed to order it, the
+       priority BDI ranked it by — which is the difference between a diagram of the cast and a
+       diagram of the mechanism. The name shifts up to make room rather than the box growing,
+       so every box stays the same size and the layout maths is untouched. */
     const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',n.x); t.setAttribute('y',n.y);
-    const lbl=n.label.length>20?n.label.slice(0,19)+'…':n.label;
-    t.textContent=lbl; g.appendChild(t);
+    t.setAttribute('x',n.x); t.setAttribute('y',n.sub? n.y-6 : n.y);
+    t.textContent = fit(n.label, 22); g.appendChild(t);
+    if(n.sub){
+      const s2=document.createElementNS('http://www.w3.org/2000/svg','text');
+      s2.setAttribute('x',n.x); s2.setAttribute('y',n.y+11);
+      s2.setAttribute('class','sub'); s2.textContent = fit(n.sub, 26);
+      g.appendChild(s2);
+    }
     svg.appendChild(g);
   });
   placeEdgeLabels(svg, pending, nodes);

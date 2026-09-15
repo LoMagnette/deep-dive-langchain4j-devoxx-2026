@@ -143,20 +143,24 @@ public final class SupervisorPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
+        // A symmetric star says "talks to all four equally", which is what a fan-out does. The
+        // order is the pattern here, so the nurse is drawn as the first call and the other three
+        // as the ones she picks between — the supervisor still sits in the middle, because it is
+        // the only thing that decides.
         Topology.Graph topo = graph("star",
-                List.of(node("supervisor", "Supervisor", "supervisor"),
-                        node("nurse", "TriageNurse", "agent"),
-                        node("care", "EverydayCare", "agent"),
-                        node("trainer", "DogTrainer", "agent"),
-                        node("vet", "EmergencyVet", "agent")),
-                // Both directions: the supervisor invokes, reads the result, then decides again.
-                // One-way arrows would draw a static fan-out instead of a planning loop.
+                List.of(node("supervisor", "Supervisor", "supervisor").withSub("decides, twice"),
+                        node("nurse", "TriageNurse", "agent").withSub("1 · always first"),
+                        node("care", "EverydayCare", "agent").withSub("2 · if she says so"),
+                        node("trainer", "DogTrainer", "agent").withSub("2 · if she says so"),
+                        node("vet", "EmergencyVet", "agent").withSub("2 · if she says so")),
+                // Both directions on the nurse: the supervisor invokes her and READS the answer,
+                // which is the edge the whole demo turns on. The other three are one-way from
+                // the supervisor because only one of them is ever called, and only after her.
                 List.of(edge("supervisor", "nurse", "invoke"),
-                        edge("nurse", "supervisor", "what it needs"),
-                        edge("supervisor", "care", "invoke"), edge("care", "supervisor", "result"),
-                        edge("supervisor", "trainer", "invoke"),
-                        edge("trainer", "supervisor", "result"),
-                        edge("supervisor", "vet", "invoke"), edge("vet", "supervisor", "result")));
+                        edge("nurse", "supervisor", "names who it needs"),
+                        edge("supervisor", "care"),
+                        edge("supervisor", "trainer", "then one of these"),
+                        edge("supervisor", "vet")));
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
                 "Then something that is not like him at all, and you cannot tell whether it is "
