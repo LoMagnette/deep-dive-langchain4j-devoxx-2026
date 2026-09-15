@@ -85,20 +85,22 @@ public final class CustomPlannerPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
+        // One column per rung, because the ladder IS the pattern: the cost rises left to right
+        // and the run stops at the first rung that answers. Stacking all three in one column —
+        // which is how this was drawn first — produces the branch diagram of demo 6, one input
+        // arriving at one of three desks, which is the exact reading this planner exists to
+        // correct. The three ways out arc over the rungs they skip.
         Topology.Graph topo = graph("stages",
-                // The three tiers share one column, stacked, so escalation reads downwards and
-                // each rung's own way out reads across. A plain chain would draw a pipeline that
-                // always runs all three, which is the opposite of what this planner does.
                 List.of(node("in", "worry", "input", 0),
-                        node("book", "EverydayCare", "agent", 1),
-                        node("trainer", "DogTrainer", "agent", 1),
-                        node("vet", "EmergencyVet", "agent", 1),
-                        node("out", "first ANSWERED wins", "join", 2)),
+                        node("book", "EverydayCare", "agent", 1).withSub("rung 1 · cheapest"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("rung 2 · only if asked"),
+                        node("vet", "EmergencyVet", "agent", 3).withSub("rung 3 · last resort"),
+                        node("out", "first ANSWERED wins", "join", 4)),
                 List.of(edge("in", "book"),
                         edge("book", "trainer", "ESCALATE"),
                         edge("trainer", "vet", "ESCALATE"),
                         edge("book", "out", "ANSWERED"),
-                        edge("trainer", "out"),
+                        edge("trainer", "out", "ANSWERED"),
                         edge("vet", "out")));
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
                 "By now you have learned who to ask, and in what order, before you ring "

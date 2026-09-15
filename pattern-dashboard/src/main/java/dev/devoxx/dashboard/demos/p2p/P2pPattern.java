@@ -52,13 +52,22 @@ public final class P2pPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        Topology.Graph topo = graph("mesh",
-                List.of(node("in", "question", "input"),
-                        node("bed", "TeamOnTheBed", "agent"),
-                        node("floor", "TeamOnTheFloor", "agent")),
+        // Two boxes passing a proposal back and forth, and nothing else: drawn that way this
+        // diagram had no end, which is exactly the thing that is dangerous about the pattern
+        // and not at all what the demo does. The exit predicate is the fourth box — the run
+        // stops the moment the floor writes an agreement instead of another counter, and
+        // neither peer has an arrow to anything else, because neither can overrule the other.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "question", "input", 0),
+                        node("bed", "TeamOnTheBed", "agent", 1).withSub("proposes"),
+                        node("floor", "TeamOnTheFloor", "agent", 1)
+                                .withSub("counters — or agrees"),
+                        node("out", "the rule both keep", "join", 2)
+                                .withSub("exit: they agreed")),
                 List.of(edge("in", "bed"),
                         edge("bed", "floor", "proposal"),
-                        edge("floor", "bed", "counter")));
+                        edge("floor", "bed", "counter · up to 10"),
+                        edge("floor", "out", "agreement")));
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
                 "And the argument the two of you have been avoiding for a year. The bed.",
                 null,

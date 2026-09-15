@@ -69,9 +69,11 @@ public final class GoapPattern {
     public static PatternDef define() {
         // Every box says what it NEEDS, because that is the only thing distinguishing this
         // picture from the sequential demo's. The planner was handed these three backwards; the
-        // arrows are what it worked out from the keys, not an order anybody typed.
+        // arrows are what it worked out from the keys, not an order anybody typed — and the
+        // goal box says so, because otherwise the reader has to be TOLD the order was derived,
+        // and not having to be told is what the picture is for.
         Topology.Graph topo = graph("dag",
-                List.of(node("in", "goal", "input"),
+                List.of(node("in", "goal", "input").withSub("registered: park first"),
                         node("indoor", "IndoorRecall", "agent").withSub("needs nothing"),
                         node("garden", "GardenRecall", "agent").withSub("needs 'indoor'"),
                         node("park", "ParkRecall", "agent").withSub("needs 'garden'")),

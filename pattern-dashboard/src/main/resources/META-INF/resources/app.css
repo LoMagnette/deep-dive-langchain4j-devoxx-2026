@@ -25,6 +25,10 @@
 :root{
   --c-start:#ab9781; --c-before:#6fb6de; --c-after:#8ed07f; --c-error:#f08a80;
   --c-result:#eaa96a; --c-done:#ab9781; --term-dim:#9d8a75;
+  /* The message ink for those panes. It MUST be declared: inheriting body's --ink put
+     #1c1917 text on the #1b1917 terminal in light theme, so every log message was
+     invisible and only the coloured time/level/logger spans survived. */
+  --term-ink:#cfc6ba; --term-ink-hi:#f4ece2; --term-rule:#c2703a; --c-agent:#5eead4;
 }
 :root{ --display: ui-rounded,"SF Pro Rounded","Segoe UI Variable Display","Nunito",
                   "Trebuchet MS",system-ui,sans-serif; }
@@ -249,13 +253,18 @@ body.resizing{cursor:ns-resize;user-select:none}
 .tabs select,.tabs .mini{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
 .pane{flex:1 1 auto;overflow-y:auto;padding:10px 14px;min-height:0}
 /* Streams read as a terminal; result and scope read as a document. */
-.pane.term{background:var(--term);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
+.pane.term{background:var(--term);color:var(--term-ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;padding:8px 12px}
 .pane.doc{background:var(--panel);font-size:14px}
 .pane .line{white-space:pre-wrap;word-break:break-word}
 .empty{color:var(--muted);font-style:italic}
 .seq,.time{color:var(--term-dim)}
 .took{float:right;color:var(--term-dim);font-variant-numeric:tabular-nums;padding-left:10px}
 .logger{color:#c4a6f5}
+/* What went to the model and what came back, against everything the framework says about
+   itself. Both belong in one stream — the point is the interleaving — but the prompts are
+   what the room came to see, so they carry the brighter ink and the margin rule. */
+.pane.term .line.chat{color:var(--term-ink-hi);border-left:2px solid var(--term-rule);padding-left:10px;margin-left:-12px}
+.line.chat .logger{color:var(--term-rule)}
 .lvl-ERROR{color:#f87171;font-weight:700}
 .lvl-WARN{color:#fbbf24;font-weight:700}
 .lvl-INFO{color:#93c5fd}

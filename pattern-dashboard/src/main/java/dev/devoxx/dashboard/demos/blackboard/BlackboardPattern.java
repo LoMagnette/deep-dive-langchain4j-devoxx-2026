@@ -74,11 +74,16 @@ public final class BlackboardPattern {
                 // The only pattern that still draws the shared state: here it is not plumbing,
                 // it is the pattern. Every other topology dropped its AgenticScope sink — it was
                 // the same box in all 13 diagrams, and the scope now has its own tab.
-                List.of(node("board", "The board", "board"),
-                        node("walks", "WalkNotes", "agent"),
-                        node("routine", "RoutineNotes", "agent"),
-                        node("home", "HomeNotes", "agent"),
-                        node("lead", "TrainerLead", "agent")),
+                //
+                // Four identical satellites said nothing about where the problem comes from,
+                // why the order is free, or how the run ever stops. The sub-lines carry all
+                // three: the board holds the problem, the note-takers each need only that (so
+                // any of them can go first), and the lead needs all three and ends it.
+                List.of(node("board", "The board", "board").withSub("the problem + every note"),
+                        node("walks", "WalkNotes", "agent").withSub("needs only the problem"),
+                        node("routine", "RoutineNotes", "agent").withSub("needs only the problem"),
+                        node("home", "HomeNotes", "agent").withSub("needs only the problem"),
+                        node("lead", "TrainerLead", "agent").withSub("needs all three, ends it")),
                 // Contributors read the board as well as write to it — that mutual dependency is
                 // why the pattern needs a conflict-resolution strategy at all.
                 List.of(edge("walks", "board", "exercise"), edge("board", "walks"),

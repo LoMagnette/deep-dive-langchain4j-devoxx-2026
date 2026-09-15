@@ -60,11 +60,17 @@ public final class LoopPattern {
         Topology.Graph topo = graph("loop",
                 // The same FridgeChecklist the sequential demo used, with a critic added and a
                 // loop drawn round it. The lesson is that nothing about the agent changed.
+                //
+                // Both ways out of the critic, not just the way round: with only the return arc
+                // drawn, this was two agents circling for ever, and the thing that ENDS a loop —
+                // the whole of what you have to get right — was the one thing not on the page.
                 List.of(node("in", "notes", "input"),
                         node("writer", "FridgeChecklist", "agent"),
-                        node("check", "FridgeRuleCheck", "agent")),
+                        node("check", "FridgeRuleCheck", "agent").withSub("4 rules, scored"),
+                        node("out", "the note", "join").withSub("or after 5 passes")),
                 List.of(edge("in", "writer"), edge("writer", "check", "notes"),
-                        edge("check", "writer", "score < 0.8")));
+                        edge("check", "writer", "score < 0.8"),
+                        edge("check", "out", "score ≥ 0.8")));
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 "This is the note you actually sent last time. You already know the four "
                         + "things wrong with it.",

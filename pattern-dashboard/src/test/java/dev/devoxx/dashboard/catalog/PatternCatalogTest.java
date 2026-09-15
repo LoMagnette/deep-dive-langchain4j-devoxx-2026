@@ -2,6 +2,7 @@ package dev.devoxx.dashboard.catalog;
 
 import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -504,8 +505,10 @@ class PatternCatalogTest {
         // The supervisor adds exactly one agent — the nurse, who makes the hand-off reliable —
         // and reuses the routing demo's three. Anything more and the "same cast, different
         // decider" point stops being true.
-        var extra = labels(catalog, "supervisor").stream()
-                .filter(l -> !l.equals("Supervisor"))
+        // Agents only: the input box and the supervisor itself are the diagram's scaffolding,
+        // not part of the cast this is counting.
+        var extra = nodes(catalog, "supervisor").stream()
+                .filter(n -> n.role().equals("agent")).map(Topology.Node::label)
                 .filter(l -> !List.of("EverydayCare", "DogTrainer", "EmergencyVet").contains(l))
                 .toList();
         assertEquals(List.of("TriageNurse"), extra,
@@ -606,6 +609,48 @@ class PatternCatalogTest {
                 "the supervisor must be shown reading the nurse's answer, not just calling her");
         assertTrue(mutual(catalog, "blackboard", "walks", "board"),
                 "blackboard contributors read as well as write");
+
+        // The ladder's rungs must be in SEPARATE columns. Stacked in one column — which is how
+        // this was drawn first — the picture is demo 6's branch diagram: one input arriving at
+        // one of three desks, which is the exact reading a cost ladder exists to correct.
+        var rungs = nodes(catalog, "customPlanner").stream()
+                .filter(n -> n.role().equals("agent")).map(Topology.Node::stage).toList();
+        assertEquals(3, Set.copyOf(rungs).size(),
+                "each rung needs its own column, or the ladder reads as a branch: " + rungs);
+
+        // Every loop needs BOTH ways out of its critic drawn. With only the backward arc, the
+        // picture is two agents circling for ever and the exit condition — the whole of what
+        // you have to get right — is the one thing missing.
+        assertEquals(1, inDegree(catalog, "loop", role(catalog, "loop", "join")),
+                "the loop must draw where it leaves the loop, not only how it goes round");
+        assertTrue(edges(catalog, "loop").stream()
+                        .anyMatch(e -> e.label() != null && e.label().contains("≥")),
+                "the exit edge must say what ends the loop");
+
+        // Peers with no drawn exit say the run never terminates, which is the pattern's caveat
+        // rather than its behaviour — this one stops the moment an agreement exists.
+        assertNotNull(role(catalog, "p2p", "join"),
+                "p2p must draw the exit predicate, or the diagram has no end");
+
+        // Both a debate and a supervisor read backwards without a direction: the mesh circle put
+        // the judge to the LEFT of the advocates, and the star drew the supervisor as a wheel
+        // with four equal spokes — a picture of the fan-out the demo spends its time denying.
+        for (String id : List.of("debate", "supervisor")) {
+            assertEquals("stages", catalog.byId(id).orElseThrow().topology().layout(),
+                    id + " needs explicit columns; a circle has no before and after");
+        }
+
+        // render.js trims a label at 22 characters and a sub-line at 26, silently and with no
+        // error — so an over-long one is simply wrong on the projector and nowhere else.
+        // 24 rather than 26 for subs: at 10.5px in a 150px box, 26 characters touch both walls.
+        for (var info : catalog.infos()) {
+            for (var n : info.topology().nodes()) {
+                assertTrue(n.label().length() <= 22,
+                        () -> info.id() + ": label is cut off on the diagram: " + n.label());
+                assertTrue(n.sub() == null || n.sub().length() <= 24,
+                        () -> info.id() + ": sub-line is cut off on the diagram: " + n.sub());
+            }
+        }
     }
 
     private static List<Topology.Edge> edges(PatternCatalog c, String id) {

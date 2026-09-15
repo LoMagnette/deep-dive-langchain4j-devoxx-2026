@@ -400,6 +400,30 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `StartupEvent` at `@Priority(1)` so it is listening before `ModelFactory` logs which model is live.
   Two hazards it already handles: emitting a record can itself log (guarded by a thread-local, else
   infinite recursion), and dev-mode reload would otherwise stack a second handler and double every line.
+- **`ChatCallLog`** — a `ChatModelListener` that logs the prompt sent and the answer returned, with
+  elapsed time and token count, under the logger name **`chat`**. It is what makes the Server log tab
+  worth projecting: without it the tab carries only the framework talking about itself ("activating
+  agent X"), which is the shape of a run and none of its content. Three decisions worth keeping:
+  - **INFO, not DEBUG.** The model's own `logRequests`/`logResponses` do this at DEBUG, which meant
+    the most interesting half of the demo was invisible unless somebody remembered to raise a log
+    level before going on stage. `ModelFactory` no longer sets those flags — this replaces them, so
+    there is exactly one source of prompt logging and no duplicate lines.
+  - **It works for the mock too.** `ChatModel.chat()`'s default implementation fires `listeners()`
+    and then calls `doChat()` — so `MockChatModel` overrides **`doChat`**, not `chat`, and takes a
+    listener list in its constructor. Override `chat` there and offline runs log nothing. Its no-arg
+    constructor stays silent, which is what tests use.
+  - **One line per call.** `trim()` flattens newlines to `⏎` and caps at 700 chars; a prompt is a
+    thirty-line text block, and thirty log records per call is a wall nobody reads.
+  The tab renders `chat` lines in brighter ink with a left rule, so the prompts stand out from the
+  framework lines they are interleaved with — the interleaving is the point, the weighting is so it
+  can be read from the back of a room.
+- **The dark panes must not inherit `--ink`.** "Run events" and "Server log" are dark in *both*
+  themes. `.pane.term` therefore sets `color:var(--term-ink)` explicitly: it previously inherited
+  `body`'s `--ink`, which in light theme is `#1c1917` on a `#1b1917` background — every log message
+  was invisible, and only the spans that set their own colour (time, level, logger) survived. For the
+  same reason the agent name in Run events uses `--c-agent`, not `--accent2` (a dark teal in light
+  theme, 3.2:1 there). Any new colour used inside those panes belongs in the theme-independent token
+  block next to `--term-dim`.
 - **`Topology` / `RunEvent`** — plain records describing the graph and the streamed events.
   `RunEvent.ScopeValue` (type + size + rendered value) is what makes the Scope tab a variables
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
@@ -438,7 +462,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   the rows an agent just wrote highlighted, and long values clamped until clicked — expansion
   survives the next update so a row doesn't collapse mid-run), **Run events**
   (`/api/patterns/{id}/run`) and
-  **Server log** (`/api/logs`, with a level filter). A dot flags a WARN/ERROR — or a finished result —
+  **Server log** (`/api/logs`, with a level filter — the real prompts and answers land here from
+  `ChatCallLog`, interleaved with the framework's own lines). A dot flags a WARN/ERROR — or a finished result —
   on a tab you haven't looked at. Finishing a run switches to Result automatically, *unless* the viewer
   picked a tab themselves during that run (`tabPinned`) — never yank the view out from under someone.
 - **`[hidden]{display:none !important}` is declared once in `app.css`, and it has to be.** The
@@ -524,11 +549,45 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - `supervisor` was a symmetric star saying "talks to all four equally", which is a fan-out.
     The nurse is now `1 · always first` with a two-way edge (the supervisor reads her answer),
     and the three desks are `2 · if she says so` behind one arrow.
+  - `blackboard` was four identical satellites round a box, which said nothing about where the
+    problem comes from, why the order is free, or how the run ever stops. The sub-lines carry all
+    three now: the board holds `the problem + every note`, each note-taker `needs only the
+    problem` (so any of them can go first), and the lead `needs all three, ends it`.
+  - `goap`'s goal box says `registered: park first` while the boxes run indoor → garden → park.
+    That one line is the pattern's whole claim; without it the order looks typed, and the reader
+    has to be *told* it was derived — not having to be told is what the picture is for.
+  - Only the **return** half of a two-way pair is labelled. Both halves bow through the same gap,
+    so the supervisor's "invoke" and "names who it needs" landed on top of each other; of the two
+    it is the answer that carries the mechanism. Same convention as the blackboard's write/read.
   - `bdi` carried its priorities inside the agent names (`ToiletTrip (p30)`); they are a second
     line now, which also stopped the names truncating.
   The sub-line sits *inside* the box with the name shifted up, so every box stays one size and
   the layout maths is untouched. `everyTopologyShowsWhatItsPatternActuallyDoes` asserts these
   three claims, because each of them is a distinction that would quietly disappear in a tidy-up.
+- **A circle has no before and after, so a directional pattern must not be drawn in one.** The
+  `star` and `mesh` layouts space nodes evenly round a circle in declaration order, which is right
+  for a blackboard (the board is genuinely the centre and the contributors genuinely have no order)
+  and wrong for everything else. It drew the debate's judge to the *left* of its advocates — a
+  verdict arriving before the argument — and the supervisor as a wheel with four equal spokes,
+  which is a picture of the fan-out that demo spends its time denying. Both are `stages` now, and
+  a test pins them there. When a pattern has a direction, give it columns.
+- **Every diagram needs its way out drawn, not only its way round.** Three of them didn't:
+  - the **loop** had the return arc and no exit, so it was two agents circling for ever and the
+    exit condition — the whole of what you have to get right — was the one thing not on the page;
+  - **p2p** was two boxes passing a proposal back and forth with no end at all, which is the
+    pattern's *caveat* rather than its behaviour (the exit predicate is the box on the right);
+  - the **escalation ladder** stacked its three rungs in one column, which is pixel-for-pixel demo
+    6's branch diagram — one input arriving at one of three desks, the exact reading a cost ladder
+    exists to correct. One column per rung now, cost rising left to right.
+- **In a `stages` diagram an edge that skips a column arcs over the top** (`span` in `drawGraph`,
+  nested by how far it jumps so the short hop stays lowest). Node fills are opaque, so a
+  skip-ahead edge drawn flat does not look crowded — it silently *disappears* behind whatever
+  stands between its ends. The ladder's three ways out are all skip-ahead edges, and flat they
+  said only the last rung can answer.
+- **A label is trimmed at 22 characters and a sub-line at 26, silently.** `fit()` does it with no
+  error, so an over-long one is simply wrong on the projector and nowhere else.
+  `everyTopologyShowsWhatItsPatternActuallyDoes` caps labels at 22 and subs at **24** — not 26,
+  because at 10.5px in a 150px box 26 characters touch both walls.
 - **A topology must show what the pattern actually does, not just who is involved.** The test for a
   diagram is whether someone who can't hear the speaker would infer the mechanism. Concretely:
   - fan-out patterns need their **join** (`role: "join"` — parallel's `combine`, voting's

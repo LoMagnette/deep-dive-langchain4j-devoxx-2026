@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -61,8 +62,29 @@ public class MockChatModel implements ChatModel {
             "Written in the notebook by the back door where you will both see it."
     };
 
+    private final List<ChatModelListener> listeners;
+
+    public MockChatModel() {
+        this(List.of());
+    }
+
+    /**
+     * With listeners, the offline demo logs its prompts and answers exactly as a real model
+     * does — {@code ChatModel.chat()} fires them and then calls {@link #doChat}, so overriding
+     * doChat rather than chat is what buys that for free. Tests construct the no-arg version:
+     * every mock call would otherwise log, and the interesting failures would be buried.
+     */
+    public MockChatModel(List<ChatModelListener> listeners) {
+        this.listeners = List.copyOf(listeners);
+    }
+
     @Override
-    public ChatResponse chat(ChatRequest request) {
+    public List<ChatModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest request) {
         String text = respond(lastUserText(request));
         return ChatResponse.builder().aiMessage(AiMessage.from(text)).build();
     }

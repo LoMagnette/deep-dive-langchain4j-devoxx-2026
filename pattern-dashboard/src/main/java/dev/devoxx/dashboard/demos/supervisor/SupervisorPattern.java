@@ -143,20 +143,28 @@ public final class SupervisorPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // A symmetric star says "talks to all four equally", which is what a fan-out does. The
-        // order is the pattern here, so the nurse is drawn as the first call and the other three
-        // as the ones she picks between — the supervisor still sits in the middle, because it is
-        // the only thing that decides.
-        Topology.Graph topo = graph("star",
-                List.of(node("supervisor", "Supervisor", "supervisor").withSub("decides, twice"),
-                        node("nurse", "TriageNurse", "agent").withSub("1 · always first"),
-                        node("care", "EverydayCare", "agent").withSub("2 · if she says so"),
-                        node("trainer", "DogTrainer", "agent").withSub("2 · if she says so"),
-                        node("vet", "EmergencyVet", "agent").withSub("2 · if she says so")),
+        // Drawn as a star this was a wheel with four equal spokes, which is a picture of a
+        // fan-out — the exact thing the demo spends five minutes denying. Laid out left to
+        // right it is a picture of a decision instead: the worry arrives at the supervisor,
+        // never at an agent, and the only arrow that comes BACK is the nurse's.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "worry", "input", 0),
+                        node("supervisor", "Supervisor", "supervisor", 1)
+                                .withSub("asks, reads, asks again"),
+                        node("nurse", "TriageNurse", "agent", 2).withSub("1 · always first"),
+                        node("care", "EverydayCare", "agent", 2).withSub("2 · if she says so"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("2 · if she says so"),
+                        node("vet", "EmergencyVet", "agent", 2).withSub("2 · if she says so")),
                 // Both directions on the nurse: the supervisor invokes her and READS the answer,
-                // which is the edge the whole demo turns on. The other three are one-way from
-                // the supervisor because only one of them is ever called, and only after her.
-                List.of(edge("supervisor", "nurse", "invoke"),
+                // which is the edge the whole demo turns on, and the only two-way pair on the
+                // page. The other three are one-way because only one of them is ever called,
+                // and only after her.
+                // Only the return arrow is labelled. Both halves of a two-way pair bow through
+                // the same gap, so "invoke" and the answer landed on top of each other — and of
+                // the two it is the answer that carries the mechanism. Same convention as the
+                // blackboard, where the write is labelled and the read is not.
+                List.of(edge("in", "supervisor"),
+                        edge("supervisor", "nurse"),
                         edge("nurse", "supervisor", "names who it needs"),
                         edge("supervisor", "care"),
                         edge("supervisor", "trainer", "then one of these"),

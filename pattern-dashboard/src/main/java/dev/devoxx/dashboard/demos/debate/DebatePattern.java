@@ -53,13 +53,19 @@ public final class DebatePattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        Topology.Graph topo = graph("mesh",
-                List.of(node("in", "motion", "input"),
-                        node("take", "TakeHimAdvocate", "agent"),
-                        node("leave", "LeaveHimAdvocate", "agent"),
-                        node("verdict", "HolidayVerdict", "judge")),
+        // The mesh layout spaces nodes evenly round a circle in declaration order, which put the
+        // judge to the LEFT of the two advocates: a picture of a verdict arriving before the
+        // argument. A debate has a direction — motion, argument, ruling — so it gets columns.
+        // The two advocates share the middle column, which is what makes their rebuttals a
+        // vertical pair of bowed arrows between them rather than part of the flow.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "motion", "input", 0),
+                        node("take", "TakeHimAdvocate", "agent", 1),
+                        node("leave", "LeaveHimAdvocate", "agent", 1),
+                        node("verdict", "HolidayVerdict", "judge", 2)
+                                .withSub("only if they never agree")),
                 List.of(edge("in", "take"), edge("in", "leave"),
-                        edge("take", "leave", "rebut"), edge("leave", "take", "rebut"),
+                        edge("take", "leave", "rebut"), edge("leave", "take", "up to 2 rounds"),
                         edge("take", "verdict"), edge("leave", "verdict")));
         return new PatternDef("debate", "Debate", "pattern-zoo",
                 "And before any of it, two weeks in Tuscany in August. Does he come?",

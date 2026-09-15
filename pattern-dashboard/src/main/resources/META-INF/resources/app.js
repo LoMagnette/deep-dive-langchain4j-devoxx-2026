@@ -184,7 +184,7 @@ function log(ev){
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
   const took = ev.millis==null ? '' : `<span class="took">${fmtMs(ev.millis)}</span>`;
-  div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--accent2)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>${took}`;
+  div.innerHTML=`<span class="seq">[${ev.seq}]</span> <span style="color:${col};font-weight:700">${ev.type}</span> <span style="color:var(--c-agent)">${ev.agent||''}</span> — <span style="color:${col}">${escapeHtml(ev.message||'')}</span>${took}`;
   c.appendChild(div); c.scrollTop=c.scrollHeight;
 }
 
@@ -307,7 +307,10 @@ function minLevel(){ return document.getElementById('log-level').value; }
 function passes(l){ const m=minLevel(); return m==='ALL' || (LEVEL_RANK[l.level]??2) >= LEVEL_RANK[m]; }
 
 function logHtml(l){
-  return `<div class="line"><span class="time">${l.time}</span> `
+  /* What went to the model and what came back is the half of the log worth projecting; the
+     framework's own lines are the scaffolding around it. Same stream, different weight. */
+  const chat = l.logger==='chat' ? ' chat' : '';
+  return `<div class="line${chat}"><span class="time">${l.time}</span> `
     + `<span class="lvl-${l.level}">${String(l.level).padEnd(5)}</span> `
     + `<span class="logger">${escapeHtml(l.logger)}</span> ${escapeHtml(l.message)}</div>`;
 }

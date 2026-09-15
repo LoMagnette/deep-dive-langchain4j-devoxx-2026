@@ -153,6 +153,12 @@ function drawGraph(topo){
   const arcLayout = topo.layout==='chain'||topo.layout==='loop'||topo.layout==='dag';
   const pairs=new Set(topo.edges.map(e=>e.from+'->'+e.to));
   const isMutual = e => !arcLayout && pairs.has(e.to+'->'+e.from);
+  /* An edge that skips a column is drawn straight THROUGH whatever stands between its ends —
+     opaque boxes, so the arrow simply disappears behind them. The escalation ladder's three
+     ways out all do this, and drawn flat the picture said only the last rung can answer. Lift
+     them over the top instead, nested by how far they jump, so the short hop stays lowest. */
+  const span = e => topo.layout!=='stages' ? 0
+    : Math.abs((idx[e.to]?.stage ?? 0) - (idx[e.from]?.stage ?? 0));
 
   /* Labels are collected, not drawn, in this pass: they are placed once every node position is
      known and appended AFTER the nodes. See placeEdgeLabels. */
@@ -166,8 +172,9 @@ function drawGraph(topo){
        arrow to find a clear spot instead of being pinned to the midpoint of a straight line it
        is not drawn on. */
     let at;
-    if(back && (topo.layout==='chain'||topo.layout==='loop'||topo.layout==='dag')){
-      const arc=Math.min(a.y,b.y)-70;
+    const jump = span(e);
+    if((back && arcLayout) || jump>1){
+      const arc=Math.max(20, Math.min(a.y,b.y) - 70 - 34*Math.max(0, jump-1));
       const p0={x:a.x,y:a.y-NH/2}, c1={x:a.x,y:arc}, c2={x:b.x,y:arc}, p1={x:b.x,y:b.y-NH/2};
       p.setAttribute('d',`M${p0.x} ${p0.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p1.x} ${p1.y}`);
       p.setAttribute('class','edge back');

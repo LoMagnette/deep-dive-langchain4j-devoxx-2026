@@ -124,14 +124,14 @@ public class ModelFactory {
         String wanted = configuredModelName.trim();
 
         if ("mock".equalsIgnoreCase(modelKind)) {
-            return settle(new MockChatModel(), "mock (deterministic, offline)", false);
+            return settle(loggingMock(), "mock (deterministic, offline)", false);
         }
 
         boolean auto = "auto".equalsIgnoreCase(modelKind);
         if (!auto && !"ollama".equalsIgnoreCase(modelKind)) {
             LOG.warnf("Unknown dashboard.model '%s' — using the mock. Expected: auto, ollama, mock.",
                     modelKind);
-            return settle(new MockChatModel(), "mock (unknown dashboard.model '" + modelKind + "')",
+            return settle(loggingMock(), "mock (unknown dashboard.model '" + modelKind + "')",
                     false);
         }
 
@@ -157,7 +157,7 @@ public class ModelFactory {
                     Point somewhere else: OLLAMA_BASE_URL=http://host:11434  OLLAMA_MODEL=name
                     Set dashboard.model=ollama to disable this fallback and fail loudly instead.""",
                     wanted, problems, wanted);
-            return settle(new MockChatModel(), "mock — FALLBACK, no Ollama serving '" + wanted
+            return settle(loggingMock(), "mock — FALLBACK, no Ollama serving '" + wanted
                     + "': " + problems, true);
         }
 
@@ -234,9 +234,21 @@ public class ModelFactory {
                 .baseUrl(baseUrl)
                 .modelName(modelName)
                 .timeout(timeout)
-                .logRequests(true)
-                .logResponses(true)
+                // Not logRequests/logResponses: those log at DEBUG, which means the most
+                // interesting lines in the demo are invisible unless somebody remembered to
+                // raise a log level first. The listener logs at INFO, in one line per call,
+                // formatted for the Server log tab.
+                .listeners(List.of(new ChatCallLog()))
                 .build();
+    }
+
+    /**
+     * The offline model, wired to the same {@link ChatCallLog} the real one uses — so the Server
+     * log tab shows prompts and answers whether or not Ollama is running, which is exactly the
+     * situation the mock exists for.
+     */
+    private static MockChatModel loggingMock() {
+        return new MockChatModel(List.of(new ChatCallLog()));
     }
 
     /** Records the decision so {@link #activeModel()} and the retry clock stay in step with it. */
