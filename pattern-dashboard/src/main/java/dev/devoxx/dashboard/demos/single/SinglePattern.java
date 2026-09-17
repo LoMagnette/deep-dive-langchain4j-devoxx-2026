@@ -56,8 +56,8 @@ public final class SinglePattern {
                         node("clerk", "SitterCardClerk", "agent")),
                 List.of(edge("in", "clerk")));
         return new PatternDef("single", "Single Agent", "workflow",
-                "You are away this weekend, a friend has said yes to having Zao, and you "
-                        + "have just sent them a wall of text.",
+                "You are away this weekend. A friend said yes to having Zao before reading "
+                        + "the message. You have just sent them the message.",
                 null,
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
                         + "LLM is genuinely best at: turning what a human actually typed into a "

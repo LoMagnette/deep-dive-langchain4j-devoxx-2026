@@ -53,7 +53,8 @@ public final class SequentialPattern {
                         node("list", "FridgeChecklist", "agent")),
                 List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
         return new PatternDef("sequential", "Sequential", "workflow",
-                "They need it on the fridge door, not buried in their phone.",
+                "They need it on the fridge door at 07:00, not on page four of a phone "
+                        + "somebody left charging downstairs.",
                 "Demo 1's SitterCardClerk, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "

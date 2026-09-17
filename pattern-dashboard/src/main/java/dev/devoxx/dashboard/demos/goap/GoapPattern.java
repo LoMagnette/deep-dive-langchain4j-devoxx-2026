@@ -82,8 +82,8 @@ public final class GoapPattern {
                         edge("garden", "park", "writes 'garden'")));
 
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
-                "Which starts with the thing you never finished teaching him — coming back "
-                        + "when he is called.",
+                "Which begins, as everything does, with the recall you never finished "
+                        + "teaching him. He comes back indoors. Reliably. Indoors.",
                 null,
                 "The planner orders agents automatically by matching each output to the next "
                         + "input. Nobody has to be told this order: recall works indoors before "

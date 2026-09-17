@@ -68,7 +68,8 @@ public final class DebatePattern {
                         edge("take", "leave", "rebut"), edge("leave", "take", "up to 2 rounds"),
                         edge("take", "verdict"), edge("leave", "verdict")));
         return new PatternDef("debate", "Debate", "pattern-zoo",
-                "And before any of it, two weeks in Tuscany in August. Does he come?",
+                "And before any of it, two weeks in Tuscany in August. Does he come? Both of "
+                        + "you are certain, and not about the same thing.",
                 null,
                 "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
                         + "drama: ask one agent and it picks a side and then rationalises it, "

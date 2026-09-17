@@ -103,8 +103,8 @@ public final class CustomPlannerPattern {
                         edge("trainer", "out", "ANSWERED"),
                         edge("vet", "out")));
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
-                "By now you have learned who to ask, and in what order, before you ring "
-                        + "anybody at all.",
+                "By now you know who to ask, and in what order, and that the vet charges "
+                        + "for the phone call.",
                 "Demo 6's three desks a third time. Routing picks one, the supervisor "
                         + "picks several, and this tries them cheapest-first and stops early.",
                 "Every planner above is an implementation of one small interface — here is one "

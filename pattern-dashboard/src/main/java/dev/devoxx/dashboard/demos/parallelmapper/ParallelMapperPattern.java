@@ -80,7 +80,8 @@ public final class ParallelMapperPattern {
                         edge("check", "gather", "verdicts")));
 
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
-                "The picnic. Five things off the blanket before anybody noticed.",
+                "The picnic. Five things off the blanket in the time it took to open the "
+                        + "wine. None of them were his.",
                 null,
                 "Map one agent over a collection in parallel (scatter/gather). Five things off "
                         + "the picnic blanket, one verdict each. The width of the fan-out is "

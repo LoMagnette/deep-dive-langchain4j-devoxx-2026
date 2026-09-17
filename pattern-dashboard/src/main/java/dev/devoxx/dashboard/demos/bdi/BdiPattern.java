@@ -96,8 +96,8 @@ public final class BdiPattern {
                         edge("out", "train", "needs been out"),
                         edge("fed", "train", "needs fed")));
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
-                "Think back to his very first hour in this house. Every habit you have been "
-                        + "arguing about started there.",
+                "Think back to his first hour here. Eight weeks old, forty minutes in the "
+                        + "car, three needs — and only one of them can go first.",
                 null,
                 "The agent pursues prioritised desires, always acting on the highest-priority one "
                         + "that is achievable and not yet met. The puppy's first hour: out ranks "

@@ -91,8 +91,8 @@ public final class BlackboardPattern {
                         edge("home", "board", "the house"), edge("board", "home"),
                         edge("lead", "board", "ranked causes"), edge("board", "lead")));
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
-                "Meanwhile the neighbour has complained twice. He barks all day now and "
-                        + "nobody knows why.",
+                "Meanwhile the neighbour has complained twice. He barks all day now. Nothing "
+                        + "has changed, except everything that has changed.",
                 null,
                 "Contributors read and write a shared board until a goal state exists. This is "
                         + "debugging, which is what a blackboard is for: barking while you are "

@@ -135,8 +135,8 @@ public final class HumanApprovalPattern {
                         edge("owner", "final", "decision")));
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
-                "The same call again — except this time somebody has to act on the answer, and "
-                        + "it is not you standing there.",
+                "Same call, same three desks. Except this time the person acting on the "
+                        + "answer is your sister, and she will do exactly what it says.",
                 "Demo 6 exactly — same router, same three desks — with one person added "
                         + "before anything reaches the sitter.",
                 "The previous demo with a person added, and nothing else changed: same router, "

@@ -171,8 +171,8 @@ public final class SupervisorPattern {
                         edge("supervisor", "vet")));
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
-                "Then something that is not like him at all, and you cannot tell whether it is "
-                        + "behaviour or something worse.",
+                "Then something that is not like him at all. You cannot tell if it is "
+                        + "behaviour or something worse, and neither can one phone call.",
                 "Demo 6's three desks again, and not one new agent. Routing picks one of "
                         + "them; this picks several and decides when to stop.",
                 "An LLM supervisor decides which specialist to invoke, and when to stop — the "

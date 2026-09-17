@@ -69,7 +69,8 @@ public final class P2pPattern {
                         edge("floor", "bed", "counter · up to 10"),
                         edge("floor", "out", "agreement")));
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
-                "And the argument the two of you have been avoiding for a year. The bed.",
+                "And the argument you have been avoiding for a year. The bed. Neither of you "
+                        + "outranks the other, which is why this is not a supervisor.",
                 null,
                 "Peers refine a shared state until an exit condition holds. The case for it: "
                         + "every household has had this argument, and the reason it is not a "

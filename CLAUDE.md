@@ -493,6 +493,14 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
   talk. Labels stay plain; the agent names already carry the theme. Two glyphs remain, both
   functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
+  **This rule is about the chrome, not about the writing.** The `story` beats are the one place
+  the humour belongs — they are what the speaker says out loud, the talk is three hours long, and
+  the room needs the laughs. The register is dry and observational (the sitter said yes *before*
+  reading the message; the dog is not sorry), never wordplay, and every punchline earns its place
+  twice: `goap`'s "He comes back indoors. Reliably. Indoors." **is** the precondition chain,
+  `p2p`'s names why it is not a supervisor, `customPlanner`'s is the cost ladder. A joke you have
+  to stop and explain costs more time than it buys, so it is the wrong joke. Beats are capped at
+  140 chars by `everyDemoHasItsBeatInTheNarration` — a beat is a sentence, not a paragraph.
   Visually it is a light, card-based shell — floating rounded surfaces with soft elevation on a
   tinted page — rather than the bordered-box admin look it started as. The primary action is ink,
   not brand colour; the accent is reserved for identity and selection (a tinted chip, not a

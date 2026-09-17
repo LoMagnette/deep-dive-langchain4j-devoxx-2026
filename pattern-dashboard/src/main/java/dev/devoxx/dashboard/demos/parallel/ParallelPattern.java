@@ -68,8 +68,8 @@ public final class ParallelPattern {
                 List.of(edge("in", "meals"), edge("in", "walks"),
                         edge("meals", "join", "meals"), edge("walks", "join", "walks")));
         return new PatternDef("parallel", "Parallel", "workflow",
-                "The note needs two halves that have nothing to do with each other: what he "
-                        + "eats, and when he goes out.",
+                "The note needs two halves with nothing to say to each other: what he eats, "
+                        + "and when he goes out. Neither has ever needed the other.",
                 "Takes the card demo 1 produced. Both planners come back in the capstone.",
                 "Fan out independent work concurrently, then join. The meals do not depend on "
                         + "the walks and the walks do not depend on the meals, but the note needs "
