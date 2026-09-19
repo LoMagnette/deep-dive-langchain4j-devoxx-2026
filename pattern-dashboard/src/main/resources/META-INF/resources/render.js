@@ -200,7 +200,8 @@ function drawGraph(topo){
   // nodes
   nodes.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('class','node '+(n.role==='board'||n.role==='join'||n.role==='human'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
+    g.setAttribute('class','node '+(n.role==='board'||n.role==='join'||n.role==='human'
+    ||n.role==='code'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
     /* One agent invoked once per item is drawn as a stack. A single box says "one call", which
        is the opposite of what a mapper does. */
     if(n.stacked){

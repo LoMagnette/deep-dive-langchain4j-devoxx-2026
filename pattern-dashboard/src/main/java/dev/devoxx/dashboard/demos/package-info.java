@@ -27,7 +27,7 @@
  * for dogs, that hot pavement burns paws, that a puppy needs the garden before he needs a
  * training session, and that neither half of a couple outranks the other about the bed. Nobody
  * knows what a 21-day rabies clearance is. A scenario that costs a sentence of setup costs it
- * fifteen times over, and the room spends the talk learning the domain instead of the patterns.
+ * twenty times over, and the room spends the talk learning the domain instead of the patterns.
  *
  * <p>So the constraints these agents are checked against are ones the room already holds:
  * grapes are dangerous and cheddar is not, a fridge note needs the vet's number on it, you

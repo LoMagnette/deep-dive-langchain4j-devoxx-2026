@@ -161,7 +161,7 @@ public final class SecondDogCouncilPattern {
         return new PatternDef("secondDogCouncil", "Second Dog Council (composite)", "composite",
                 "And the second dog, finally put properly to the household. Zao has not been "
                         + "asked. Zao is on the committee.",
-                "Demo 12's three assessors, now ratifying a motion that has been debated "
+                "Demo 13's three assessors, now ratifying a motion that has been debated "
                         + "rather than voting on it cold.",
                 "Settles the question the voting demo only took a snap poll on: a mapper reads "
                         + "three angles of the household at once, one agent turns them into a "

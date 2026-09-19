@@ -387,6 +387,21 @@ public class MockChatModel implements ChatModel {
                                 + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
                                 + "surgery is in Marche, twenty minutes by car — ring before you "
                                 + "set off, they do not always have someone on site."),
+                // Deliberately DROPS the microchip and the policy number. The note reads
+                // perfectly well without them, which is exactly the failure the guard is there
+                // to catch — a canned answer that copied everything would make the non-AI step
+                // look like ceremony.
+                new Rule(p -> p.contains("from the record below"),
+                        p -> """
+                                Zao is a four-year-old Belgian shepherd, 32 kg.
+
+                                Feed him 300 g twice a day, morning and evening. He is used to \
+                                two walks, on the lead throughout.
+
+                                If anything worries you, ring Dr Cluysen on 061 22 33 44 — the \
+                                same number works out of hours.
+
+                                Thank you for having him!"""),
                 new Rule(p -> p.contains("medication paragraph"),
                         p -> "Half a tablet with his breakfast, every morning, for his hip.\n"
                                 + "Push it into a folded slice of cheese and he takes it without "

@@ -10,11 +10,16 @@ public final class Topology {
 
     /**
      * role: "input" | "agent" | "board" | "supervisor" | "router" | "judge" | "join"
-     * | "human".
+     * | "human" | "code".
      *
      * <p>"human" is not an agent either — it is a step where the run stops and waits for a
      * person. Drawing it as an agent box would say the model decided, which is the one thing the
      * human-in-the-loop pattern exists to deny.
+     *
+     * <p>"code" is the same argument one step further: a non-AI agent, which is your own Java
+     * wired in as a sub-agent. The framework genuinely cannot tell it apart from an LLM agent —
+     * that is the lesson — but the picture has to, or a diagram of a pipeline with a database
+     * lookup in it claims the model did the lookup.
      *
      * <p>"join" is not an agent — it is the step that merges concurrent work (a parallel
      * builder's {@code output(...)}, a voting strategy, a mapper's gather). Drawing it matters:

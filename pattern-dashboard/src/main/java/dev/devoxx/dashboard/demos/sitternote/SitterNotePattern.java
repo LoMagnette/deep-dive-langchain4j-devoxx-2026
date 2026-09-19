@@ -153,7 +153,7 @@ public final class SitterNotePattern {
                         edge("check", "tighten", "score < 0.8")));
 
         return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",
-                "Back to that weekend away, the whole thing end to end. Sixteen demos later, "
+                "Back to that weekend away, the whole thing end to end. Seventeen demos later, "
                         + "somebody finally writes down when the dog goes out.",
                 "Almost everything: demo 6's router and desks, demo 4's meal and walk "
                         + "planners, and demo 3's checklist and critic in the refining loop.",

@@ -21,7 +21,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
  * <p>It also carries the run's channel to a person ({@link AskHuman}) and, for the one demo that
  * chooses a model per invocation, the run's {@link ModelTiers}. Both live here rather than being
  * extra arguments to every {@code Runner} because the listener already <i>is</i> the per-run
- * context object, and in each case exactly one demo out of twenty needs the thing.
+ * context object, and in each case exactly one demo out of twenty-one needs the thing.
  */
 public class StreamingListener implements AgentListener {
 

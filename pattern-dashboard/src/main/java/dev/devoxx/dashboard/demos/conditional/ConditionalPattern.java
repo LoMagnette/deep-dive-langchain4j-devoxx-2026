@@ -87,7 +87,7 @@ public final class ConditionalPattern {
         return new PatternDef("conditional", "Conditional Routing", "workflow",
                 "One of them was a whole bar of dark chocolate. This is not a training "
                         + "question, and he is not sorry.",
-                "Introduces the three desks that demos 7, 8, 15 and 16 all reuse.",
+                "Introduces the three desks that demos 7, 9, 16 and 17 all reuse.",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
                         + "when mis-routing is expensive: everyone in this room knows a dog that "
                         + "has eaten chocolate needs a vet and not a training tip, so everyone "

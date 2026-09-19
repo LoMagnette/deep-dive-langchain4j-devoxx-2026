@@ -96,7 +96,7 @@ public final class VotingPattern {
         return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
                 "The question that will not go away: would he be happier with another dog? "
                         + "Everyone in the house already has an answer.",
-                "Introduces the three assessors the council reuses in demo 17.",
+                "Introduces the three assessors the council reuses in demo 18.",
                 "Several agents answer independently; a strategy aggregates (majority, average, "
                         + "highest). Worth the tokens when one judgement is not trustworthy "
                         + "enough to act on — and this household is a genuine split, because the "

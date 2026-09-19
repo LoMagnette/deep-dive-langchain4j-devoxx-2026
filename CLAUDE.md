@@ -9,7 +9,7 @@ Two distinct halves:
 
 - **Root** (`README.md`) — talk planning: the through-line is "autonomy is a dial," told as "From Puppy
   to Pack." The `NN-*.md` planning docs referenced in the root README are the speaker's notes.
-- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 14
+- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 19
   LangChain4j agentic patterns, set in the life of **Zao**, a Belgian shepherd, and the household
   he runs. This is the code you will actually build and edit.
 
@@ -19,7 +19,7 @@ Two distinct halves:
 mvn quarkus:dev                       # dev mode + live reload; needs Maven 3.9+. Open http://localhost:8080
 mvn quarkus:dev -Ddashboard.model=mock  # no Ollama / no API key — deterministic offline run
 mvn -DskipTests package               # build fast-jar to target/quarkus-app/
-mvn test                              # smoke-runs all 15 patterns + both composites on the mock model
+mvn test                              # smoke-runs all 19 patterns + both composites on the mock model
 ```
 
 Point at a real model by overriding env vars (same code path as the default):
@@ -66,6 +66,7 @@ demos/<id>/      EVERYTHING for one demo, and nothing else:
                    its XxxPattern — topology + Runner
                    package-info.java — what this demo is for
   single/ sequential/ loop/ parallel/ parallelmapper/ conditional/ humanapproval/
+  nonaiagent/
   supervisor/
   goap/ p2p/ blackboard/ voting/ debate/ bdi/ customplanner/
   sitternote/ seconddogcouncil/
@@ -112,9 +113,43 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   says so before a word of explanation. Two shared default inputs work the same way —
   `SinglePattern.SITTER_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
   used by the council).
-- **`PatternCatalog` is the registry and nothing else**: twenty `XxxPattern.define()` calls in
+- **`PatternCatalog` is the registry and nothing else**: twenty-one `XxxPattern.define()` calls in
   the talk's running order, grouped by comments for the five rail categories. Adding a demo is a
   new package plus one line here.
+- **An agent does not have to be a model, and `nonAiAgent` is the general case.**
+  `AgentUtil.agentToExecutor` falls through to `nonAiAgentToExecutor` for anything that is not
+  already an agent, so **any plain object with one `@Agent` method goes straight into
+  `subAgents(...)`** — `@V` parameters bound from the scope, return value written to the output
+  key, the sequence unable to tell. `HumanInTheLoop` (demo 7) is the library's own instance of
+  this; `demos/nonaiagent/` is your own class, on both ends of an LLM step. **It is demo 8, the
+  last of the workflows** — not in `production` with the other late additions — because "the
+  model decides nothing at all" is a genuine position on the autonomy dial, and the far-left one.
+  It was in `production` first, and moving it cost a renumbering of every `buildsOn` from
+  `supervisor` onwards; that renumbering is the price of the rail order meaning something. Three
+  things it pinned down:
+  - **A non-AI agent is INVISIBLE to the listener in `1.20.0-beta30`.**
+    `NonAiAgentInstance.setParent` sets the parent and never calls
+    `registerInheritedParentListener` — which `AgentInvocationHandler:253` and
+    `PlannerBasedInvocationHandler:343` both do. The field, the method and
+    `composeWithInherited` are all there; the one call is missing. So a plain-Java step emits no
+    `agent-before`/`agent-after`, is never timed, and **its node never lights on the diagram**.
+    The demo makes that the lesson rather than hiding it, and
+    `theJavaStepsAreIndistinguishableFromTheModelStepAndActuallyDoTheWork` pins the current
+    behaviour: **if that assertion goes red on a version bump the library fixed it — delete the
+    assertion and rewrite the demo's caveat, which will have become wrong.** (This is also why
+    `humanApproval` works: `StreamingListener.askHuman` emits `human-ask`/`human-answer` by hand,
+    so that demo never depended on the inheritance that is missing here.)
+  - **`name` goes on the annotation, not a builder.** There is no builder for a POJO, and the
+    default is the *method* name — `HouseholdFile` would be called `lookup` everywhere. Same trap
+    as `.name("X")` one layer down. `agentAction(scope -> …)` has no answer at all: it comes out
+    named `run`, which is why anything you want on a diagram is better as a class.
+  - **`typedOutputKey = Keys.Facts.class`** is the annotation's `outputKey(Facts.class)`, so a
+    non-AI agent obeys the no-string-literals rule like everything else.
+- **`role: "code"` exists for the same reason `role: "human"` does.** The framework genuinely
+  cannot tell a plain-Java step from an LLM one — that *is* the lesson — but the picture has to,
+  or a diagram of a pipeline with a database lookup in it claims the model did the lookup. Drawn
+  as a tinted, square-ish box with a monospaced name; `render.js` and `app.css` both key off it,
+  and `everyTopologyShowsWhatItsPatternActuallyDoes` asserts the two Java steps are not agents.
 - **The fifth category, `production`, is NOT a position on the dial** — and that is the whole
   reason it exists as a separate group rather than three more entries in the four above it. Every
   other demo is a *shape* (a chain, a fan-out, a loop, a star); `modelRouting`, `async` and
@@ -149,10 +184,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     happened. Set `dashboard.ollama.cheap-model-name` (and pull it) for a real two-model run.
     The tiers reach the demo through `StreamingListener`, following the `AskHuman` precedent —
     the listener already *is* the per-run context object, and widening `Runner` for one demo out
-    of twenty would cost the other nineteen a parameter they never read.
+    of twenty-one would cost the other twenty a parameter they never read.
 - **A demo that is ABOUT failing gets one narrow exemption in the smoke test, and only one.**
   `everyPatternCompletesUnderTheMockModel` treats any `agent-error` as a broken demo, which is
-  right for nineteen of them; `resilience` is exempted *by pattern id and by agent name* so that
+  right for twenty of them; `resilience` is exempted *by pattern id and by agent name* so that
   anything else erroring there is still a bug, and its result assertion still has to hold.
   Widening that filter is how this test stops being worth running.
 - **Every step is timed, and the two numbers on screen are an argument.** `RunEvent.millis` is
@@ -211,7 +246,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 - **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
   `story` (its beat: a weekend away, a picnic, the chocolate, a baby coming, the second dog) and a
-  `buildsOn` naming what it inherits. Read in catalogue order the seventeen beats are one passage;
+  `buildsOn` naming what it inherits. Read in catalogue order the twenty-one beats are one passage;
   read down the `buildsOn` lines they are one system being assembled. The tester shows both above
   the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
   walk the catalogue in order.
@@ -219,7 +254,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **The sitter note** — `single` introduces `SitterCardClerk`; `sequential` reuses it and adds
     `FridgeChecklist`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
     it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
-    demos 2, 3 and 16 — only the control around it, which is the entire argument.
+    demos 2, 3 and 17 — only the control around it, which is the entire argument.
   - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
     then four demos put a different control flow around the same cast: routing picks one,
     `humanApproval` adds a person before the answer is acted on, `supervisor` picks several and
@@ -320,7 +355,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     **cancels** its question — runs execute on a pool of four, so a question nobody answers would
     otherwise hold a thread for ever and the next few runs would silently never start.
   - **`StreamingListener.askHuman`** carries it, because the listener already *is* the per-run
-    context object and only one demo out of seventeen asks anybody anything. It emits `human-ask`
+    context object and only one demo out of twenty-one asks anybody anything. It emits `human-ask`
     **before** waiting — do it the other way round and the run blocks on a question nobody has
     been shown.
   The diagram gives the person the `human` role rather than `agent`, and
@@ -420,7 +455,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     streaming agent and `AgentExecutor` wraps the stream in a `StreamingResponse` and drains it
     internally — the right behaviour, and the reason no other demo in the catalogue can offer
     this.
-  - **`PatternDef.streams` is a secondary-constructor field**, false for nineteen demos, so the
+  - **`PatternDef.streams` is a secondary-constructor field**, false for twenty demos, so the
     one fact costs those files nothing. `PatternInfo` carries it to the page, which shows the
     toggle only where it is honoured — a control that silently does nothing reads as broken, not
     absent. `PatternResource` also checks `def.streams()` before building a streaming model.

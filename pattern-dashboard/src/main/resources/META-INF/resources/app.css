@@ -296,6 +296,12 @@ body.resizing{cursor:ns-resize;user-select:none}
    drawn like the agents either side of it, the diagram would say the model decided. */
 .node.human rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2;stroke-dasharray:none}
 .node.human text{fill:var(--accent);font-weight:700}
+/* A step that is your own Java, not a model. Drawn like the boxes either side it would say the
+   model did it — the same argument as the person's box, and the same fix. Squared corners and a
+   monospaced name, because "this one is code" has to read from the back of a room. */
+.node.code rect{fill:var(--panel2);stroke:var(--node-line);stroke-width:2;stroke-dasharray:none}
+.node.code text{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:700}
+.node.code text.sub{font-family:inherit;font-size:9.5px;font-weight:600}
 /* A join is a step, not an agent — drawn plainer so it never reads as one. */
 .node.join rect{fill:var(--panel2);stroke:var(--node-line);stroke-dasharray:4 3}
 .node.join text{fill:var(--muted);font-style:italic}

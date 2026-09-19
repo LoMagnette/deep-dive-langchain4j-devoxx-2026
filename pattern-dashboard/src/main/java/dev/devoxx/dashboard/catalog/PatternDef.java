@@ -15,7 +15,7 @@ import dev.langchain4j.model.chat.ChatModel;
  * already watched run on its own, and nothing says so unless the page does.
  *
  * <p>{@code story} is the demo's beat in the running narration — where we are in Zao's life and
- * what has just happened. Read in catalogue order the seventeen of them tell one continuous
+ * what has just happened. Read in catalogue order the twenty-one of them tell one continuous
  * story, which is why the field exists at all: the rail order is the <b>autonomy dial</b>, and
  * the narration has to be written to fit that order rather than the order being rearranged to
  * fit the narration. Reordering the catalogue to make a better story would cost the talk its

@@ -20,6 +20,7 @@ import dev.devoxx.dashboard.demos.bdi.BdiPattern;
 import dev.devoxx.dashboard.demos.customplanner.CustomPlannerPattern;
 import dev.devoxx.dashboard.demos.sitternote.SitterNotePattern;
 import dev.devoxx.dashboard.demos.seconddogcouncil.SecondDogCouncilPattern;
+import dev.devoxx.dashboard.demos.nonaiagent.NonAiAgentPattern;
 import dev.devoxx.dashboard.demos.modelrouting.ModelRoutingPattern;
 import dev.devoxx.dashboard.demos.async.AsyncPattern;
 import dev.devoxx.dashboard.demos.resilience.ResiliencePattern;
@@ -52,6 +53,11 @@ public class PatternCatalog {
                 ParallelMapperPattern.define(),
                 ConditionalPattern.define(),
                 HumanApprovalPattern.define(),
+                // The far left of the dial: a step where the model decides nothing at all.
+                // It sits here, at the end of the workflows, because that IS its position on
+                // the autonomy axis — not in the group below, which is for things orthogonal
+                // to it.
+                NonAiAgentPattern.define(),
                 // Pure agents — the model decides the path
                 SupervisorPattern.define(),
                 // The pattern zoo — planners that decide the turns, the last one ours

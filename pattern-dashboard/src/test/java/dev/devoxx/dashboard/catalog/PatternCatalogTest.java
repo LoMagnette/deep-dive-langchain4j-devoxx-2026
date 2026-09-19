@@ -103,9 +103,9 @@ class PatternCatalogTest {
             }
         }
 
-        assertEquals(18, catalog.infos().stream()
+        assertEquals(19, catalog.infos().stream()
                         .filter(i -> !i.category().equals("composite")).count(),
-                "expected all 18 patterns registered");
+                "expected all 19 patterns registered");
         assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
     }
 
@@ -281,6 +281,52 @@ class PatternCatalogTest {
         assertTrue(noMeds.result().contains("skipped"),
                 "the result must say the step was skipped, or a skip looks like a dog on "
                         + "nothing: " + noMeds.result());
+    }
+
+    /**
+     * A non-AI agent's claim is that the framework cannot tell it apart from an LLM one, and the
+     * only honest way to assert that is from the outside: the two Java steps must appear in the
+     * run exactly like the model step does — invoked, timed, and writing to the scope.
+     *
+     * <p>The second half is the reason the demo exists at all. The canned note deliberately
+     * drops two of the record's numbers, so the guard has something to catch; if a future prompt
+     * change made the model copy everything, this demo would silently become ceremony and the
+     * assertion below is what would say so.
+     */
+    @Test
+    void theJavaStepsAreIndistinguishableFromTheModelStepAndActuallyDoTheWork() {
+        var def = new PatternCatalog().byId("nonAiAgent").orElseThrow();
+        Run r = run(def);
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+
+        // Both Java steps genuinely ran, and neither was reported to the listener. That second
+        // half is a LIBRARY GAP, not a choice: NonAiAgentInstance.setParent sets the parent and
+        // never calls registerInheritedParentListener, which AgentInvocationHandler and
+        // PlannerBasedInvocationHandler both do. So a non-AI agent inherits no listener, emits
+        // no events and is never timed.
+        //
+        // Pinned rather than worked around, because the demo's caveat states it as fact and
+        // because it is exactly the kind of thing a version bump fixes quietly. If this line
+        // goes red on an upgrade, the library fixed it: delete the assertion, and rewrite the
+        // caveat in NonAiAgentPattern.define() — it will have become wrong.
+        assertEquals(List.of("NoteFromFile"),
+                r.invoked().stream().filter(a -> !a.equals("Sequential")).toList(),
+                "only the LLM step is observable in 1.20.0-beta30 — if the Java steps now "
+                        + "appear here the library has been fixed: " + r.invoked());
+
+        // So the proof that the Java steps ran is their EFFECT, not their events. The file's
+        // output key reached the scope...
+        assertTrue(r.events().stream().anyMatch(e -> e.scope() != null
+                        && e.scope().containsKey("facts")),
+                "the non-AI agent must write its output key into the scope");
+
+        // ...and the guard earned its place: the model's note left two numbers out, and the run
+        // still ends with them on the page.
+        assertTrue(r.result().contains("981098106123456")
+                        && r.result().contains("AG-4471209"),
+                "the guard must put back what the note left out: " + r.result());
+        assertTrue(r.result().contains("left out of the note above"),
+                "a guard that never fires proves nothing: " + r.result());
     }
 
     /**
@@ -793,6 +839,16 @@ class PatternCatalogTest {
         // pattern exists to deny.
         assertEquals("owner", role(catalog, "humanApproval", "human"),
                 "the approval step must be drawn as a person, not an agent");
+
+        // Same argument one step further: the two Java steps must not be drawn as agents. The
+        // framework genuinely cannot tell them apart — that is the lesson — but a picture that
+        // cannot either says the model did the database lookup.
+        assertEquals(2, nodes(catalog, "nonAiAgent").stream()
+                        .filter(n -> "code".equals(n.role())).count(),
+                "both plain-Java steps must be drawn as code, not as agents");
+        assertEquals(1, nodes(catalog, "nonAiAgent").stream()
+                        .filter(n -> "agent".equals(n.role())).count(),
+                "exactly one step here is a model, and the picture has to say which");
 
         // The escalation ladder must show BOTH ways out of every rung — on up, and out to the
         // answer. Drawn as a plain chain it would read as a pipeline that always runs all three,

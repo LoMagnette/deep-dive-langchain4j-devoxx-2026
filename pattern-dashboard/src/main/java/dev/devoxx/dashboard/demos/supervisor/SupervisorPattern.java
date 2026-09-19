@@ -176,7 +176,7 @@ public final class SupervisorPattern {
                 "Demo 6's three desks again, and not one new agent. Routing picks one of "
                         + "them; this picks several and decides when to stop.",
                 "An LLM supervisor decides which specialist to invoke, and when to stop — the "
-                        + "same three agents the router chose between two demos ago, not one new "
+                        + "same three agents the router chose between three demos ago, not one new "
                         + "line of agent code. Watch the order: it asks the trainer, the trainer "
                         + "says this is not a training problem, and **that answer is what makes "
                         + "it call the vet.** A router gets one call and stops. A fan-out would "
