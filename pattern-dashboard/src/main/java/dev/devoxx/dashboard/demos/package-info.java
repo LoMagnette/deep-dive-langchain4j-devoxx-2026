@@ -24,8 +24,9 @@
  * nothing else.
  *
  * <p><b>2. The audience must not need the domain explained.</b> Everyone knows chocolate is bad
- * for dogs, that hot pavement burns paws, that a puppy needs the garden before he needs a
- * training session, and that neither half of a couple outranks the other about the bed. Nobody
+ * for dogs, that a dog who suddenly starts snapping is a vet question and not a training one,
+ * that a puppy needs the garden before he needs a training session, and that neither half of a
+ * couple outranks the other about the bed. Nobody
  * knows what a 21-day rabies clearance is. A scenario that costs a sentence of setup costs it
  * twenty times over, and the room spends the talk learning the domain instead of the patterns.
  *

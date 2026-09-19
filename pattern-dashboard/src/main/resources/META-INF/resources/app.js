@@ -260,9 +260,22 @@ async function sendAnswer(){
   if(!text || !runId) return;
   hideAsk();
   try{
-    await fetch(`/api/patterns/runs/${encodeURIComponent(runId)}/answer?text=`
+    const res = await fetch(`/api/patterns/runs/${encodeURIComponent(runId)}/answer?text=`
       + encodeURIComponent(text), {method:'POST'});
-  }catch(_){ /* the run times out on its own; nothing useful to say here */ }
+    /* 409 means the run had stopped waiting — almost always the three-minute timeout expiring
+       while the answer was being typed. The run then carries on with "not approved", so an
+       answer that silently went nowhere is exactly the thing not to swallow: it makes the demo
+       look like it ignored the person, which is the one claim this pattern cannot afford. */
+    if(!res.ok) answerWentNowhere();
+  }catch(_){ answerWentNowhere(); }
+}
+
+/* Reported into the Run events pane rather than back into the ask box: the run is still going
+   and will hide that box on run-done, so a note there would flash and vanish. */
+function answerWentNowhere(){
+  log({seq:'·', type:'human-answer', agent:'you',
+       message:'that answer did not reach the run — it had already stopped waiting, so the run '
+             + 'treated the question as unanswered'});
 }
 
 function run(){

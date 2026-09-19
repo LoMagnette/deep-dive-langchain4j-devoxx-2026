@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import dev.devoxx.dashboard.run.RunEvent.ScopeValue;
@@ -13,6 +15,8 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
  * Bridges LangChain4j agentic observability callbacks into {@link RunEvent}s pushed to a sink.
@@ -26,12 +30,12 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 public class StreamingListener implements AgentListener {
 
     private final Consumer<RunEvent> sink;
-    private final java.util.concurrent.atomic.AtomicLong seq;
+    private final AtomicLong seq;
     private final AskHuman human;
-    /** Null unless the web layer supplied them; {@link #tiers(dev.langchain4j.model.chat.ChatModel)} fills in. */
+    /** Null unless the web layer supplied them; {@link #tiers(ChatModel)} fills in. */
     private final ModelTiers tiers;
     /** Null unless this run was asked to stream. See {@link #streamingModel()}. */
-    private final dev.langchain4j.model.chat.StreamingChatModel streaming;
+    private final StreamingChatModel streaming;
     /**
      * When each in-flight invocation started, so an {@code agent-after} can say how long it took.
      *
@@ -39,27 +43,32 @@ public class StreamingListener implements AgentListener {
      * name several times and a mapper fans one agent out over every item at once — names repeat,
      * ids do not. Concurrent by necessity: a parallel step calls back from several threads.
      */
-    private final java.util.Map<String, Long> startedNanos = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, Long> startedNanos = new ConcurrentHashMap<>();
 
-    public StreamingListener(Consumer<RunEvent> sink, java.util.concurrent.atomic.AtomicLong seq) {
-        this(sink, seq, AskHuman.NOBODY);
+    /** The ordinary run: events out, nobody to ask, one model, no streaming. */
+    public StreamingListener(Consumer<RunEvent> sink, AtomicLong seq) {
+        this(sink, seq, AskHuman.NOBODY, null, null);
     }
 
-    public StreamingListener(Consumer<RunEvent> sink,
-                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human) {
-        this(sink, seq, human, null);
+    /** With a person on the other end — demo 7, and the tests' stand-in for one. */
+    public StreamingListener(Consumer<RunEvent> sink, AtomicLong seq, AskHuman human) {
+        this(sink, seq, human, null, null);
     }
 
-    public StreamingListener(Consumer<RunEvent> sink,
-                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human,
+    /** With two model tiers to choose between — the model-routing demo. */
+    public StreamingListener(Consumer<RunEvent> sink, AtomicLong seq, AskHuman human,
                              ModelTiers tiers) {
         this(sink, seq, human, tiers, null);
     }
 
-    public StreamingListener(Consumer<RunEvent> sink,
-                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human,
-                             ModelTiers tiers,
-                             dev.langchain4j.model.chat.StreamingChatModel streaming) {
+    /**
+     * Everything a run may carry. The three shorter forms above delegate here rather than to each
+     * other: a four-deep chain of {@code this(..., null)} makes you read every one of them to
+     * find out what a run actually gets, which for the class every demo hands to its builder is
+     * the wrong thing to make someone do.
+     */
+    public StreamingListener(Consumer<RunEvent> sink, AtomicLong seq, AskHuman human,
+                             ModelTiers tiers, StreamingChatModel streaming) {
         this.sink = sink;
         this.seq = seq;
         this.human = human == null ? AskHuman.NOBODY : human;
@@ -72,7 +81,7 @@ public class StreamingListener implements AgentListener {
      * signal, not a flag beside it: a demo that can stream branches on having somewhere to
      * stream to, and every other run gets the ordinary path with no extra argument to ignore.
      */
-    public dev.langchain4j.model.chat.StreamingChatModel streamingModel() {
+    public StreamingChatModel streamingModel() {
         return streaming;
     }
 
@@ -87,7 +96,7 @@ public class StreamingListener implements AgentListener {
      * plumbing at all — and {@link ModelTiers#distinct()} is false there, so nothing claims a
      * choice was made.
      */
-    public ModelTiers tiers(dev.langchain4j.model.chat.ChatModel fallback) {
+    public ModelTiers tiers(ChatModel fallback) {
         return tiers != null ? tiers : ModelTiers.single(fallback, "the live model");
     }
 

@@ -12,6 +12,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import dev.devoxx.dashboard.demos.blackboard.HomeNotes;
+import dev.devoxx.dashboard.demos.blackboard.RoutineNotes;
+import dev.devoxx.dashboard.demos.blackboard.TrainerLead;
+import dev.devoxx.dashboard.demos.blackboard.WalkNotes;
 import dev.devoxx.dashboard.model.MockChatModel;
 import dev.devoxx.dashboard.model.MockStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
@@ -281,6 +285,114 @@ class PatternCatalogTest {
         assertTrue(noMeds.result().contains("skipped"),
                 "the result must say the step was skipped, or a skip looks like a dog on "
                         + "nothing: " + noMeds.result());
+    }
+
+    /** How many times an agent was invoked in this run. Loops and debate rounds repeat names. */
+    private static long times(Run r, String agent) {
+        return r.invoked().stream().filter(agent::equals).count();
+    }
+
+    /**
+     * The debate's claim is not that agents argue — it is that the argument <b>ends</b>, and ends
+     * for one of two different reasons on the same page. The holiday advocates agree, so
+     * {@code ConvergenceStrategy.unanimous()} fires after round one; the council's do not, so that
+     * debate runs its full two rounds and the judge is called on a genuine disagreement.
+     *
+     * <p>Nothing pinned either behaviour before, and both are one mock rule away from vanishing:
+     * the holiday advocates converge because they fall through to a catch-all that hands both
+     * sides the same words, so any new rule inserted between the judge's rule and that catch-all
+     * turns the holiday debate into a second copy of the council's. It would still pass the smoke
+     * test, still draw the same diagram, and quietly stop showing the contrast.
+     */
+    @Test
+    void theDebateConvergesOnAgreementAndNotOtherwise() {
+        var catalog = new PatternCatalog();
+
+        Run holiday = run(catalog.byId("debate").orElseThrow());
+        assertTrue(holiday.errors().isEmpty(), holiday.errors()::toString);
+        assertEquals(1, times(holiday, "TakeHimAdvocate"),
+                "both advocates said the same thing, so the debate must stop after ONE round: "
+                        + holiday.invoked());
+        assertEquals(1, times(holiday, "LeaveHimAdvocate"),
+                "both advocates said the same thing, so the debate must stop after ONE round: "
+                        + holiday.invoked());
+        assertEquals(1, times(holiday, "HolidayVerdict"),
+                "the judge rules once, on the round that converged: " + holiday.invoked());
+
+        Run council = run(catalog.byId("secondDogCouncil").orElseThrow());
+        assertTrue(council.errors().isEmpty(), council.errors()::toString);
+        assertEquals(2, times(council, "SecondDogFor"),
+                "the council's advocates disagree, so this debate must run its full two rounds "
+                        + "— the opposite behaviour, on the same page: " + council.invoked());
+        assertEquals(2, times(council, "SecondDogAgainst"),
+                "the council's advocates disagree, so this debate must run its full two rounds: "
+                        + council.invoked());
+        assertEquals(1, times(council, "HouseholdVerdict"),
+                "the judge is called once, after the rounds run out: " + council.invoked());
+    }
+
+    /**
+     * P2P's claim is the one its diagram spends a box on: the run ends because the exit predicate
+     * fired, not because it hit the round cap. Neither peer can overrule the other, so without a
+     * predicate they counter each other until {@code P2PPlanner}'s limit of ten rounds — which
+     * looks identical from the outside unless you count the invocations.
+     */
+    @Test
+    void theTwoPeersSettleOnThePredicateRatherThanRunningOutOfRounds() {
+        Run r = run(new PatternCatalog().byId("p2p").orElseThrow());
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+
+        // The peers only: the planner wrapper reports itself too, under its method name
+        // ("invoke"), because plannerBuilder() takes no .name(). That is the same default the
+        // .name("X") rule is about, one layer up.
+        var peers = r.invoked().stream()
+                .filter(a -> a.equals("TeamOnTheBed") || a.equals("TeamOnTheFloor")).toList();
+        assertEquals(List.of("TeamOnTheBed", "TeamOnTheFloor"), peers,
+                "one exchange settles it: the floor answers with an agreement, the predicate "
+                        + "sees it and the run stops. More invocations than this means the "
+                        + "predicate stopped firing and the peers are countering each other to "
+                        + "the ten-round cap: " + r.invoked());
+        assertTrue(r.result() != null && !r.result().isBlank() && !"null".equals(r.result()),
+                "the agreement is the result — the key the predicate waits for: " + r.result());
+    }
+
+    /**
+     * The blackboard's claim is that <b>any contributor can go first</b>, which is what separates
+     * it from the sequence it used to be. That is a property of the agents' declared inputs, not
+     * of one run: each note-taker reads only {@code problem}, so nothing orders them; the lead
+     * reads all three, so it can only go last. Asserted from the interfaces for exactly that
+     * reason — a run shows one order, and one order is what a sequence shows too.
+     */
+    @Test
+    void anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast() {
+        for (Class<?> notes : List.of(WalkNotes.class, RoutineNotes.class, HomeNotes.class)) {
+            assertEquals(List.of("problem"), inputKeys(notes),
+                    notes.getSimpleName() + " must read ONLY the problem. Give it a key another "
+                            + "contributor writes and the board has an order again, which is the "
+                            + "sequence this demo was rewritten to stop being.");
+        }
+        assertEquals(List.of("walks", "routine", "home"), inputKeys(TrainerLead.class),
+                "the lead reads the whole board, which is what makes it the step that ends the run");
+
+        Run r = run(new PatternCatalog().byId("blackboard").orElseThrow());
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertTrue(r.invoked().containsAll(List.of("WalkNotes", "RoutineNotes", "HomeNotes")),
+                "every angle must reach the board: " + r.invoked());
+        assertEquals("TrainerLead", r.invoked().get(r.invoked().size() - 1),
+                "the lead needs all three, so it can only run once they have: " + r.invoked());
+    }
+
+    /** The scope keys an agent interface declares as inputs, in declaration order. */
+    private static List<String> inputKeys(Class<?> agent) {
+        var method = java.util.Arrays.stream(agent.getMethods())
+                .filter(m -> m.isAnnotationPresent(dev.langchain4j.agentic.Agent.class))
+                .findFirst().orElseThrow(() -> new AssertionError(
+                        agent.getSimpleName() + " has no @Agent method"));
+        return java.util.Arrays.stream(method.getParameters())
+                .map(p -> p.getAnnotation(dev.langchain4j.service.V.class))
+                .filter(java.util.Objects::nonNull)
+                .map(dev.langchain4j.service.V::value)
+                .toList();
     }
 
     /**

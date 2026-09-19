@@ -1,51 +1,111 @@
 # Devoxx Belgium — "Agentic Systems in Java with LangChain4j" (3h deep dive)
 
-Talk planning workspace. Everything here is grounded in the actual `langchain4j-agentic` module in this repo (file paths + test references are real and citeable on stage).
+Talk workspace. Two halves, and only one of them is code:
 
-## Read in this order
-
-| File | What it is |
+| | |
 |---|---|
-| **[00-master-plan.md](00-master-plan.md)** | **Start here.** The spine: thesis, the autonomy-dial through-line, audience, full 180-min time budget, the naive→crack→pattern rhythm, delivery mechanics. |
-| **[00b-narrative-thread.md](00b-narrative-thread.md)** | **Read second.** The story bible — "From Puppy to Pack" 🐾: the thread that carries 3 hours, the cast, per-section beats, and energy mechanics. |
-| [01-foundations.md](01-foundations.md) | §1 One agent doing one job — `@Agent`, AI-service-with-benefits, the AgenticScope. |
-| [02-workflows-sequential.md](02-workflows-sequential.md) | §2 Sequential — the workhorse; stop being the wire. |
-| [03-workflows-loop.md](03-workflows-loop.md) | §3 Loop — generator+critic, exit conditions, `maxIterations`. |
-| [04-workflows-parallel.md](04-workflows-parallel.md) | §4 Parallel & parallel-mapper — fan-out + combine, `async`. |
-| [05-workflows-conditional-typedkeys.md](05-workflows-conditional-typedkeys.md) | §5 Conditional routing + typed keys (keeping shared state honest). |
-| [06-supervisor.md](06-supervisor.md) | §6 Supervisor — hand the wheel to the LLM; the pivot of the talk. |
-| [07-planner-goap-patterns.md](07-planner-goap-patterns.md) | §7 Custom Planner + GOAP + the pattern zoo — the middle ground. |
-| [08-production-hitl-observability.md](08-production-hitl-observability.md) | §8 Non-AI agents, human-in-the-loop, AgentMonitor, error recovery. |
-| [08b-observability-production.md](08b-observability-production.md) | §8½ Observability past the AgentMonitor — `ChatModelListener` → OpenTelemetry → Langfuse/Phoenix, cost/latency metrics, the evals bridge. |
-| [09-capstone-car-rental.md](09-capstone-car-rental.md) | §9 The real use case that composes everything. |
-| [10-decision-guide.md](10-decision-guide.md) | Take-home: the "workflow or agent?" flowchart + heuristics. |
-| [11-api-cheatsheet.md](11-api-cheatsheet.md) | Take-home: every factory, annotation, and interface on one page. |
+| **[`pattern-dashboard/`](pattern-dashboard/)** | **The live demo.** A Quarkus app that visualizes and *runs* 19 agentic patterns plus two composite systems, all set in the life of Zao, a Belgian shepherd. This is the thing that goes on the projector, and the thing you build and edit. See [its README](pattern-dashboard/README.md). |
+| This file | The talk's spine: thesis, through-line, section order, speaker notes. |
 
 ## The one-sentence thesis
-**Autonomy is a dial, not a feature: start as far left (deterministic) as the problem allows, and hand the LLM the wheel only where you genuinely cannot enumerate the path — because the pattern you don't adopt is the one you don't have to debug.**
+
+**Autonomy is a dial, not a feature: start as far left (deterministic) as the problem allows, and
+hand the LLM the wheel only where you genuinely cannot enumerate the path — because the pattern you
+don't adopt is the one you don't have to debug.**
 
 ## The vibe
-Told as **"From Puppy to Pack" 🐾** — raising intelligence you don't fully control, from a puppy on a leash (you decide every step) to a wild pack that coordinates with no one writing the steps. Warm and funny on the left of the dial, awe-and-nature-documentary on the right. Details in [`00b-narrative-thread.md`](00b-narrative-thread.md).
+
+Told as **"From Puppy to Pack" 🐾** — raising intelligence you don't fully control, from a puppy on
+a leash (you decide every step) to a pack that coordinates with nobody writing the steps. Warm and
+funny on the left of the dial, awe-and-nature-documentary on the right.
+
+The humour lives in the **story beats** — what gets said out loud — and nowhere else. It stays out
+of the app's chrome: no emoji decoration, no pun button labels. The dog is in the craft (the coat
+colours in the palette, the drawn paw mark, the pulse on a working agent), not in the jokes.
 
 ## The through-line diagram (repeat at every transition)
+
 ```
- DETERMINISTIC ◄───────────────────────────────────────────► AUTONOMOUS
-  single  sequential  loop  parallel  conditional | GOAP  planner  supervisor
-  @Agent  ───────────── workflows ──────────────  | ──── pure agents ────
-       "you decide the path"                        "the model decides the path"
+ DETERMINISTIC ◄──────────────────────────────────────────────────────► AUTONOMOUS
+
+  nonAiAgent   single  sequential  loop  parallel  conditional  │  GOAP  P2P  blackboard  │  supervisor
+               parallelMapper  humanApproval                    │  voting  debate  BDI    │
+               ├────────────── workflows ─────────────────────┤ │  customPlanner          │
+
+     "you decide the path"              "a planner decides the turns"        "the model decides
+                                                                                  the path"
 ```
 
-## Every example is real code in this repo
-- Running toy thread: story writing (`Agents.java`, `WorkflowAgentsIT`, `DeclarativeAgentIT`, `TypedAgentsIT`).
-- Supervisor foil: banking transfer (`SupervisorAgentIT`).
-- GOAP: horoscope writer (`langchain4j-agentic-patterns/.../goap/horoscope/`).
-- Capstone: roadside assistant (`.../carrentalassistant/`).
-- Patterns: `langchain4j-agentic-patterns/` (GOAP, BDI, blackboard, debate, voting, P2P).
-- Canonical prose reference: `docs/docs/tutorials/agents.md` (the module's own 3,000-line tutorial).
+Off the dial entirely, and deliberately so:
+
+- **Composites** (`sitterNote`, `secondDogCouncil`) — several patterns wired into one system. The
+  builders *nest*: each composite is itself an `UntypedAgent` another builder takes as a sub-agent.
+- **Running it for real** (`modelRouting`, `async`, `resilience`) — not positions on the dial but
+  *modifiers*, one call each, that bolt onto any pattern above.
+
+Note the shape of the walk: §1–§5 go left to right through the workflows, §6 jumps to the far right
+(the supervisor — the pivot), and §7 comes back to the middle ground. That is why the dashboard's
+rail shows `supervisor` *before* the pattern zoo: the rail order is the talk order.
+
+## Section plan
+
+| § | What it covers | Demos in the dashboard |
+|---|---|---|
+| 1 | One agent doing one job — `@Agent`, AI-service-with-benefits, the `AgenticScope` | `single` |
+| 2 | Sequential — the workhorse; stop being the wire | `sequential` |
+| 3 | Loop — generator + critic, exit conditions, `maxIterations` | `loop` |
+| 4 | Parallel and parallel-mapper — fan-out, join, the two timing numbers | `parallel`, `parallelMapper` |
+| 5 | Conditional routing + typed keys (keeping shared state honest) | `conditional` |
+| 6 | **Supervisor — hand the wheel to the LLM. The pivot of the talk.** | `supervisor` |
+| 7 | Custom planner, GOAP, and the pattern zoo — the middle ground | `goap`, `p2p`, `blackboard`, `voting`, `debate`, `bdi`, `customPlanner` |
+| 8 | Non-AI agents, human-in-the-loop, error recovery | `nonAiAgent`, `humanApproval`, `resilience` |
+| 8½ | Observability — `ChatModelListener` → OpenTelemetry → Langfuse/Phoenix, cost and latency | the **Server log** tab (`ChatCallLog`), `modelRouting`, `async` |
+| 9 | The capstone that composes everything | `sitterNote`, `secondDogCouncil` |
+| 10 | Take-home: the "workflow or agent?" flowchart and heuristics | — |
+
+> **Speaker notes are not in this repo.** Earlier drafts of this README linked a set of `NN-*.md`
+> planning documents (master plan, narrative thread, one per section). They have never been
+> committed here — the section table above is the surviving outline. Either add them, or treat this
+> file as the spine.
+
+## Every example is real code you can open on stage
+
+The demo app is not slideware: all 21 entries run live, on a real model, from the same
+`AgenticServices` builder calls the room is being taught. Deliberately **standard LangChain4j**,
+not `quarkus-langchain4j` — the builders are the subject, so there is no CDI magic between the
+slide and the call.
+
+- Every pattern: `pattern-dashboard/src/main/java/dev/devoxx/dashboard/demos/<id>/`, one package per
+  demo. The package is named after the pattern id, so the deep link on a slide (`#/loop`) names the
+  package to open (`demos.loop`).
+- Every `XxxPattern` opens with `run(model, input, listener)` — the wiring and nothing else, first
+  in the file, because that is what gets projected.
+- The one piece of framework code written here rather than imported: `EscalationPlanner`, a
+  hand-written `dev.langchain4j.agentic.planner.Planner` in about forty lines (`demos/customplanner/`).
+- Upstream, for the foils and the prose: `langchain4j-agentic-patterns/` (GOAP, BDI, blackboard,
+  debate, voting, P2P) and the module's own tutorial, `docs/docs/tutorials/agents.md`.
+
+Two claims the talk makes are asserted by the build rather than by the speaker:
+`PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` (a prompt tweak that turns a
+pattern back into decoration goes red) and `everyTopologyShowsWhatItsPatternActuallyDoes` (a diagram
+that stops showing the mechanism goes red).
 
 ## Notes for the speaker
+
 - Flag once, early: the `langchain4j-agentic` module is **experimental / subject to change**.
-- The **AgentMonitor HTML report** is your best visual — show it in §2/§3, again in §6, and as the §9 finale.
-- Every section = one git checkpoint you can `git checkout`; keep a known-good tag per section so a live-code slip never strands you.
-- Two models on hand (`BASE_MODEL` cheap, `PLANNER_MODEL` strong) — it's also a teaching point (dynamic model selection).
-- If time runs short: compress §7's pattern zoo to name-drops; **protect §6 (supervisor) and §7's GOAP** — they're the "aha."
+- **Pull the model and check `dashboard.ollama.model-name` matches it before you walk on.** With
+  `dashboard.model=auto`, a model the server does not serve falls back to the mock — loudly in the
+  log and in every `run-start` event, but the gallery headline will still read "runs live against a
+  real model". `dashboard.model=ollama` disables the fallback if you would rather fail loudly.
+- **Set `dashboard.ollama.cheap-model-name`** (and pull it) or `modelRouting` honestly reports that
+  both tiers are the same model and demonstrates no saving.
+- **The mock proves wiring, not behaviour.** Green tests have coexisted with a broken live demo
+  before (the supervisor hand-off). Re-run anything whose prompts you touched against real Ollama.
+- The **timing badge** is the best visual in the app — `parallel` and `parallelMapper` win their own
+  arguments with no slide. Show it in §4, again in §8½.
+- Every section = one git checkpoint you can `git checkout`; keep a known-good tag per section so a
+  live-code slip never strands you.
+- If time runs short: compress §7's pattern zoo to name-drops; **protect §6 (supervisor) and §7's
+  GOAP** — they're the "aha."
+- `-Ddashboard.model=mock` is the conference-wifi escape hatch. It runs everything, offline,
+  deterministically.

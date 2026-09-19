@@ -29,6 +29,36 @@ class ParsingTest {
         assertEquals(0.0, Parsing.score(null), 1e-9);
     }
 
+    /**
+     * The critic is asked for "the fraction of rules that hold", over four named rules — so it
+     * answers in fractions, and the numerator on its own is not the score.
+     *
+     * <p>The last case is the one that matters and the one that was wrong: reading the FIRST
+     * number turns a note that passes all four rules into 0.4, the exit condition never fires,
+     * and the loop runs to {@code maxIterations} on a note that was already finished. No error,
+     * no failing test — just a demo that looks like a critic nobody can satisfy.
+     */
+    @Test
+    void scoreReadsTheFractionTheCriticWasAskedFor() {
+        assertEquals(0.75, Parsing.score("3/4"), 1e-9);
+        assertEquals(0.75, Parsing.score("3 of 4"), 1e-9);
+        assertEquals(0.75, Parsing.score("3 of 4 rules hold."), 1e-9);
+        assertEquals(0.5, Parsing.score("2 of 4 → 0.5"), 1e-9);
+        assertEquals(1.0, Parsing.score("4 of 4 rules hold: 1.0"), 1e-9);
+    }
+
+    /**
+     * A leading number that is not the score. Models state the conclusion last, so the last
+     * number already in range wins over a rule index mentioned on the way there.
+     */
+    @Test
+    void scoreIgnoresARuleNumberOnTheWayToTheAnswer() {
+        assertEquals(0.4, Parsing.score("Rule 3 fails, so 0.4"), 1e-9);
+        assertEquals(0.6, Parsing.score("Score: 0.60"), 1e-9);
+        // Nothing in range at all: rescale the last number, which is what turns 85% into 0.85.
+        assertEquals(0.85, Parsing.score("85%"), 1e-9);
+    }
+
     @Test
     void categorySurvivesAChattyRouter() {
         assertEquals("training", Parsing.category("training"));
@@ -50,7 +80,14 @@ class ParsingTest {
         // fanned out as two half-items with no error at all.
         assertEquals(List.of("a bar of dark chocolate, most of it", "a slice of cheddar"),
                 Parsing.items("a bar of dark chocolate, most of it; a slice of cheddar"));
-        // A single chunk has nothing to fan out over, so fall back to the canned blanket.
-        assertEquals(5, Parsing.items("one thing only").size());
+        // A single item is honoured as a single item. Substituting five canned things for the one
+        // the speaker typed reads as the demo ignoring them, which is worse than a short fan-out.
+        assertEquals(List.of("one thing only"), Parsing.items("one thing only"));
+        // Only a genuinely empty input falls back to the blanket — the mapper must always have
+        // something to fan out over.
+        assertEquals(5, Parsing.items("").size());
+        assertEquals(5, Parsing.items("   ").size());
+        assertEquals(5, Parsing.items(null).size());
+        assertEquals(5, Parsing.items(" ; , ").size());
     }
 }

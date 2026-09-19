@@ -25,6 +25,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 
 @Path("/api/patterns")
@@ -71,7 +72,13 @@ public class PatternResource {
         // question can be asked on it.
         String runId = UUID.randomUUID().toString();
 
-        return Multi.createFrom().emitter(em -> pool.submit(() -> {
+        return Multi.createFrom().emitter(em -> {
+            // Closing the tab cancels the subscription but tells the running thread nothing, so
+            // without this a run blocked on a question nobody will now answer sits out the full
+            // HumanQuestions.WAIT holding one of four pool threads — and the next few runs
+            // silently never start. Fires on normal completion too, where it is a no-op.
+            em.onTermination(() -> humans.cancel(runId));
+            pool.submit(() -> {
             AtomicLong seq = new AtomicLong();
             // Asked for AND supported: a stream requested on a demo whose last agent cannot
             // produce one would otherwise take the streaming path, find no TokenStream and
@@ -100,26 +107,32 @@ public class PatternResource {
                 em.emit(RunEvent.of(seq.getAndIncrement(), "agent-error", def.name(),
                         "run failed: " + t, Map.of(), null));
             } finally {
-                // Release the waiting thread if the run ends while a question is outstanding —
-                // otherwise it sits out the full timeout holding one of four pool threads.
+                // Belt and braces with onTermination above: that one covers the viewer
+                // disappearing, this one covers the run ending while a question is outstanding.
                 humans.cancel(runId);
                 em.complete();
             }
-        }));
+            });
+        });
     }
 
     /**
      * The other half of a human-in-the-loop run: the answer, posted back against the run id the
-     * stream announced. 409 rather than 404 when the run is not asking anything, because the
-     * common cause is a late answer to a question that already timed out.
+     * stream announced.
+     *
+     * <p><b>409</b> rather than 404 when the run is not asking anything, because the common cause
+     * is a late answer to a question that already timed out — the run exists, it just is not
+     * waiting any more, and a 404 would send the caller looking for the wrong problem.
      */
     @POST
     @Path("/runs/{runId}/answer")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> answer(@PathParam("runId") String runId,
-                                      @QueryParam("text") String text) {
+    public Response answer(@PathParam("runId") String runId, @QueryParam("text") String text) {
         boolean accepted = humans.answer(runId, text);
-        return Map.of("accepted", accepted,
-                "detail", accepted ? "delivered" : "that run is not waiting for an answer");
+        return Response.status(accepted ? Response.Status.OK : Response.Status.CONFLICT)
+                .entity(Map.of("accepted", accepted,
+                        "detail", accepted ? "delivered"
+                                : "that run is not waiting for an answer"))
+                .build();
     }
 }

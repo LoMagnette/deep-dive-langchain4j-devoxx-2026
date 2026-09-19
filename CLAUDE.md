@@ -97,11 +97,22 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **`.name("X")` is load-bearing, not decoration.** An agent's default name is its *method*
     name (`check`, `rewrite`, `plan`), not its interface name — so without it the topology labels
     stop matching, `markNode` never lights a node, and the supervisor's canned plan cannot find
-    `RoutinePlanner`. Nine tests go red at once if you drop it, which is how this was established.
+    `TriageNurse`. Nine tests go red at once if you drop it, which is how this was established.
+    Visible in the wild at `p2p`: `plannerBuilder()` takes no `.name(...)`, so the wrapper itself
+    reports as `invoke` — which is why that demo's test filters the roll-call to its two peers.
   - **`support/Parsing` takes plain strings, not an `AgenticScope`.** Reading the scope is
     LangChain4j API and belongs in the demo; parsing a model's prose into a number is ours. So a
     loop's predicate reads `scope -> Parsing.score(scope.readState("score", "")) >= 0.8`, with
     the scope read visible where the room is looking.
+    **`Parsing.score` reads a FRACTION first, and must keep doing so.** The critic is asked for
+    "the fraction of rules that hold" over four named rules, so it answers `3/4`, `3 of 4`, or
+    `4 of 4 rules hold: 1.0`. Taking the *first* number — which this did — reads that last one as
+    **0.4**: the exit condition never fires, the loop runs to `maxIterations` on a note that was
+    already perfect, and there is no error and no red test, just a demo that looks like a critic
+    nobody can satisfy. Failing over: fraction, then the last number already in 0.0–1.0 (a model
+    states its conclusion last, and anything before it is usually a rule index), then the last
+    number rescaled. Emphasis is stripped first because `**0.85** out of 1.0` puts the asterisks
+    exactly between the two halves of the fraction.
 - **The package is named after the pattern id**, lowercased. So the deep link on a slide
   (`#/loop`) names the package to open on stage (`demos.loop`), and `#/secondDogCouncil` is
   `demos.seconddogcouncil`. Keep that rule when adding a demo — it is the whole reason the
@@ -221,6 +232,16 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **Tests mirror the shared packages**: `catalog/PatternCatalogTest` (the pattern runs, the
   demo-integrity claims, the topology claims), `support/ParsingTest`, `support/ErrorsTest`,
   `run/StreamingListenerTest`.
+  **Every demo owes a claim of its own, not just a smoke run.** `everyPatternCompletesUnderTheMockModel`
+  only says "it did not throw", which is true of a pattern that has quietly turned back into a
+  sequence. Three demos went a long time with nothing else — and they were the wrong three, since
+  `blackboard` is one of the patterns this file records as having *been* a straight line once:
+  the fix was made and never pinned. They now have `theDebateConvergesOnAgreementAndNotOtherwise`,
+  `theTwoPeersSettleOnThePredicateRatherThanRunningOutOfRounds` and
+  `anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast`. The last of those asserts from
+  the **interfaces**, not from a run, and that is the general lesson: a run shows one order, and
+  one order is exactly what a sequence shows too — so the claim "any of them could go first" has
+  to be read off the declared `@V` keys, which is what actually makes it true.
 - **Every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
   holding the keys it introduces, and later demos import them the way they import agents —
   `demos/loop/Keys.Score`, `demos/single/Keys.Notes`. A key is the contract between two agents
@@ -258,9 +279,12 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
     then four demos put a different control flow around the same cast: routing picks one,
     `humanApproval` adds a person before the answer is acted on, `supervisor` picks several and
-    decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` contains no
-    agent of its own** — that is the §6 pivot made concrete rather than asserted, and a test
-    asserts it.
+    decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` adds exactly
+    one agent of its own** — the `TriageNurse`, and nothing else — so the §6 pivot is a change of
+    *decider* over a cast the room already knows, not a new cast. `theDemosReuseWhatTheEarlierOnesBuilt`
+    asserts that count exactly: one, and it must be her. (It said "no agent of its own" for a
+    while, which was true of the version before the nurse and of nothing since; the demo's own
+    `buildsOn` line said it too, on screen, while the diagram beside it drew her.)
     The supervisor's claim is not "it calls more than one" — a fan-out does that. It is that
     **the second call exists because of what the first one said**, which neither routing nor a
     fan-out can produce. It took three attempts to make that land on a real model, and the
@@ -331,7 +355,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     notes all have to be *taught* before the pattern can be discussed, and a sentence of setup
     per demo is fifteen sentences across the talk — during which the room is learning kennels,
     not patterns. So every constraint a demo turns on is now one the room already holds: grapes
-    are dangerous and cheddar is not, hot pavement burns paws, a fridge note needs the vet's
+    are dangerous and cheddar is not, a dog who suddenly starts snapping needs a vet and not a
+    training tip, a fridge note needs the vet's
     number on it, a puppy goes to the garden before he gets a training session, recall works in
     the garden before it works at the park, and neither half of a couple outranks the other about
     the bed. **The test for a new scenario: would a dev in row 20 know the right answer before
@@ -485,12 +510,21 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     number" — so they answered `0.60` instead of writing a note. It now keys on "0.0 to 1.0".
   The demo-critical values: a score alternating 0.60/0.95 so loops visibly iterate then exit;
   **different** one-word votes per assessor (`YES` for money, `LATER` for the other two) so the
-  offline vote is a genuine 2-1 majority; identical replies for the holiday advocates so
-  `ConvergenceStrategy.unanimous()` fires, and differing ones for the council's so it does not;
-  a 3-step supervisor plan routine→training→done; and an item-aware food table so the mapper
-  really does clear the cheddar and condemn the grapes. Its worry-routing rule must stay in step
-  with `Parsing.CATEGORIES`, and its canned supervisor plan names `RoutinePlanner`/
-  `TrainingPlanner` literally — renaming those two agents breaks the supervisor demo.
+  offline vote is a genuine 2-1 majority; a **catch-all** `argue` rule that hands both holiday
+  advocates the same words so `ConvergenceStrategy.unanimous()` fires, against the council's two
+  named rules that differ so it does not; a 2-step supervisor plan nurse→specialist→done; and an
+  item-aware food table so the mapper really does clear the cheddar and condemn the grapes. Its
+  worry-routing rule must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan
+  names `TriageNurse` literally and reads `NEEDS: vet`/`trainer`/`everyday` out of the nurse's
+  answer to pick the second call — renaming her, or changing that marker, breaks the demo.
+  **Two traps this table has now sprung twice.** A rule whose trigger no prompt contains any more
+  is worse than no rule: it reads as live behaviour and its comment describes a demo that no
+  longer exists. Three such orphans survived two rewrites (the `parallel` demo's weather/pavement
+  veto, and a `tighten this note` rule left over from the `NoteTightener` the capstone stopped
+  using) — delete the rules a prompt change strands. And the holiday debate converges **via the
+  catch-all**, not via the `comes or stays` rule, which is the *judge's*: insert a rule between
+  them that tells the two advocates apart and that debate silently starts running two rounds like
+  the council's. `theDebateConvergesOnAgreementAndNotOtherwise` is what catches it.
 - **`Errors`** — flattens a throwable's cause chain for display. LangChain4j reports every agent failure
   as `AgentInvocationException: Failed to invoke agent method`, so surfacing only `getMessage()` makes a
   dead Ollama and a parse failure look identical.

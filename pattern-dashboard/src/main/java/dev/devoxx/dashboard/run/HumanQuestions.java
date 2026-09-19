@@ -24,7 +24,11 @@ import jakarta.enterprise.context.ApplicationScoped;
  *       answers does not just strand one demo — it holds a pool thread for ever and the next few
  *       runs silently never start. On a conference stage that looks like the app hanging.</li>
  *   <li><b>Ending a run cancels its question.</b> Close the browser tab mid-question and the
- *       waiting thread is released rather than sitting out the full timeout.</li>
+ *       waiting thread is released rather than sitting out the full timeout. That needs a
+ *       callback at the other end and does not come for free: cancelling an SSE subscription
+ *       tells the thread blocked in {@link #await} precisely nothing, so
+ *       {@code PatternResource} registers {@code em.onTermination(() -> humans.cancel(runId))}.
+ *       Without it this paragraph is a description of what the code does not do.</li>
  * </ul>
  */
 @ApplicationScoped
@@ -34,11 +38,6 @@ public class HumanQuestions {
     static final Duration WAIT = Duration.ofMinutes(3);
 
     private final Map<String, CompletableFuture<String>> pending = new ConcurrentHashMap<>();
-
-    /** True when this run currently has a question outstanding — what the POST checks. */
-    public boolean isWaiting(String runId) {
-        return pending.containsKey(runId);
-    }
 
     /**
      * Blocks the calling run until someone answers, the timeout expires, or the run is cancelled.

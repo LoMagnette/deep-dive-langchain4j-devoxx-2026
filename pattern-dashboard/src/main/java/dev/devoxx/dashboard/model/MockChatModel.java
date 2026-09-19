@@ -43,8 +43,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  *
  * <p>The replies are deliberately good demo content rather than filler: run with
  * {@code -Ddashboard.model=mock} and the picnic-blanket mapper really does clear the cheddar and
- * condemn the grapes, the walk really is vetoed by the hot pavement, and the second-dog vote
- * really does split two to one.
+ * condemn the grapes, the refinement loop really does score 0.60 and then 0.95, and the
+ * second-dog vote really does split two to one.
+ *
+ * <p>A rule whose trigger no prompt contains any more is worse than no rule: it reads as live
+ * behaviour, and its comment describes a demo that no longer exists. When a demo's prompts
+ * change, delete the rules they stranded — this table has carried orphans from two rewrites.
  */
 public class MockChatModel implements ChatModel {
 
@@ -152,22 +156,12 @@ public class MockChatModel implements ChatModel {
                     case BASICS -> "everyday";
                 }),
 
-                // --- 4. "Walk him now?" Both checks say "PASS or FAIL", so they are separated by
-                // what each one is told to judge — and the weather one FAILS, which is the point
-                // of the demo: the join vetoes a walk the room already knew was a bad idea.
-                new Rule(p -> p.contains("weather and the ground"),
-                        p -> "FAIL — 31 degrees and the pavement has been in the sun all "
-                                + "afternoon. Press the back of your hand to it for five seconds; "
-                                + "if you cannot hold it there, neither can he."),
-                new Rule(p -> p.contains("the dog himself for a walk"),
-                        p -> "PASS — four years old, sound, and an hour past his meal."),
-
-                // --- 5. The picnic blanket, one item at a time. Item-aware, so the gathered
+                // --- 4. The picnic blanket, one item at a time. Item-aware, so the gathered
                 // verdicts differ per item — five identical lines would run the pattern perfectly
                 // and demonstrate nothing.
                 new Rule(p -> p.contains("picnic blanket"), MockChatModel::foodVerdict),
 
-                // --- 6. The sitter note, narrowest first. All three of these prompts talk about
+                // --- 5. The sitter note, narrowest first. All three of these prompts talk about
                 // notes and cards, and the checklist's prompt quotes the words "sitter card".
                 new Rule(p -> p.contains("times of day in order"),
                         p -> """
@@ -186,7 +180,7 @@ public class MockChatModel implements ChatModel {
                                 Watch out for: no dried liver treats; never off the lead in the park
                                 Vet: 061 22 33 44"""),
 
-                // --- 7. The refinement loop's rewrite. Satisfies all four rules, so the room can
+                // --- 6. The refinement loop's rewrite. Satisfies all four rules, so the room can
                 // hold it against the note it started from and see what the loop fixed.
                 new Rule(p -> p.contains("never met the dog"),
                         p -> """
@@ -202,20 +196,9 @@ public class MockChatModel implements ChatModel {
 
                                 Vet: 061 22 33 44."""),
 
-                // --- 8. The weekend-away composite, narrowest first. The tightener's prompt is
-                // the loop's second pass, so it quotes the note it just wrote — see the class
-                // note about rules that match quoted content.
-                new Rule(p -> p.contains("tighten this note"),
-                        p -> """
-                                ZAO — Friday to Sunday.
-
-                                07:30  two scoops. 18:00  two scoops. Food: tub by the back door.
-                                Walks 08:00 and 19:00. Lead and poo bags: hook by the back door. \
-                                Lead stays on — he pulls, plant your feet and wait.
-                                Fireworks both nights: curtains shut, radio on, stay in with him. \
-                                Do not take him out after dark.
-
-                                Vet 061 22 33 44. Ring us any time."""),
+                // --- 7. The weekend-away composite, narrowest first. Its refining loop reuses
+                // demo 3's FridgeChecklist rather than an agent of its own, so it is claimed by
+                // the checklist rule above — there is deliberately no rule of its own here.
                 new Rule(p -> p.contains("goes on the fridge for the dog sitter"),
                         p -> """
                                 Fireworks are the thing to plan for: shut the curtains, put the \
@@ -230,7 +213,7 @@ public class MockChatModel implements ChatModel {
                                 + "whole time. Avoid the park after dark while the fireworks are "
                                 + "going."),
 
-                // --- 9. The three people a worry can reach. Listed AFTER the composite's rules
+                // --- 8. The three people a worry can reach. Listed AFTER the composite's rules
                 // because the merger's prompt quotes whichever of these answered.
                 // Each desk ends with the word the escalation ladder branches on. The vet is the
                 // last rung, so it always answers; the other two escalate outside their subject.
@@ -244,7 +227,7 @@ public class MockChatModel implements ChatModel {
                         p -> everyday(p) + "\n"
                                 + (kind(p) == Kind.BASICS ? "ANSWERED" : "ESCALATE")),
 
-                // --- 10. The supervisor's two specialists.
+                // --- 9. The supervisor's two specialists.
                 new Rule(p -> p.contains("daily routine"),
                         p -> "Start now, not in month three: move his bed off your room and into "
                                 + "the hall this month, so it is not something the baby did to "
@@ -256,7 +239,7 @@ public class MockChatModel implements ChatModel {
                                 + "furniture on a word. Three months is enough for all three if "
                                 + "you start with the mat."),
 
-                // --- 11. Recall in three steps. The park rule is FIRST because the park prompt
+                // --- 10. Recall in three steps. The park rule is FIRST because the park prompt
                 // quotes "garden step already done", and the garden prompt quotes the indoor step.
                 new Rule(p -> p.contains("park step"),
                         p -> "At the park, on a fifteen-metre line, when there are dogs in the "
@@ -273,7 +256,7 @@ public class MockChatModel implements ChatModel {
                                 + "goes, twice a day. It is working when he turns on the word "
                                 + "before he has thought about it."),
 
-                // --- 12. The household argument. The floor rule is FIRST because its prompt
+                // --- 11. The household argument. The floor rule is FIRST because its prompt
                 // quotes the other half's proposal.
                 new Rule(p -> p.contains("wants the dog in his own bed"),
                         p -> "I can live with that, but not the whole bed and not every night. "
@@ -286,7 +269,7 @@ public class MockChatModel implements ChatModel {
                                 + "if he has to be off it at night, fine, but he comes up when "
                                 + "the alarm goes."),
 
-                // --- 13. The barking board. The trainer's rule is FIRST because its prompt
+                // --- 12. The barking board. The trainer's rule is FIRST because its prompt
                 // quotes all three contributors' headings.
                 new Rule(p -> p.contains("most likely first"),
                         p -> """
@@ -311,7 +294,7 @@ public class MockChatModel implements ChatModel {
                                 + "street, the post and next door's cat all day. Next: move the "
                                 + "bed out of sight of the window before you try anything else."),
 
-                // --- 14. The puppy's first hour, three desires.
+                // --- 13. The puppy's first hour, three desires.
                 new Rule(p -> p.contains("first tiny training session"),
                         p -> "One thing only: his name. Say it once, pay him when he looks, five "
                                 + "goes, then stop while he still wants more. Two minutes is a "
@@ -329,7 +312,7 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("honouring the person's decision"),
                         MockChatModel::finalNote),
 
-                // --- 15. The council. The chair and the glue are listed before the two
+                // --- 14. The council. The chair and the glue are listed before the two
                 // advocates, because all three prompts talk about a motion.
                 new Rule(p -> p.contains("chair the household council"),
                         p -> "The motion is carried, but not yet. The fact that decided it: Zao "
@@ -363,8 +346,17 @@ public class MockChatModel implements ChatModel {
                                 + "— he is lonely — but the answer to a lonely dog is a dog "
                                 + "walker, not another dog."),
 
-                // --- 16. The holiday debate. Both advocates get the IDENTICAL line, so
-                // ConvergenceStrategy.unanimous() (all responses equal) fires after round one.
+                // --- 15. The holiday debate, and the rule that ENDS it: "comes or stays" is the
+                // JUDGE's prompt (HolidayVerdict), not an advocate's. The advocates fall through
+                // to the catch-all below, which hands both sides the same words — and THAT is
+                // what makes ConvergenceStrategy.unanimous() (all responses equal) fire after
+                // round one.
+                //
+                // So the catch-all is load-bearing, not a safety net: put a rule between these
+                // two that tells the advocates apart and the holiday debate stops converging,
+                // runs its full two rounds like the council's, and the page quietly loses the
+                // contrast it exists to show. theDebateConvergesOnAgreementAndNotOtherwise
+                // is what goes red if that happens.
                 new Rule(p -> p.contains("comes or stays"),
                         p -> "He stays, with the sitter. The fact that decided it: a house with "
                                 + "no shade in Tuscany in August is dangerous for a black "
@@ -377,7 +369,7 @@ public class MockChatModel implements ChatModel {
                                 + "double-coated dog. Two weeks with a sitter he knows costs him "
                                 + "a fortnight of missing you; the alternative could cost more."),
 
-                // --- 17. Running it for real. Last in the table and safely so: each of these is
+                // --- 16. Running it for real. Last in the table and safely so: each of these is
                 // keyed on an instruction of its own, and no rule above quotes any of them.
                 //
                 // The out-of-hours DESK, not the out-of-hours LINE — the nurse owns that phrase

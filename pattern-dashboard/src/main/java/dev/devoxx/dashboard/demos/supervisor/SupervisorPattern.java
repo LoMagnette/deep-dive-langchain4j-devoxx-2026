@@ -25,9 +25,18 @@ import dev.langchain4j.model.chat.ChatModel;
  * that now nobody wrote down who to ask.
  *
  * <p>This is the pivot of the talk and it is deliberately built from parts the room has already
- * met: not one new agent. Demo 6 routes to <b>one</b> desk, chosen by a classifier you wrote.
- * Here the model calls as many as it thinks it needs and decides when it is done — which is the
- * only thing routing cannot do, and exactly what this input requires.
+ * met: the three desks are demo 6's, unchanged. Demo 6 routes to <b>one</b> of them, chosen by a
+ * classifier you wrote. Here the model calls as many as it thinks it needs and decides when it is
+ * done — which is the only thing routing cannot do, and exactly what this input requires.
+ *
+ * <p>The one agent this demo adds is {@link TriageNurse}, and she is the reason the hand-off is
+ * reliable rather than lucky. An earlier version had the <i>trainer</i> decline cases that smelled
+ * of pain: it reads beautifully and on a live model it called one agent and stopped, because a
+ * refusal is a conditional exception sitting under a positive instruction ("give the owner one
+ * thing to change this week") and a small model takes the positive instruction every time. The
+ * nurse never treats and never trains; her whole job is to assess and name who is needed, so she
+ * always succeeds at what she was asked and the supervisor's next decision rests on a fact it was
+ * given rather than a judgement the model had to volunteer.
  */
 public final class SupervisorPattern {
 
@@ -173,22 +182,27 @@ public final class SupervisorPattern {
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
                 "Then something that is not like him at all. You cannot tell if it is "
                         + "behaviour or something worse, and neither can one phone call.",
-                "Demo 6's three desks again, and not one new agent. Routing picks one of "
-                        + "them; this picks several and decides when to stop.",
-                "An LLM supervisor decides which specialist to invoke, and when to stop — the "
-                        + "same three agents the router chose between three demos ago, not one new "
-                        + "line of agent code. Watch the order: it asks the trainer, the trainer "
-                        + "says this is not a training problem, and **that answer is what makes "
+                "Demo 6's three desks again, unchanged, plus one new agent: the nurse who "
+                        + "takes the call. Routing picks one desk; this picks several and "
+                        + "decides when to stop.",
+                "An LLM supervisor decides which specialist to invoke, and when to stop. Watch "
+                        + "the order: the **TriageNurse** takes the call, works out what is going "
+                        + "on and ends by naming who is needed — and **that answer is what makes "
                         + "it call the vet.** A router gets one call and stops. A fan-out would "
-                        + "have asked all three at once and learned nothing from any of them. "
-                        + "Neither can produce a second call that exists only because of what "
-                        + "the first one said. Note what the result shows: **one answer**, with "
-                        + "the route to it underneath. The trainer did not give an opinion worth "
-                        + "keeping — it declined, and declining is work, not output.",
+                        + "have asked all three desks at once and learned nothing from any of "
+                        + "them. Neither can produce a second call that exists only because of "
+                        + "what the first one said. Change the input and the route changes with "
+                        + "it: pulling and barking reach the trainer, grass-eating settles with "
+                        + "the nurse and stops there. Note what the result shows: **one answer**, "
+                        + "with the route to it underneath. The nurse did not give an opinion "
+                        + "worth keeping — she assessed, and assessing is work, not output.",
                 "Non-deterministic, and the roll-call is honest about it: a weaker planner will "
-                        + "sometimes take the trainer's first sentence and stop. Bound the "
-                        + "invocations. And ask the hard question first — if you can write down "
-                        + "\"trainer, then vet if they say so\", that is a sequence with a "
+                        + "sometimes take the nurse's assessment as the answer and stop. Bound "
+                        + "the invocations. Note also what it took to make the hand-off reliable "
+                        + "— an agent whose job **is** to hand on, rather than one that declines; "
+                        + "a model asked to refuse under a positive instruction will follow the "
+                        + "positive one. And ask the hard question first: if you can write down "
+                        + "\"nurse, then whoever she names\", that is a sequence with a "
                         + "condition, and it is cheaper and debuggable. Reach for this when you "
                         + "genuinely cannot enumerate who is needed.",
                 topo,

@@ -62,8 +62,9 @@ public final class ParallelPattern {
                 List.of(node("in", "the stay", "input"),
                         node("meals", "MealPlanner", "agent"),
                         node("walks", "WalkPlanner", "agent"),
-                        // The combiner is the whole second half of "fan out, then join" — and
-                        // here it is a rule, not a concatenation: either check can veto the walk.
+                        // The combiner is the whole second half of "fan out, then join": the
+                        // note cannot be written until both halves are back, which is the only
+                        // reason the two branches have to meet again at all.
                         node("join", "both halves", "join")),
                 List.of(edge("in", "meals"), edge("in", "walks"),
                         edge("meals", "join", "meals"), edge("walks", "join", "walks")));
