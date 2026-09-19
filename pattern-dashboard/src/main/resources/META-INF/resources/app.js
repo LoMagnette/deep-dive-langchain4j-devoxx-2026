@@ -2,7 +2,8 @@
    layout chrome. Rendering primitives live in render.js, which loads first. */
 
 const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
-                    "pattern-zoo":"Pattern zoo","composite":"Putting it together"};
+                    "pattern-zoo":"Pattern zoo","composite":"Putting it together",
+                    "production":"Running it for real"};
 /* One line per group, in the talk's own words (see the through-line diagram in the root README).
    The gallery separates the categories physically instead of tagging every card, and a heading
    that says what the group MEANS is the reason the separation is worth having — otherwise it is
@@ -10,7 +11,10 @@ const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
 const CAT_NOTES = {"workflow":"You decide the path",
                    "pure-agent":"The model decides the path",
                    "pattern-zoo":"The middle ground — a planner decides the turns",
-                   "composite":"Several patterns wired into one system"};
+                   "composite":"Several patterns wired into one system",
+                   /* Not a position on the dial — a modifier you can bolt onto any of the above,
+                      which is why this group sits outside the ordering rather than inside it. */
+                   "production":"Not where on the dial — what it takes to run it"};
 let patterns = [], current = null, es = null;
 
 async function boot(){
@@ -137,6 +141,11 @@ function select(id){
   document.getElementById('p-caveat').innerHTML =
       '<b>⚠ Caveat</b>' + renderMarkdown(current.caveat);
   document.getElementById('input').value = current.defaultInput || '';
+  /* Offered only where it is honoured. Unchecked on every navigation on purpose: the toggle
+     changes which agent runs, and inheriting it from the pattern you were just looking at is
+     the kind of surprise you do not want on a projector. */
+  document.getElementById('p-stream-wrap').hidden = !current.streams;
+  document.getElementById('p-stream').checked = false;
   reset();
   // Result and scope were just cleared, so land on the tab that has something to show.
   showPane('console');
@@ -149,6 +158,7 @@ function reset(){
   lastScope={}; expandedVars.clear();
   document.getElementById('result').innerHTML='<span class="empty">No run yet.</span>';
   document.getElementById('result-dot').hidden=true;
+  streamed='';
   document.getElementById('p-time').hidden=true;
   document.querySelectorAll('.node').forEach(n=>n.classList.remove('active','done'));
 }
@@ -179,6 +189,9 @@ function showRuntime(totalMs){
 }
 
 function log(ev){
+  /* Tokens are the Result pane's business, not the event log's: one line per chunk is forty
+     lines that say nothing about the shape of the run, and it buries the six that do. */
+  if(ev.type==='token') return;
   const c=document.getElementById('console');
   const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
@@ -231,6 +244,8 @@ function revealResult(){
    is one-way, so the human's reply cannot travel down the pipe the question came from. */
 let runId=null;
 let agentMsSum=0;
+/* What has arrived so far on a streaming run, so each token appends instead of replacing. */
+let streamed='';
 
 function showAsk(question){
   const box=document.getElementById('ask');
@@ -257,8 +272,10 @@ function run(){
   runId=null;
   tabPinned=false;
   const input=encodeURIComponent(document.getElementById('input').value||'');
-  document.getElementById('run').disabled=true;
-  es=new EventSource(`/api/patterns/${current.id}/run?input=${input}`);
+  const wantsTokens = current.streams && document.getElementById('p-stream').checked;
+  streamed=''; document.getElementById('run').disabled=true;
+  es=new EventSource(`/api/patterns/${current.id}/run?input=${input}`
+      + (wantsTokens ? '&stream=true' : ''));
   es.onmessage=e=>{
     let ev; try{ ev=JSON.parse(e.data); }catch(_){ return; }
     log(ev); updateScope(ev.scope);
@@ -266,6 +283,17 @@ function run(){
     else if(ev.type==='human-ask'){ showAsk(ev.message); markNode(ev.agent,'active'); }
     else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
     else if(ev.type==='agent-before') markNode(ev.agent,'active');
+    /* Tokens land as TEXT, not markdown: a half-arrived answer is usually half-way through a
+       construct (an unclosed ** or a dangling list item), and re-rendering markdown on every
+       chunk makes the pane flicker between two layouts. run-result replaces it with the
+       rendered version once the whole thing is there. */
+    else if(ev.type==='token'){
+      streamed += (ev.data==null ? '' : ev.data);
+      const pane=document.getElementById('result');
+      pane.innerHTML='<pre class="streaming"></pre>';
+      pane.firstChild.textContent=streamed;
+      revealResult();
+    }
     else if(ev.type==='agent-after'){
       /* Summed, not wall-clock: printed next to the run total, the gap between the two IS the
          parallelism. Two 900ms branches in a 950ms run is the whole lesson in two numbers. */

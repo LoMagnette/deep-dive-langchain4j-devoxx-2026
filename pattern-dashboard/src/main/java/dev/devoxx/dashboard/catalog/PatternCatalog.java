@@ -20,6 +20,9 @@ import dev.devoxx.dashboard.demos.bdi.BdiPattern;
 import dev.devoxx.dashboard.demos.customplanner.CustomPlannerPattern;
 import dev.devoxx.dashboard.demos.sitternote.SitterNotePattern;
 import dev.devoxx.dashboard.demos.seconddogcouncil.SecondDogCouncilPattern;
+import dev.devoxx.dashboard.demos.modelrouting.ModelRoutingPattern;
+import dev.devoxx.dashboard.demos.async.AsyncPattern;
+import dev.devoxx.dashboard.demos.resilience.ResiliencePattern;
 import dev.devoxx.dashboard.catalog.PatternDef.PatternInfo;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -61,7 +64,13 @@ public class PatternCatalog {
                 CustomPlannerPattern.define(),
                 // Putting it together
                 SitterNotePattern.define(),
-                SecondDogCouncilPattern.define());
+                SecondDogCouncilPattern.define(),
+                // Running it for real — modifiers on an agent, not positions on the dial. They
+                // come last because they are orthogonal to the autonomy question the rail order
+                // asks: any of them can be bolted onto any demo above.
+                ModelRoutingPattern.define(),
+                AsyncPattern.define(),
+                ResiliencePattern.define());
     }
 
     public List<PatternInfo> infos() {

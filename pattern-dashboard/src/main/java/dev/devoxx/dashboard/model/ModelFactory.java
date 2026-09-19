@@ -11,9 +11,12 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.devoxx.dashboard.run.ModelTiers;
 import dev.devoxx.dashboard.support.Errors;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -72,6 +75,15 @@ public class ModelFactory {
     @ConfigProperty(name = "dashboard.ollama.model-name", defaultValue = "llama3.1")
     String configuredModelName;
 
+    /**
+     * Optional second, smaller model for the model-routing demo. Empty means "no cheap tier" —
+     * that demo then runs both tiers against the one model and says so, rather than implying a
+     * saving that never happened. Set it to something genuinely small (llama3.2:1b, qwen2.5:0.5b)
+     * and pull it first.
+     */
+    @ConfigProperty(name = "dashboard.ollama.cheap-model-name")
+    Optional<String> configuredCheapModelName;
+
     /** Generous by default: "thinking" models can spend a minute on one agent step. */
     @ConfigProperty(name = "dashboard.ollama.timeout", defaultValue = "PT2M")
     Duration timeout;
@@ -79,6 +91,8 @@ public class ModelFactory {
     private final Object lock = new Object();
 
     private volatile ChatModel model;
+    private volatile ModelTiers tiers;
+    private volatile StreamingChatModel streamingModel;
     private volatile String activeModel = "not initialised";
     /** True only when we wanted a real model and had to settle for the mock. */
     private volatile boolean fellBack;
@@ -162,7 +176,66 @@ public class ModelFactory {
         }
 
         LOG.infof("dashboard model: ollama %s @ %s", wanted, found);
-        return settle(build(found, wanted), "ollama " + wanted + " @ " + found, false);
+        ChatModel resolved = settle(build(found, wanted), "ollama " + wanted + " @ " + found, false);
+        tiers = cheapTier(found, wanted, resolved);
+        streamingModel = OllamaStreamingChatModel.builder()
+                .baseUrl(found)
+                .modelName(wanted)
+                .timeout(timeout)
+                .listeners(List.of(new ChatCallLog()))
+                .build();
+        return resolved;
+    }
+
+    /**
+     * The streaming counterpart of {@link #currentModel()}, for the one demo that shows tokens
+     * arriving. Resolved off the back of the same probe, so it can only be a real model when the
+     * ordinary one is — a streaming demo pointed at a dead endpoint fails in a way that looks
+     * like the pattern is broken rather than the server.
+     */
+    public StreamingChatModel currentStreamingModel() {
+        ChatModel current = currentModel();
+        StreamingChatModel known = streamingModel;
+        return known != null && !fellBack && !(current instanceof MockChatModel)
+                ? known
+                : new MockStreamingChatModel(List.of(new ChatCallLog()));
+    }
+
+    /**
+     * The cheap tier, when one is configured AND actually pulled. Probed the same way the main
+     * model is, and for the same reason: a cheap tier that 404s mid-demo is worse than not
+     * having one, because the demo will have already claimed it made a choice.
+     */
+    private ModelTiers cheapTier(String base, String wanted, ChatModel strong) {
+        String cheap = configuredCheapModelName.map(String::trim).filter(s -> !s.isEmpty())
+                .orElse(null);
+        if (cheap == null || cheap.equals(wanted)) {
+            return ModelTiers.single(strong, wanted);
+        }
+        String problem = probe(base, cheap);
+        if (problem != null) {
+            LOG.warnf("Cheap tier '%s' not usable at %s (%s) — the model-routing demo will run "
+                    + "both tiers on '%s' and say so.", cheap, base, problem, wanted);
+            return ModelTiers.single(strong, wanted);
+        }
+        LOG.infof("model tiers: cheap=%s strong=%s @ %s", cheap, wanted, base);
+        return ModelTiers.of(build(base, cheap), cheap, strong, wanted);
+    }
+
+    /**
+     * The two models a run may choose between. Never null: with nothing configured both tiers
+     * are the live model, and {@code ModelTiers.distinct()} is false so the demo can be honest
+     * about it.
+     */
+    public ModelTiers tiers() {
+        ChatModel current = currentModel();
+        ModelTiers known = tiers;
+        // Not just `tiers`: a run that fell back to the mock, or recovered from it, must not keep
+        // handing out tiers built around a model that is no longer live.
+        if (known != null && known.strong() == current) {
+            return known;
+        }
+        return ModelTiers.single(current, activeModel);
     }
 
     /** Returns the first base URL serving {@code wanted}, or null — appending each failure. */

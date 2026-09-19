@@ -69,10 +69,12 @@ demos/<id>/      EVERYTHING for one demo, and nothing else:
   supervisor/
   goap/ p2p/ blackboard/ voting/ debate/ bdi/ customplanner/
   sitternote/ seconddogcouncil/
+  modelrouting/ async/ resilience/
 catalog/         PatternCatalog (the registry) · PatternDef · Topology
 support/         Parsing · Errors — the shared pieces that are OURS, not LangChain4j's
 model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
-run/             RunEvent · StreamingListener — observing a run
+                 · MockStreamingChatModel · ChatCallLog
+run/             RunEvent · StreamingListener · ModelTiers — observing a run
 web/             PatternResource · LogResource · LogStream — REST and SSE
 ```
 
@@ -110,9 +112,49 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   says so before a word of explanation. Two shared default inputs work the same way —
   `SinglePattern.SITTER_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
   used by the council).
-- **`PatternCatalog` is the registry and nothing else**: sixteen `XxxPattern.define()` calls in
-  the talk's running order, grouped by comments for the four rail categories. Adding a demo is a
+- **`PatternCatalog` is the registry and nothing else**: twenty `XxxPattern.define()` calls in
+  the talk's running order, grouped by comments for the five rail categories. Adding a demo is a
   new package plus one line here.
+- **The fifth category, `production`, is NOT a position on the dial** — and that is the whole
+  reason it exists as a separate group rather than three more entries in the four above it. Every
+  other demo is a *shape* (a chain, a fan-out, a loop, a star); `modelRouting`, `async` and
+  `resilience` are **modifiers on an agent or a builder**, each one call:
+  `chatModel(Function<AgenticScope, ChatModel>)`, `async(true)`, `optional(true)`,
+  `errorHandler(...)`. They can be bolted onto any demo above, which is exactly why putting them
+  on the dial would be a lie — the rail order is the autonomy argument, and these are orthogonal
+  to it. The gallery gloss says so out loud ("Not where on the dial — what it takes to run it").
+  `buildGallery` already appends unknown categories, so a sixth group costs two lines in
+  `CAT_LABELS`/`CAT_NOTES` and nothing else.
+  Four things these three demos pinned down, each of which is easy to get backwards:
+  - **`optional(true)` is about a missing INPUT, not a failing agent.** In `AgentExecutor` the
+    `optional()` check sits inside `catch (MissingArgumentException e)` — a step that *throws* is
+    not optional's problem however optional it is. So `resilience` skips `MedicationNote` because
+    most dogs are on nothing and nothing writes `meds`, and the seeding of that key is **plain
+    Java in `run`**: deciding whether you hold a value is not a job for a model. Delete the
+    tablets from the input on stage and the step vanishes with no error.
+  - **`errorHandler(...)` lives on `AgenticService`, so it is set on the *workflow* builder, not
+    on `AgentBuilder`** — it rides on the scope (`DefaultAgenticScope.withErrorHandler`) and sees
+    every `AgentInvocationException` in the run. **`RETRY` re-executes and a second failure comes
+    straight back to your handler**, so a handler without a counter is an infinite loop.
+    `ResiliencePattern.MAX_RETRIES` is that counter and it is not decoration.
+  - **An async agent's join is the line that READS the key.** `async(true)` writes an
+    `AsyncResponse` into the scope and `readState` blocks on it, so the waiting moves to the
+    reader and the Scope tab shows `<pending>` until then. Measured, not asserted: against a
+    200 ms model the `async` demo's `Sequential` step is ~453 ms against ~682 ms of agent time.
+    Its diagram is `stages` with a deliberate **three-column skip-ahead edge** from the async
+    step to the join — drawn flat it would disappear behind the boxes between its ends, and that
+    edge is the agent's lifetime.
+  - **Two model tiers must not be faked.** `ModelTiers.distinct()` is false when both tiers are
+    really the same model, and `modelRouting` prints that instead of implying a saving that never
+    happened. Set `dashboard.ollama.cheap-model-name` (and pull it) for a real two-model run.
+    The tiers reach the demo through `StreamingListener`, following the `AskHuman` precedent —
+    the listener already *is* the per-run context object, and widening `Runner` for one demo out
+    of twenty would cost the other nineteen a parameter they never read.
+- **A demo that is ABOUT failing gets one narrow exemption in the smoke test, and only one.**
+  `everyPatternCompletesUnderTheMockModel` treats any `agent-error` as a broken demo, which is
+  right for nineteen of them; `resilience` is exempted *by pattern id and by agent name* so that
+  anything else erroring there is still a bug, and its result assertion still has to hold.
+  Widening that filter is how this test stops being worth running.
 - **Every step is timed, and the two numbers on screen are an argument.** `RunEvent.millis` is
   filled in for `agent-after`, `agent-error`, `human-answer`, `run-result` and `run-done`, and the
   page shows it three ways: under each node on the diagram, at the right of each line in the Run
@@ -361,6 +403,35 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
   `currentModel()` re-probes when the last attempt fell back. `PatternResource` calls `currentModel()`
   per run rather than injecting a `ChatModel` once — that is what makes recovery-without-restart work.
+  It also resolves `tiers()` (see the `production` note) and `currentStreamingModel()`, both off the
+  back of the same probe, so neither can be a real model while the ordinary one is not.
+- **Streaming is one toggle on demo 1, and it is deliberately not a demo of its own.** A
+  streaming *card* would demonstrate this app's SSE plumbing more than it demonstrates
+  LangChain4j; a toggle on the simplest demo shows the API difference and nothing else. Four
+  things make it work, and three of them are one-way doors:
+  - **The return type is what makes an agent streaming**, not the builder. Hence
+    `StreamingSitterCardClerk`, a second interface with the *same prompt word for word* and
+    `TokenStream card(...)` instead of `String card(...)`. `streamingChatModel(...)` on a method
+    returning String changes nothing at all.
+  - **Only the LAST agent of an `UntypedAgent` system can stream to a screen.**
+    `PlannerBasedInvocationHandler` sets `allowStreamingOutput` from
+    `UntypedAgent.class.isAssignableFrom(type) || TokenStream.class.isAssignableFrom(outputType)`,
+    and `propagateStreaming()` is that *and* `planner.terminated()`. Put a step after the
+    streaming agent and `AgentExecutor` wraps the stream in a `StreamingResponse` and drains it
+    internally — the right behaviour, and the reason no other demo in the catalogue can offer
+    this.
+  - **`PatternDef.streams` is a secondary-constructor field**, false for nineteen demos, so the
+    one fact costs those files nothing. `PatternInfo` carries it to the page, which shows the
+    toggle only where it is honoured — a control that silently does nothing reads as broken, not
+    absent. `PatternResource` also checks `def.streams()` before building a streaming model.
+  - **Tokens are drawn as plain text, not markdown**, and skipped by the event log. A
+    half-arrived answer is usually mid-construct (an unclosed `**`), so re-rendering per chunk
+    flickers between two layouts; `run-result` swaps in the rendered version at the end. Forty
+    token lines in the Run events pane would bury the six events that describe the run's shape.
+  `MockStreamingChatModel` delegates to `MockChatModel` for the answer and hands it over in
+  word-ish chunks with an 18 ms pause — without the pause every token lands in the same
+  millisecond and the demo shows a block of text appearing at once, which is exactly what
+  streaming is supposed to look different from.
 - **`MockChatModel`** — deterministic, no-network `ChatModel`, and the thing `mvn test` runs
   against. It pattern-matches **the last user message** (never the accumulated conversation —
   that would pin multi-turn planners to their first choice) against an **ordered rule table**,

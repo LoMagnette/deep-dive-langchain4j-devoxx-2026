@@ -201,6 +201,14 @@ table.vars tr.changed .name::before{content:'';position:absolute;left:-10px;top:
 #result{overflow-wrap:anywhere}
 #result .md{max-width:70ch}
 #result > :first-child, #result .md > :first-child{margin-top:0}
+/* A half-arrived answer, shown as plain text until the last token lands. Same measure and the
+   same ink as the rendered version, so the swap at the end is not a jump — and a blinking rule
+   at the end so a model that has paused mid-answer is visibly still working rather than stuck. */
+#result .streaming{max-width:70ch;margin:0;font:inherit;white-space:pre-wrap;word-break:break-word}
+#result .streaming::after{content:'';display:inline-block;width:2px;height:1em;margin-left:2px;
+  vertical-align:-.15em;background:var(--accent);animation:caret 1s steps(2) infinite}
+@keyframes caret{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){ #result .streaming::after{animation:none} }
 #result p{margin:0 0 8px}
 #result h1,#result h2,#result h3,#result h4,#result h5,#result h6{margin:14px 0 6px;line-height:1.25;font-weight:700}
 #result h1{font-size:19px} #result h2{font-size:17px} #result h3{font-size:16px}
@@ -231,6 +239,13 @@ table.vars tr.changed .name::before{content:'';position:absolute;left:-10px;top:
   background:var(--panel2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ran b{font-size:15px;font-weight:700;color:var(--ink)}
 .ran span{font-size:12.5px;color:var(--muted)}
+/* The token toggle. Shaped like the runtime badge rather than like the buttons: it is a setting
+   for the next run, not an action, and it must not compete with Run for the eye. */
+.toggle{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;
+  background:var(--panel2);color:var(--muted);font-size:12.5px;font-weight:600;
+  white-space:nowrap;cursor:pointer;user-select:none}
+.toggle:hover{color:var(--accent)}
+.toggle input{accent-color:var(--accent);cursor:pointer;margin:0}
 @media (max-width:560px){ .controls{flex-wrap:wrap} }
 
 .pale{color:var(--muted);font-weight:600}

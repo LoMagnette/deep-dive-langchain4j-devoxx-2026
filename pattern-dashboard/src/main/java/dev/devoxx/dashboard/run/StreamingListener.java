@@ -18,15 +18,20 @@ import dev.langchain4j.agentic.scope.AgenticScope;
  * Bridges LangChain4j agentic observability callbacks into {@link RunEvent}s pushed to a sink.
  * Inherited by sub-agents so every agent invocation in a composite is observed.
  *
- * <p>It also carries the run's channel to a person ({@link AskHuman}). That lives here rather
- * than being a fourth argument to every {@code Runner} because the listener already <i>is</i> the
- * per-run context object, and only one demo out of seventeen needs to ask anybody anything.
+ * <p>It also carries the run's channel to a person ({@link AskHuman}) and, for the one demo that
+ * chooses a model per invocation, the run's {@link ModelTiers}. Both live here rather than being
+ * extra arguments to every {@code Runner} because the listener already <i>is</i> the per-run
+ * context object, and in each case exactly one demo out of twenty needs the thing.
  */
 public class StreamingListener implements AgentListener {
 
     private final Consumer<RunEvent> sink;
     private final java.util.concurrent.atomic.AtomicLong seq;
     private final AskHuman human;
+    /** Null unless the web layer supplied them; {@link #tiers(dev.langchain4j.model.chat.ChatModel)} fills in. */
+    private final ModelTiers tiers;
+    /** Null unless this run was asked to stream. See {@link #streamingModel()}. */
+    private final dev.langchain4j.model.chat.StreamingChatModel streaming;
     /**
      * When each in-flight invocation started, so an {@code agent-after} can say how long it took.
      *
@@ -42,9 +47,48 @@ public class StreamingListener implements AgentListener {
 
     public StreamingListener(Consumer<RunEvent> sink,
                              java.util.concurrent.atomic.AtomicLong seq, AskHuman human) {
+        this(sink, seq, human, null);
+    }
+
+    public StreamingListener(Consumer<RunEvent> sink,
+                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human,
+                             ModelTiers tiers) {
+        this(sink, seq, human, tiers, null);
+    }
+
+    public StreamingListener(Consumer<RunEvent> sink,
+                             java.util.concurrent.atomic.AtomicLong seq, AskHuman human,
+                             ModelTiers tiers,
+                             dev.langchain4j.model.chat.StreamingChatModel streaming) {
         this.sink = sink;
         this.seq = seq;
         this.human = human == null ? AskHuman.NOBODY : human;
+        this.tiers = tiers;
+        this.streaming = streaming;
+    }
+
+    /**
+     * The streaming model for this run, or null when the viewer did not ask for one. Null is the
+     * signal, not a flag beside it: a demo that can stream branches on having somewhere to
+     * stream to, and every other run gets the ordinary path with no extra argument to ignore.
+     */
+    public dev.langchain4j.model.chat.StreamingChatModel streamingModel() {
+        return streaming;
+    }
+
+    /** One chunk of an answer, on its way to the Result pane as it is generated. */
+    public void emitToken(String agent, String chunk) {
+        emit("token", agent, null, null, chunk);
+    }
+
+    /**
+     * The two models this run may choose between, falling back to the one it was given for both
+     * tiers. The fallback is what lets {@code mvn test} run the model-routing demo with no
+     * plumbing at all — and {@link ModelTiers#distinct()} is false there, so nothing claims a
+     * choice was made.
+     */
+    public ModelTiers tiers(dev.langchain4j.model.chat.ChatModel fallback) {
+        return tiers != null ? tiers : ModelTiers.single(fallback, "the live model");
     }
 
     /**

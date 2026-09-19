@@ -5,7 +5,11 @@ import java.util.Map;
 /**
  * A single streamed event describing what an agentic run is doing.
  * types: run-start, agent-before, agent-after, agent-error, human-ask, human-answer,
- * run-result, run-done.
+ * token, run-result, run-done.
+ *
+ * <p>{@code token} is one chunk of an answer being generated, carried in {@code data}. It is the
+ * only event type with no {@code message}: there is nothing to say about a token that the token
+ * does not already say, and the page appends it to the Result pane rather than logging it.
  *
  * <p>{@code millis} is how long the step took, and is null on the events where that means
  * nothing (an agent starting, a question being asked). It is the cheapest observability there

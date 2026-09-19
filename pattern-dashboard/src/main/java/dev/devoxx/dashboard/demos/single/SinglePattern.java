@@ -6,6 +6,10 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
@@ -15,6 +19,7 @@ import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.service.TokenStream;
 
 /**
  * Wiring for the <b>single</b> demo — one call, one job.
@@ -38,6 +43,9 @@ public final class SinglePattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
+        if (listener.streamingModel() != null) {
+            return streamed(listener, input);
+        }
         var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
                 .chatModel(model)
                 .name("SitterCardClerk")
@@ -48,6 +56,57 @@ public final class SinglePattern {
         var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
         return String.valueOf(r.result());
     }
+
+    /**
+     * The same one agent, with {@code streamingChatModel} instead of {@code chatModel} and an
+     * interface whose method returns a {@link TokenStream}. Everything else — the builder, the
+     * sequence, the key, the listener — is identical, which is the whole content of the toggle.
+     *
+     * <p>Two things make the stream reach this method rather than being drained inside the
+     * framework: the agent's return type is a {@code TokenStream}, and it is the <b>last</b>
+     * agent of an {@code UntypedAgent} sequence. Put another step after it and the tokens are
+     * consumed internally and the scope gets the finished text instead — which is the right
+     * behaviour, and the reason only a final agent can stream to a screen.
+     */
+    private static String streamed(StreamingListener listener, String input) {
+        var clerk = AgenticServices.agentBuilder(StreamingSitterCardClerk.class)
+                .streamingChatModel(listener.streamingModel())
+                .name("SitterCardClerk")
+                .outputKey(Notes.class)
+                .build();
+        UntypedAgent app = AgenticServices.sequenceBuilder()
+                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
+        Object result = app.invokeWithAgenticScope(Map.of(new Message().name(), input)).result();
+        if (!(result instanceof TokenStream stream)) {
+            // Not an error worth throwing: the answer is right, it just arrived in one piece.
+            return String.valueOf(result);
+        }
+
+        var done = new CompletableFuture<String>();
+        var text = new StringBuilder();
+        stream.onPartialResponse(chunk -> {
+                    text.append(chunk);
+                    listener.emitToken("SitterCardClerk", chunk);
+                })
+                .onCompleteResponse(response -> done.complete(response.aiMessage().text()))
+                .onError(done::completeExceptionally)
+                // Nothing happens until start(): the handlers are registered first, so a stream
+                // that began on the line above would drop the tokens sent before this one.
+                .start();
+        try {
+            return done.get(STREAM_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return text.toString();
+        } catch (ExecutionException | TimeoutException e) {
+            // Whatever arrived is still the honest answer, and on a projector it is the visible
+            // one — the page has been showing it token by token.
+            return text.isEmpty() ? "the stream failed: " + e : text.toString();
+        }
+    }
+
+    /** A stream that never completes would hold one of four run threads for ever. */
+    private static final java.time.Duration STREAM_TIMEOUT = java.time.Duration.ofMinutes(3);
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
@@ -70,6 +129,10 @@ public final class SinglePattern {
                 // (nobody said when to walk him), so the room can check whether the agent obeys
                 // "write not given" or quietly makes something up.
                 SITTER_MESSAGE,
-                SinglePattern::run);
+                SinglePattern::run,
+                // The only demo that honours the token toggle, so the only one the page offers
+                // it on. Streaming is a property of the LAST agent, and every other entry in the
+                // catalogue ends on something that is not one.
+                true);
     }
 }

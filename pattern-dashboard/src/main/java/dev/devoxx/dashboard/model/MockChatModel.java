@@ -140,13 +140,16 @@ public class MockChatModel implements ChatModel {
                 // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or the
                 // router picks a branch that does not exist. Returns the first destination named
                 // in the prompt, which for the shipped worry is also the RIGHT one: emergency.
-                new Rule(p -> p.contains("classify this worry"), p -> {
-                    for (String who : new String[] {"emergency", "training", "everyday"}) {
-                        if (has(p, who)) {
-                            return who;
-                        }
-                    }
-                    return "emergency";
+                // Classified from the WORRY, not from the destinations listed in the prompt.
+                // Matching the prompt returned whichever category was named first — always
+                // "emergency", whatever was asked — so offline the router looked like it worked
+                // (the shipped worry really is an emergency) while routing everything to the vet.
+                // The model-routing demo is what exposed it: every question bought the strong
+                // tier. Must stay in step with Parsing.CATEGORIES.
+                new Rule(p -> p.contains("classify this worry"), p -> switch (kind(p)) {
+                    case MEDICAL -> "emergency";
+                    case BEHAVIOUR -> "training";
+                    case BASICS -> "everyday";
                 }),
 
                 // --- 4. "Walk him now?" Both checks say "PASS or FAIL", so they are separated by
@@ -372,7 +375,31 @@ public class MockChatModel implements ChatModel {
                         p -> "The twelve hours in the car and a house with no shade are the whole "
                                 + "argument, and August in Tuscany is not survivable for a black "
                                 + "double-coated dog. Two weeks with a sitter he knows costs him "
-                                + "a fortnight of missing you; the alternative could cost more."));
+                                + "a fortnight of missing you; the alternative could cost more."),
+
+                // --- 17. Running it for real. Last in the table and safely so: each of these is
+                // keyed on an instruction of its own, and no rule above quotes any of them.
+                //
+                // The out-of-hours DESK, not the out-of-hours LINE — the nurse owns that phrase
+                // nine rules up, and the two prompts are one word apart.
+                new Rule(p -> p.contains("cover arrangements"),
+                        p -> "Mr Devos is on call from 19:00 to 08:00 both nights. Ring 061 22 "
+                                + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
+                                + "surgery is in Marche, twenty minutes by car — ring before you "
+                                + "set off, they do not always have someone on site."),
+                new Rule(p -> p.contains("medication paragraph"),
+                        p -> "Half a tablet with his breakfast, every morning, for his hip.\n"
+                                + "Push it into a folded slice of cheese and he takes it without "
+                                + "noticing.\nIf he spits it out, wait ten minutes and try the "
+                                + "other half.\nNever give two to catch up on a missed one."),
+                // One agent, three kinds of question — because the point of the demo is that the
+                // ANSWER is not what changes between tiers, so it had better be a real answer
+                // whichever question is typed in.
+                new Rule(p -> p.contains("desk a worried dog owner reaches"), p -> switch (kind(p)) {
+                    case MEDICAL -> vet(p);
+                    case BEHAVIOUR -> trainer(p);
+                    case BASICS -> everyday(p);
+                }));
     }
 
     private String respond(String prompt) {
@@ -583,7 +610,10 @@ public class MockChatModel implements ChatModel {
 
     private static final String[] MEDICAL_WORDS = {
             "limp", "blood", "bleeding", "vomit", "sick", "swollen", "collapse", "breathing",
-            "not eating", "won't eat", "lump", "sore", "hurt", "injur", "poison", "ate a"
+            "not eating", "won't eat", "lump", "sore", "hurt", "injur", "poison", "ate a",
+            // "eaten a whole bar of dark chocolate" matches none of the above: "eaten a" is not
+            // "ate a". The catalogue's most-used worry was classifying as BASICS.
+            "chocolate"
     };
     private static final String[] BEHAVIOUR_WORDS = {
             "pull", "bark", "bite", "biting", "growl", "jump", "recall", "come back", "lead",

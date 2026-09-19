@@ -57,7 +57,8 @@ public class PatternResource {
     @Path("/{id}/run")
     @Produces(MediaType.SERVER_SENT_EVENTS)
     @RestStreamElementType(MediaType.APPLICATION_JSON)
-    public Multi<RunEvent> run(@PathParam("id") String id, @QueryParam("input") String input) {
+    public Multi<RunEvent> run(@PathParam("id") String id, @QueryParam("input") String input,
+                               @QueryParam("stream") boolean stream) {
         PatternDef def = catalog.byId(id).orElse(null);
         if (def == null) {
             return Multi.createFrom().item(RunEvent.of(0, "agent-error", "-",
@@ -72,8 +73,12 @@ public class PatternResource {
 
         return Multi.createFrom().emitter(em -> pool.submit(() -> {
             AtomicLong seq = new AtomicLong();
-            StreamingListener listener =
-                    new StreamingListener(em::emit, seq, q -> humans.await(runId));
+            // Asked for AND supported: a stream requested on a demo whose last agent cannot
+            // produce one would otherwise take the streaming path, find no TokenStream and
+            // silently behave like the ordinary run, which reads as a broken toggle.
+            StreamingListener listener = new StreamingListener(em::emit, seq,
+                    q -> humans.await(runId), models.tiers(),
+                    stream && def.streams() ? models.currentStreamingModel() : null);
             try {
                 // Asked for per run, not injected once: a run that fell back to the mock re-probes
                 // here, so starting Ollama recovers without restarting the app. Naming the live

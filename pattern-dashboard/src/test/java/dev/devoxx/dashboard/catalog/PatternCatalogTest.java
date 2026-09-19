@@ -13,10 +13,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import dev.devoxx.dashboard.model.MockChatModel;
+import dev.devoxx.dashboard.model.MockStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.devoxx.dashboard.run.AskHuman;
+import dev.devoxx.dashboard.run.ModelTiers;
 import dev.devoxx.dashboard.run.RunEvent;
 import dev.devoxx.dashboard.run.StreamingListener;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,18 @@ class PatternCatalogTest {
     /** Same, with a typed-in input — for patterns whose behaviour depends on what is asked. */
     private static Run run(PatternDef def, String input) {
         return run(def, input, AskHuman.NOBODY);
+    }
+
+    /**
+     * Same, with two distinguishable models. Only the model-routing demo reads them, and it is
+     * the only way to assert which tier it picked: with one model the two tiers are the same
+     * object and every run reports the same name.
+     */
+    private static Run run(PatternDef def, String input, ModelTiers tiers) {
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        var listener = new StreamingListener(events::add, new AtomicLong(), AskHuman.NOBODY,
+                tiers);
+        return new Run(def.run(new MockChatModel(), input, listener), events);
     }
 
     /**
@@ -76,16 +90,22 @@ class PatternCatalogTest {
         for (var info : catalog.infos()) {
             var def = catalog.byId(info.id()).orElseThrow();
             Run r = run(def);
-            r.errors().forEach(e -> failures.add(info.id() + " -> " + e));
+            // One demo is ABOUT a failing call, so an error event there is the subject rather
+            // than a broken demo. The exemption is deliberately narrow: only that pattern, and
+            // only on the step it breaks on purpose — anything else erroring is still a bug,
+            // and the result assertion below still has to hold for it like everything else.
+            r.errors().stream()
+                    .filter(e -> !("resilience".equals(info.id()) && e.contains("SitterCardClerk")))
+                    .forEach(e -> failures.add(info.id() + " -> " + e));
             if (r.result() == null || r.result().isBlank() || "null".equals(r.result())) {
                 // The old conditional-routing bug produced exactly this: no error, no answer.
                 failures.add(info.id() + " -> produced no result (" + r.result() + ")");
             }
         }
 
-        assertEquals(15, catalog.infos().stream()
+        assertEquals(18, catalog.infos().stream()
                         .filter(i -> !i.category().equals("composite")).count(),
-                "expected all 15 patterns registered");
+                "expected all 18 patterns registered");
         assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
     }
 
@@ -246,6 +266,153 @@ class PatternCatalogTest {
                 "the three criteria must be able to disagree: " + votes);
         assertTrue(ballot.result().startsWith("**Majority: LATER"),
                 "two of three said later, so that is the majority: " + ballot.result());
+
+        // The optional step must actually be skipped when its key is absent, and the note must
+        // still come out. A run that quietly answers anyway has not demonstrated optional at
+        // all — it has demonstrated an agent that ignores its own arguments.
+        Run noMeds = run(catalog.byId("resilience").orElseThrow(),
+                "away Friday to Sunday, my sister has him, two scoops morning and evening, "
+                        + "vet 061 22 33 44");
+        assertTrue(noMeds.errors().stream().noneMatch(e -> e.contains("MedicationNote")),
+                "a skipped optional step is not an error: " + noMeds.errors());
+        assertTrue(!noMeds.invoked().contains("MedicationNote"),
+                "with no medication in the message that step must be skipped: "
+                        + noMeds.invoked());
+        assertTrue(noMeds.result().contains("skipped"),
+                "the result must say the step was skipped, or a skip looks like a dog on "
+                        + "nothing: " + noMeds.result());
+    }
+
+    /**
+     * Dynamic model selection has one claim and the answer text cannot carry it: the same agent
+     * with the same prompt produces an answer that looks identical whichever model ran it. So
+     * the test supplies two distinguishable tiers and asserts on which one was chosen.
+     *
+     * <p>Without the tiers this run would be honest but vacuous — both tiers resolve to the one
+     * model the {@code Runner} was given, and {@code ModelTiers.distinct()} is false.
+     */
+    @Test
+    void theExpensiveModelIsUsedOnlyWhereBeingWrongIsExpensive() {
+        var def = new PatternCatalog().byId("modelRouting").orElseThrow();
+        var tiers = ModelTiers.of(new MockChatModel(), "tiny", new MockChatModel(), "big");
+
+        Run poisoning = run(def, def.defaultInput(), tiers);
+        assertTrue(poisoning.errors().isEmpty(), poisoning.errors()::toString);
+        assertTrue(poisoning.result().startsWith("**emergency → big"),
+                "a dog that has eaten chocolate must buy the strong model: "
+                        + poisoning.result());
+
+        // The saving, which is the entire reason to do this: an ordinary question must NOT
+        // reach the expensive tier. This is the assertion that separates the demo from one
+        // that always picks the big model and never says so.
+        Run kibble = run(def, "which food should I buy for a four-year-old shepherd?", tiers);
+        assertTrue(kibble.result().startsWith("**everyday → tiny"),
+                "a kibble question must settle on the cheap model: " + kibble.result());
+
+        // And a behaviour question, so the cheap tier is not merely the default for anything
+        // the classifier fails to recognise.
+        Run pulling = run(def, "he pulls like a train on the lead", tiers);
+        assertTrue(pulling.result().startsWith("**training → tiny"),
+                "a training question does not need the strong model: " + pulling.result());
+    }
+
+    /**
+     * The error handler's claim: the run survives a call that fails, and it survives it by
+     * retrying rather than by pretending. Both halves matter — a demo that swallows the failure
+     * silently looks exactly like one where nothing went wrong.
+     */
+    @Test
+    void theFailingCallIsRetriedAndTheNoteStillReachesTheDoor() {
+        var def = new PatternCatalog().byId("resilience").orElseThrow();
+        Run r = run(def);
+
+        assertTrue(r.result() != null && !r.result().isBlank(), "the note must survive");
+        assertTrue(r.result().contains("061 22 33 44"),
+                "the recovered note still has to satisfy the fridge rules: " + r.result());
+
+        // The clerk's model is called twice for one answer: once to fail, once to succeed.
+        assertTrue(r.result().contains("called 2 times"),
+                "the retry must be visible, or a recovered run looks like a clean one: "
+                        + r.result());
+        assertTrue(r.result().contains("recovered by retry"),
+                "the result must name the recovery: " + r.result());
+
+        // The default input DOES mention a tablet, so the optional step runs here — the mirror
+        // of the skip asserted above. Both paths, or the step is only ever tested one way.
+        assertTrue(r.invoked().contains("MedicationNote"),
+                "with a tablet in the message the optional step must run: " + r.invoked());
+    }
+
+    /**
+     * The streaming toggle's claim is a negative one, and it is the only thing worth asserting:
+     * turning it on changes <b>how the answer arrives and nothing else</b>. The two runs use
+     * different agent interfaces and different model types, so "the answers are identical" is a
+     * real result rather than a tautology — and it is what makes the toggle safe to flip on
+     * stage mid-sentence.
+     */
+    @Test
+    void streamingChangesHowTheAnswerArrivesAndNothingElse() {
+        var catalog = new PatternCatalog();
+        var def = catalog.byId("single").orElseThrow();
+        assertTrue(def.streams(), "demo 1 is the one that offers the toggle");
+
+        // Only the last agent of a run can stream to a screen, and demo 1 is the only entry
+        // that ends on one. A toggle offered where it silently does nothing is worse than none.
+        assertEquals(List.of("single"), catalog.infos().stream()
+                        .filter(PatternDef.PatternInfo::streams)
+                        .map(PatternDef.PatternInfo::id).toList(),
+                "exactly one demo may advertise streaming");
+
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        var listener = new StreamingListener(events::add, new AtomicLong(), AskHuman.NOBODY,
+                null, new MockStreamingChatModel());
+        String streamed = def.run(new MockChatModel(), def.defaultInput(), listener);
+
+        List<RunEvent> tokens = events.stream()
+                .filter(e -> "token".equals(e.type())).toList();
+        assertTrue(tokens.size() > 5,
+                "the answer has to arrive in pieces, or nothing was demonstrated: "
+                        + tokens.size() + " token events");
+        assertTrue(tokens.stream().allMatch(e -> e.message() == null),
+                "a token carries its chunk in data and has nothing to say in message");
+
+        String reassembled = tokens.stream().map(e -> String.valueOf(e.data()))
+                .reduce("", String::concat);
+        assertEquals(streamed, reassembled,
+                "the tokens the page drew must add up to the answer the run returned");
+        assertEquals(run(def).result(), streamed,
+                "streaming must change the delivery and not the answer");
+    }
+
+    /**
+     * The async claim, measured the same way the parallel one is: against a model where every
+     * call costs the same, a sequence carrying one async step finishes in materially less than
+     * the time its agents spent. The Sequential step's own duration is the library's
+     * measurement of the whole thing, which is a better number than one taken out here.
+     */
+    @Test
+    void theAsyncStepOverlapsTheStepsDeclaredAfterIt() {
+        var def = new PatternCatalog().byId("async").orElseThrow();
+        long delay = 200;
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        def.run(slowModel(delay), def.defaultInput(),
+                new StreamingListener(events::add, new AtomicLong()));
+
+        List<RunEvent> done = events.stream()
+                .filter(e -> "agent-after".equals(e.type())).toList();
+        long agentTime = done.stream()
+                .filter(e -> List.of("VetCallback", "MealPlanner", "WalkPlanner")
+                        .contains(e.agent()))
+                .mapToLong(RunEvent::millis).sum();
+        long step = done.stream().filter(e -> "Sequential".equals(e.agent()))
+                .mapToLong(RunEvent::millis).max().orElseThrow();
+
+        assertEquals(3, done.stream().filter(e -> List.of("VetCallback", "MealPlanner",
+                        "WalkPlanner").contains(e.agent())).count(),
+                "all three steps must run: " + done.stream().map(RunEvent::agent).toList());
+        assertTrue(step < agentTime * 0.8,
+                "the async step must overlap the ones after it: the sequence took " + step
+                        + "ms against " + agentTime + "ms of agent time");
     }
 
     /**
@@ -580,6 +747,41 @@ class PatternCatalogTest {
         assertTrue(nodes(catalog, "parallelMapper").stream().anyMatch(Topology.Node::stacked),
                 "the mapped agent must be drawn as a stack");
 
+        // The async step's whole claim is that it SPANS the steps after it. Drawn as a plain
+        // chain the picture is demo 2 exactly, and the one thing that differs — that the vet is
+        // still working while the planners run — is the thing not on the page. The skip-ahead
+        // edge is what says it, and in a stages layout it arcs over the boxes between its ends.
+        var spanning = edges(catalog, "async").stream()
+                .filter(e -> e.from().equals("vet") && e.to().equals("join")).toList();
+        assertEquals(1, spanning.size(), "the async step must reach the join directly");
+        assertTrue(spanning.get(0).label() != null && spanning.get(0).label().contains("read"),
+                "the long edge has to say that the READ is the join, not the step: "
+                        + spanning.get(0).label());
+        assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "vet"),
+                "the async edge must skip columns, or it is drawn flat and disappears behind "
+                        + "the boxes it passes");
+
+        // Neither recovery is a route through the graph — a retry re-enters the same step and a
+        // skip removes one — so both live on the boxes. If they were edges the picture would
+        // invent paths no run ever takes; if they were nowhere it would be a plain sequence.
+        var resilienceSubs = nodes(catalog, "resilience").stream()
+                .map(Topology.Node::sub).filter(java.util.Objects::nonNull).toList();
+        assertTrue(resilienceSubs.stream().anyMatch(s -> s.contains("retried")),
+                "the diagram must show which step is retried: " + resilienceSubs);
+        assertTrue(resilienceSubs.stream().anyMatch(s -> s.contains("optional")),
+                "the diagram must show which step may be skipped: " + resilienceSubs);
+        assertNull(role(catalog, "resilience", "router"),
+                "nothing here routes: an optional step is skipped, not branched around");
+
+        // One desk box, not two. Two boxes both labelled DutyDesk would both light up on a run
+        // (nodes are marked by agent name), which would say both models answered.
+        assertEquals(1, nodes(catalog, "modelRouting").stream()
+                        .filter(n -> "DutyDesk".equals(n.label())).count(),
+                "the one agent must be drawn once, or the run marks two boxes for one call");
+        assertTrue(nodes(catalog, "modelRouting").stream()
+                        .anyMatch(n -> n.sub() != null && n.sub().contains("strong")),
+                "the desk box has to say that its model is the variable");
+
         // The supervisor's nurse is called first and the rest only if she says so; a symmetric
         // star would say all four are equal peers, which is a fan-out.
         assertTrue(nodes(catalog, "supervisor").stream()
@@ -665,6 +867,14 @@ class PatternCatalogTest {
 
     private static long inDegree(PatternCatalog c, String id, String node) {
         return edges(c, id).stream().filter(e -> e.to().equals(node)).count();
+    }
+
+    /** Which column a node is pinned to in a {@code stages} diagram. */
+    private static int stageOf(PatternCatalog c, String id, String node) {
+        return nodes(c, id).stream().filter(n -> n.id().equals(node))
+                .map(Topology.Node::stage).filter(java.util.Objects::nonNull)
+                .findFirst().orElseThrow(() -> new AssertionError(
+                        id + ": node '" + node + "' has no stage"));
     }
 
     private static boolean mutual(PatternCatalog c, String id, String a, String b) {

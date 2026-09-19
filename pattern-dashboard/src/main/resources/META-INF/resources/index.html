@@ -77,6 +77,13 @@
       <input id="input" placeholder="input for the pattern"/>
       <button class="btn-run" id="run" title="Run this pattern">Run</button>
       <button class="btn-reset" id="reset" title="Clear the run and start over">Reset</button>
+      <!-- Shown only on the demo whose last agent returns a TokenStream. A toggle that does
+           nothing on nineteen of twenty patterns reads as a broken control, not an absent
+           feature, so the page asks the catalogue rather than guessing. -->
+      <label class="toggle" id="p-stream-wrap" hidden
+             title="Run the agent on a streaming model and show the answer as it is generated">
+        <input type="checkbox" id="p-stream"/> stream tokens
+      </label>
       <!-- How long the last run took. Hidden until there has been one, and hidden again the
            moment you reset or switch pattern: a stale number next to a Run button reads as
            this run's. -->
