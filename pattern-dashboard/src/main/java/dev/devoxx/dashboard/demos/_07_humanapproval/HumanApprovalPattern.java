@@ -18,7 +18,7 @@ import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Decision;
-import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Draft;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Instruction;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -45,17 +45,17 @@ public final class HumanApprovalPattern {
         var care = AgenticServices.agentBuilder(EverydayCare.class)
                 .chatModel(model)
                 .name("EverydayCare")
-                .outputKey(Draft.class)
+                .outputKey(Answer.class)
                 .build();
         var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                 .chatModel(model)
                 .name("DogTrainer")
-                .outputKey(Draft.class)
+                .outputKey(Answer.class)
                 .build();
         var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                 .chatModel(model)
                 .name("EmergencyVet")
-                .outputKey(Draft.class)
+                .outputKey(Answer.class)
                 .build();
         UntypedAgent triage = AgenticServices.conditionalBuilder()
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
@@ -71,14 +71,14 @@ public final class HumanApprovalPattern {
                 // HumanInTheLoopBuilder has no TypedKey overload — unlike AgentBuilder and
                 // the workflow builders — so the key is asked for its own name here. Worth
                 // noticing on stage: the typing is as good as the narrowest API you touch.
-                .inputKey(String.class, new Draft().name())
+                .inputKey(String.class, new Answer().name())
                 .outputKey(new Decision().name())
                 .responseProvider(scope -> listener.askHuman("You", """
                         This is what the desk says, and your sitter is waiting on it. \
                         Approve it, change it, or refuse it — nothing is passed on until \
                         you say.
 
-                        """ + requireNonNullElse(scope.readState(Draft.class), "")))
+                        """ + requireNonNullElse(scope.readState(Answer.class), "")))
                 .build();
 
         var last = AgenticServices.agentBuilder(FinalNote.class)
@@ -100,7 +100,7 @@ public final class HumanApprovalPattern {
         if (scope == null) {
             return String.valueOf(r.result());
         }
-        String draft = requireNonNullElse(scope.readState(Draft.class), "")
+        String draft = requireNonNullElse(scope.readState(Answer.class), "")
                 .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
         String decisionText = requireNonNullElse(scope.readState(Decision.class), "");
         String instructionText = requireNonNullElse(scope.readState(Instruction.class), "");

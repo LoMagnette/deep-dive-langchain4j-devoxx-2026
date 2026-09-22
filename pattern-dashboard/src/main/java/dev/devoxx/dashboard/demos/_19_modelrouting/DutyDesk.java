@@ -1,6 +1,7 @@
 package dev.devoxx.dashboard.demos._19_modelrouting;
 
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
@@ -11,7 +12,8 @@ import dev.langchain4j.service.UserMessage;
  * variable, so anything that changes between the two runs came from the tier and nowhere else.
  */
 public interface DutyDesk {
-    @Agent(description = "Answers a dog owner's worry, whatever kind it is")
+    @Agent(name = "DutyDesk", description = "Answers a dog owner's worry, whatever kind it is",
+           typedOutputKey = Answer.class)
     @UserMessage("""
             You are the desk a worried dog owner reaches. Answer the worry below directly and
             practically: what to do now, and whether it needs a vet today. Keep it short.

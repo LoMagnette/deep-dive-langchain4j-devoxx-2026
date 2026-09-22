@@ -6,17 +6,12 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.demos._01_single.SinglePattern.SITTER_MESSAGE;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Message;
-import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.Checklist;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -29,20 +24,14 @@ public final class SequentialPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
-                .chatModel(model)
-                .name("NoteRetriever")
-                .outputKey(Notes.class)
-                .build();
-        var list = AgenticServices.agentBuilder(FridgeMagnet.class)
-                .chatModel(model)
-                .name("FridgeMagnet")
-                .outputKey(Checklist.class)
-                .build();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk, list).outputKey(Checklist.class).listener(listener).build();
-        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
-        return String.valueOf(r.result());
+        CurrentRun.set(listener);
+        SequentialSystem app;
+        try {
+            app = AgenticServices.createAgenticSystem(SequentialSystem.class, model);
+        } finally {
+            CurrentRun.clear();
+        }
+        return app.write(input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

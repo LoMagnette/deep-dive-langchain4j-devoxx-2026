@@ -1,12 +1,14 @@
 package dev.devoxx.dashboard.demos._18_seconddogcouncil;
 
 import dev.devoxx.dashboard.demos._14_debate.Keys.Motion;
+import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface HouseholdVerdict {
-    @Agent(description = "Rules on the council's motion, and on what condition")
+    @Agent(name = "HouseholdVerdict", description = "Rules on the council's motion, and on what condition",
+           typedOutputKey = Verdict.class)
     @UserMessage("""
             You chair the household council. Rule on the motion, name the one fact that
             decided it, and set one condition.

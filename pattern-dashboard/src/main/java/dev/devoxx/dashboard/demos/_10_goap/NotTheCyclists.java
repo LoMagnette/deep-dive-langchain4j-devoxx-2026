@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface NotTheCyclists {
-    @Agent(description = "The last step: cyclists, who are fast, silent and do not negotiate")
+    @Agent(name = "NotTheCyclists", description = "The last step: cyclists, who are fast, silent and do not negotiate",
+           typedOutputKey = Keys.Cyclists.class)
     @UserMessage("""
             Give the cyclist step, which comes last because it is the hardest: they are fast,
             they are silent, and unlike the children they do not stop when told. Say what the

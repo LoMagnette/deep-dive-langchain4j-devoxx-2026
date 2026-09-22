@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface EmergencyVet {
-    @Agent(description = "Answers when the dog may be in danger right now")
+    @Agent(name = "EmergencyVet", description = "Answers when the dog may be in danger right now",
+           typedOutputKey = Keys.Answer.class)
     @UserMessage("""
             You are the emergency vet on the telephone. Say what the owner must do in the next
             ten minutes, and whether this is a get-in-the-car-now case. Be brief. Some of these

@@ -3,21 +3,16 @@ package dev.devoxx.dashboard.demos._03_loop;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Parsing.score;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
-import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -30,29 +25,24 @@ public final class LoopPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
-        // its own previous answer, which is why its input key is 'notes' rather than 'card'.
-        var writer = AgenticServices.agentBuilder(FridgeMagnet.class)
-                .chatModel(model)
-                .name("FridgeMagnet")
-                .outputKey(Notes.class)
-                .build();
-        var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
-                .chatModel(model)
-                .name("RuffDraftCritic")
-                .outputKey(Score.class)
-                .build();
-        Predicate<AgenticScope> good = s -> score(s.readState(Score.class)) >= 0.8;
-        UntypedAgent app = AgenticServices.loopBuilder()
-                .subAgents(writer, check)
-                .maxIterations(5)
-                .exitCondition(good)
-                .testExitAtLoopEnd(true)
-                .outputKey(Notes.class)
-                .listener(listener)
-                .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
-        return String.valueOf(r.result());
+        // The whole topology now lives on LoopSystem's annotations, including demo 2's agent
+        // reused by class. What is left here is the two things the framework cannot know: which
+        // model this run is against, and which run's listener is watching.
+        //
+        // The model is a parameter, which is clean. The listener is not: the declarative hook
+        // for it is a static no-arg method, so it has to be reachable ambiently while the
+        // system is BUILT. Build is synchronous on this thread, so the bracket is this narrow —
+        // and the finally is not optional, because runs come off a pool of four.
+        CurrentRun.set(listener);
+        LoopSystem app;
+        try {
+            app = AgenticServices.createAgenticSystem(LoopSystem.class, model);
+        } finally {
+            CurrentRun.clear();
+        }
+        // Typed, so no Map of string keys to build and no cast on the way out — the other half
+        // of what the declarative form buys.
+        return app.refine(input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

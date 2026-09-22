@@ -12,7 +12,8 @@ import dev.langchain4j.service.UserMessage;
  * defensively — see {@link dev.devoxx.dashboard.support.Parsing#score}.
  */
 public interface RuffDraftCritic {
-    @Agent(description = "Checks a sitter note against the four fridge-door rules")
+    @Agent(name = "RuffDraftCritic", description = "Checks a sitter note against the four fridge-door rules",
+           typedOutputKey = Keys.Score.class)
     @UserMessage("""
             Check this note against four rules: every meal has a time and an amount, it says
             where the lead and poo bags are, it gives the vet's telephone number, and it is

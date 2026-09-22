@@ -3,21 +3,14 @@ package dev.devoxx.dashboard.demos._06_conditional;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Parsing.category;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -30,46 +23,16 @@ public final class ConditionalPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var router = AgenticServices.agentBuilder(WorryRouter.class)
-                .chatModel(model)
-                .name("WorryRouter")
-                .outputKey(Category.class)
-                .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
-                .chatModel(model)
-                .name("EmergencyVet")
-                .outputKey(Answer.class)
-                .build();
-        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                .chatModel(model)
-                .name("DogTrainer")
-                .outputKey(Answer.class)
-                .build();
-        var care = AgenticServices.agentBuilder(EverydayCare.class)
-                .chatModel(model)
-                .name("EverydayCare")
-                .outputKey(Answer.class)
-                .build();
-        Predicate<AgenticScope> isEmergency =
-                s -> category(s.readState(Category.class)).equals("emergency");
-        Predicate<AgenticScope> isTraining =
-                s -> category(s.readState(Category.class)).equals("training");
-        Predicate<AgenticScope> isEveryday =
-                s -> category(s.readState(Category.class)).equals("everyday");
-        UntypedAgent routed = AgenticServices.conditionalBuilder()
-                .subAgents(isEmergency, vet)
-                .subAgents(isTraining, trainer)
-                .subAgents(isEveryday, care)
-                .build();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(router, routed)
-                .outputKey(Answer.class)
-                .listener(listener)
-                .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
+        CurrentRun.set(listener);
+        ConditionalSystem app;
+        try {
+            app = AgenticServices.createAgenticSystem(ConditionalSystem.class, model);
+        } finally {
+            CurrentRun.clear();
+        }
         // Each desk ends by saying whether it could answer. That word is what the custom
         // planner's ladder branches on nine demos later; here it is protocol, not prose.
-        return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+        return app.triage(input).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
     }
 
     /** How the page draws it, and what the catalogue shows. */

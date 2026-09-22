@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface LeadDeveloper {
-    @Agent(description = "Plans the dog's walks for the days the owners are away")
+    @Agent(name = "LeadDeveloper", description = "Plans the dog's walks for the days the owners are away",
+           typedOutputKey = Keys.Walks.class)
     @UserMessage("""
             Plan the dog's walks for the days the owners are away: when, how long, on or off
             the lead, and anywhere to avoid. Be brief.

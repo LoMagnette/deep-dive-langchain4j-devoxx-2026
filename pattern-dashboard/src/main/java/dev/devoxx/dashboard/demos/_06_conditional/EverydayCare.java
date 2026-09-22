@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface EverydayCare {
-    @Agent(description = "Answers the ordinary questions about living with a dog")
+    @Agent(name = "EverydayCare", description = "Answers the ordinary questions about living with a dog",
+           typedOutputKey = Keys.Answer.class)
     @UserMessage("""
             You answer everyday dog questions — food, grooming, kit, routine. Give a short,
             practical answer.

@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface TeamOnTheBed {
-    @Agent(description = "Argues for the dog on the bed, and signs when the rule is one it can keep")
+    @Agent(name = "TeamOnTheBed", description = "Argues for the dog on the bed, and signs when the rule is one it can keep",
+           typedOutputKey = Keys.Proposal.class)
     @UserMessage("""
             You are the one who wants him on the bed. The other half of this household does
             not, and neither of you can overrule the other — so the only thing that ends this

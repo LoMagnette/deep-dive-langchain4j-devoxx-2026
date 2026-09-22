@@ -10,7 +10,5 @@ public final class Keys {
 
     public record Decision() implements TypedKey<String> {}
 
-    public record Draft() implements TypedKey<String> {}
-
     public record Instruction() implements TypedKey<String> {}
 }

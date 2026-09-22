@@ -10,7 +10,8 @@ import dev.langchain4j.service.UserMessage;
  * of the contract, which is exactly why {@code async} is set on the builder and not here.
  */
 public interface VetCallback {
-    @Agent(description = "Gets the out-of-hours cover details from the vet's practice")
+    @Agent(name = "VetCallback", description = "Gets the out-of-hours cover details from the vet's practice",
+           typedOutputKey = Keys.VetLine.class)
     @UserMessage("""
             You are the vet practice's out-of-hours desk, answering a slow callback.
             Give the cover arrangements for the dates below in two or three lines: who is on

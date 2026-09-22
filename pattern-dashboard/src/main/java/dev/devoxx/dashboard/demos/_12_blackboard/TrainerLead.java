@@ -6,7 +6,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface TrainerLead {
-    @Agent(description = "Reads the whole board and ranks the likely causes")
+    @Agent(name = "TrainerLead", description = "Reads the whole board and ranks the likely causes",
+           typedOutputKey = Keys.Causes.class)
     @UserMessage("""
             You are the trainer. From everything on the board, give the two or three most
             likely causes, most likely first, and the one thing to try for each.

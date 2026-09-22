@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface AskZaoHimself {
-    @Agent(description = "Votes on a second dog from the point of view of the dog they have")
+    @Agent(name = "AskZaoHimself", description = "Votes on a second dog from the point of view of the dog they have",
+           typedOutputKey = Keys.ZaoVote.class)
     @UserMessage("""
             Should this household get a second dog? Judge ONLY from the point of view of the
             dog they already have — does he actually like other dogs? Ignore everything else.

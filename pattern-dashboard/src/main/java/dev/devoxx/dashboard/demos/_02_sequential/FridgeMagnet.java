@@ -9,7 +9,8 @@ import dev.langchain4j.service.UserMessage;
  * <b>Sequential</b>
  */
 public interface FridgeMagnet {
-    @Agent(description = "Writes the checklist that goes on the fridge door")
+    @Agent(name = "FridgeMagnet", description = "Writes the checklist that goes on the fridge door",
+           typedOutputKey = Notes.class)
     @UserMessage("""
             Turn this into the checklist that goes on the fridge door: the times of day in
             order, one line each, nothing the sitter has to work out for themselves. All four

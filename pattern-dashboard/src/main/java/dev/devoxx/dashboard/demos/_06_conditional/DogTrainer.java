@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DogTrainer {
-    @Agent(description = "Answers questions about behaviour and training")
+    @Agent(name = "DogTrainer", description = "Answers questions about behaviour and training",
+           typedOutputKey = Keys.Answer.class)
     @UserMessage("""
             You are the dog trainer. Give the owner one thing to change this week and one
             thing to stop doing. Be brief.

@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface NotTheChildren {
-    @Agent(description = "The second step: the children, who scatter and scream, once the hoover is solid")
+    @Agent(name = "NotTheChildren", description = "The second step: the children, who scatter and scream, once the hoover is solid",
+           typedOutputKey = Keys.Children.class)
     @UserMessage("""
             Give the children step, which comes after the hoover step and must build on it.
             Harder, because children scatter and scream, and to a cattle dog that is a herd

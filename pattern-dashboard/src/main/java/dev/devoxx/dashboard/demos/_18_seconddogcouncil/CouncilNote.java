@@ -1,12 +1,14 @@
 package dev.devoxx.dashboard.demos._18_seconddogcouncil;
 
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
+import dev.devoxx.dashboard.demos._13_voting.Keys.Household;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface CouncilNote {
-    @Agent(description = "Restates the ruling as the household line the assessors will ratify")
+    @Agent(name = "CouncilNote", description = "Restates the ruling as the household line the assessors will ratify",
+           typedOutputKey = Household.class)
     @UserMessage("""
             Restate this ruling as one line describing the household as it would be if the
             ruling is carried out, so the assessors can vote on it.

@@ -8,17 +8,13 @@ import static java.util.Objects.requireNonNullElse;
 import static java.util.stream.Collectors.joining;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.IntStream;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Beard;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Verdicts;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -31,36 +27,26 @@ public final class ParallelMapperPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The mapper collects each per-item invocation under the agent's outputKey, and binds
-        // the item itself to the sub-agent's first argument.
-        var check = AgenticServices.agentBuilder(BeardOverflow.class)
-                .chatModel(model)
-                .name("BeardOverflow")
-                .outputKey(Verdict.class)
-                .build();
-        UntypedAgent app = AgenticServices.parallelMapperBuilder()
-                .subAgents(check)
-                .itemsProvider(new Beard().name())
-                .outputKey(Verdicts.class)
-                .listener(listener)
-                .build();
+        CurrentRun.set(listener);
+        ParallelMapperSystem app;
+        try {
+            app = AgenticServices.createAgenticSystem(ParallelMapperSystem.class, model);
+        } finally {
+            CurrentRun.clear();
+        }
         // The items come from what the user typed (comma- or semicolon-separated), not a
         // hard-coded list — otherwise the input box on the page has no effect here.
         List<String> found = items(input);
-        var r = app.invokeWithAgenticScope(Map.of(new Beard().name(), found));
-        // Paired back with the item each verdict is about — the mapper preserves order, and
-        // five unlabelled verdicts would leave the room counting. Verdicts is a
-        // TypedKey<List<String>>, so this reads as a List with no cast.
-        var scope = r.agenticScope();
-        List<String> said = scope == null ? List.of()
-                : requireNonNullElse(scope.readState(Verdicts.class), List.<String>of());
-        if (!said.isEmpty()) {
-            return IntStream.range(0, said.size())
-                    .mapToObj(i -> "- **" + (i < found.size() ? found.get(i) : "item " + i)
-                            + "** — " + said.get(i))
-                    .collect(joining("\n"));
+        // Typed all the way out: the mapper's gathered verdicts arrive as a List<String> with
+        // no cast and no scope read, and the order matches the items that produced them.
+        List<String> said = requireNonNullElse(app.check(found), List.<String>of());
+        if (said.isEmpty()) {
+            return "nothing came back";
         }
-        return String.valueOf(r.result());
+        return IntStream.range(0, said.size())
+                .mapToObj(i -> "- **" + (i < found.size() ? found.get(i) : "item " + i)
+                        + "** — " + said.get(i))
+                .collect(joining("\n"));
     }
 
     /** How the page draws it, and what the catalogue shows. */

@@ -5,7 +5,8 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface MoneyAndVet {
-    @Agent(description = "Votes on a second dog on what two dogs cost")
+    @Agent(name = "MoneyAndVet", description = "Votes on a second dog on what two dogs cost",
+           typedOutputKey = Keys.MoneyVote.class)
     @UserMessage("""
             Should this household get a second dog? Judge ONLY what a second dog costs —
             food, insurance, vet bills, boarding when they travel. Ignore everything else.
