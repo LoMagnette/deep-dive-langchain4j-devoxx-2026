@@ -11,24 +11,9 @@ public final class Keys {
     /**
      * The rule both halves will actually keep. Writing this is what ends the negotiation.
      */
-    public record Agreement() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "agreement";
-        }
-    }
+    public record Agreement() implements TypedKey<String> {}
 
-    public record Proposal() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "proposal";
-        }
-    }
+    public record Proposal() implements TypedKey<String> {}
 
-    public record Question() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "question";
-        }
-    }
+    public record Question() implements TypedKey<String> {}
 }

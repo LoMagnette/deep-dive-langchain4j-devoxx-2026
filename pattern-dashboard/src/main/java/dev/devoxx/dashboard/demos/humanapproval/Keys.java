@@ -8,24 +8,9 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Decision() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "decision";
-        }
-    }
+    public record Decision() implements TypedKey<String> {}
 
-    public record Draft() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "draft";
-        }
-    }
+    public record Draft() implements TypedKey<String> {}
 
-    public record Instruction() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "instruction";
-        }
-    }
+    public record Instruction() implements TypedKey<String> {}
 }

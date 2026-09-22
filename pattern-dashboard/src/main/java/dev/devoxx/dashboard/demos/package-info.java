@@ -43,11 +43,20 @@
  * later demos the way agents are. A key is the contract between two agents that never see each
  * other, and nothing checks the spellings match. Four things to know before writing one:
  * they must be records (the framework instantiates a key to ask its name, so an interface fails
- * with "doesn't have a no-args constructor"); each overrides {@code name()} to return the
- * lowercase string, which is why the {@code @V} parameters and the placeholders in the prompts
- * are untouched; the input side is still bound by name, so {@code @V} and
- * {@code HumanInTheLoopBuilder.outputKey} take {@code new Draft().name()}; and a typed read
- * returns {@code null} when the key is absent rather than falling back to
- * {@code defaultValue()}, which is a builder-level mechanism.
+ * with "doesn't have a no-args constructor"); <b>a key declares nothing but its type</b> —
+ * {@code TypedKey.name()} defaults to the record's simple name, so {@code Notes} is the key
+ * {@code "Notes"} and the prompt placeholder is spelled the same way; <b>the input side is typed
+ * too</b> — a parameter takes {@code @K(Notes.class)}, not {@code @V("Notes")}, so
+ * neither end of the contract is a string the compiler cannot see; and a typed read returns
+ * {@code null} when the key is absent rather than falling back to {@code defaultValue()}, which
+ * on the <i>input</i> side {@code @K} does honour.
+ *
+ * <p>Two places still spell a key out, and both are the API's limit rather than a choice:
+ * {@code HumanInTheLoopBuilder} has no {@code TypedKey} overload where {@code AgentBuilder} does,
+ * so those sites read {@code new Draft().name()}; and the parallel mapper's item is bound to the
+ * sub-agent's <i>first argument</i> positionally, so {@code @V("food")} and {@code @V("angle")}
+ * name nothing in the scope and deliberately have no {@code Keys} entry. They are the only
+ * {@code @V} left in the demos, which is worth pointing at on stage: the typing is only ever as
+ * good as the narrowest API you touch.
  */
 package dev.devoxx.dashboard.demos;

@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.debate;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface LeaveHimAdvocate {
     @Agent(description = "Argues for leaving the dog at home with a sitter")
@@ -11,6 +11,6 @@ public interface LeaveHimAdvocate {
             the strongest objection to leaving him honestly rather than dodging it. Two or
             three sentences.
 
-            Motion: {{motion}}""")
-    String argue(@V("motion") String motion);
+            Motion: {{Motion}}""")
+    String argue(@K(Keys.Motion.class) String motion);
 }

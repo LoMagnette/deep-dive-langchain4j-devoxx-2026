@@ -259,8 +259,11 @@ An agent lives in the demo that **introduces** it, and later demos import it fro
 rather than re-implementing them, and its import list says so before a word of explanation.
 
 Every scope key is a `TypedKey`, never a string literal, and each demo has a `Keys.java` for the
-ones it introduces. `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on
-a relapse.
+ones it introduces. A key is a record with no body — `public record Notes() implements
+TypedKey<String> {}` — because `TypedKey.name()` already defaults to the record's simple name, so
+the key is `"Notes"`, the `{{Notes}}` placeholders match it, and a parameter takes
+`@K(Notes.class)` rather than `@V("Notes")` so neither end of the contract is a string.
+`noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 
 The frontend is four static files with no build step: `index.html`, `app.css`, `render.js` (pure
 rendering — escaping, the markdown subset, topology layout and drawing) and `app.js` (routing, the

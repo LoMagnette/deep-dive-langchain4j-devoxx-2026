@@ -13,18 +13,8 @@ public final class Keys {
      * optional step that reads it. Most dogs are not on anything, so most runs never write this
      * key, and an agent that declares it must be prepared to be skipped.
      */
-    public record Meds() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "meds";
-        }
-    }
+    public record Meds() implements TypedKey<String> {}
 
     /** The medication paragraph, when there was one to write. */
-    public record MedNote() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "mednote";
-        }
-    }
+    public record MedNote() implements TypedKey<String> {}
 }

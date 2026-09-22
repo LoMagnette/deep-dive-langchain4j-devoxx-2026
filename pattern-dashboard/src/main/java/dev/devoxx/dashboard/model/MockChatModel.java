@@ -438,13 +438,22 @@ public class MockChatModel implements ChatModel {
      *
      * <p>Try it: an input the trainer can answer ends after one call.
      */
+    /**
+     * The argument the nurse and the three desks all take. A planner's JSON names the agent's
+     * parameter, so this is {@code demos.conditional.Keys.Worry} spelled out — the mock cannot
+     * import it without making the offline model depend on the demos, so it is named here
+     * instead of hidden inside two string concatenations.
+     */
+    private static final String WORRY_ARG = "Worry";
+
     private String supervisorPlan(String prompt) {
         boolean firstRound = prompt.toLowerCase(Locale.ROOT)
                 .contains("last received response is: ''");
         String req = jsonEscape(between(prompt, "The user request is: '", "'."));
         if (firstRound) {
             plannerStep.set(1);
-            return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"worry\":\"" + req + "\"}}";
+            return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"" + WORRY_ARG + "\":\""
+                    + req + "\"}}";
         }
         // ONLY the last response, never the whole prompt: the supervisor context spells out
         // every phrase the nurse can use, so scanning the page would match them all.
@@ -454,8 +463,8 @@ public class MockChatModel implements ChatModel {
                 : last.contains("needs: everyday") ? "EverydayCare"
                 : null;
         if (needs != null && plannerStep.incrementAndGet() == 2) {
-            return "{\"agentName\":\"" + needs + "\",\"arguments\":{\"worry\":\"" + req
-                    + "\"}}";
+            return "{\"agentName\":\"" + needs + "\",\"arguments\":{\"" + WORRY_ARG + "\":\""
+                    + req + "\"}}";
         }
         return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"The nurse named who it "
                 + "needed and they have answered.\"}}";

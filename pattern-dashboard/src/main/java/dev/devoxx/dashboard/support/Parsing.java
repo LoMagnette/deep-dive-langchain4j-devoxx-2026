@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * <p>These take the model's answer as a plain {@code String} rather than reaching into an
  * {@code AgenticScope} themselves. That is deliberate: reading the scope is LangChain4j API and
  * belongs in the demo where the room can see it, so a predicate reads
- * {@code scope.readState("score", "")} and hands the text here. What is left in this class is
+ * {@code scope.readState(Score.class)} and hands the text here. What is left in this class is
  * only the part that is ours — the parsing no framework can do for you.
  * Every method here exists because a real model broke a pattern in a way that produced no
  * error at all — a score as prose, a category wrapped in a sentence, a list that wasn't one.

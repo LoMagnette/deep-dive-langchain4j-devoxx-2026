@@ -8,28 +8,13 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Answer() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "answer";
-        }
-    }
+    public record Answer() implements TypedKey<String> {}
 
     /**
      * Which desk the router picked. One of emergency, training, everyday — see
      * Parsing.category, which is what keeps it honest.
      */
-    public record Category() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "category";
-        }
-    }
+    public record Category() implements TypedKey<String> {}
 
-    public record Worry() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "worry";
-        }
-    }
+    public record Worry() implements TypedKey<String> {}
 }

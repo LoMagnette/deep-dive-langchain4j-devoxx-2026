@@ -1,9 +1,9 @@
 package dev.devoxx.dashboard.demos.single;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * {@link SitterCardClerk} with one thing changed: it returns a {@link TokenStream} instead of a
@@ -26,6 +26,6 @@ public interface StreamingSitterCardClerk {
             Watch out for:
             Vet:
 
-            Message: {{message}}""")
-    TokenStream card(@V("message") String message);
+            Message: {{Message}}""")
+    TokenStream card(@K(Keys.Message.class) String message);
 }

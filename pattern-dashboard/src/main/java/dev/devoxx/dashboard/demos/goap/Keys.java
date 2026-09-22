@@ -8,31 +8,11 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Garden() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "garden";
-        }
-    }
+    public record Garden() implements TypedKey<String> {}
 
-    public record Goal() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "goal";
-        }
-    }
+    public record Goal() implements TypedKey<String> {}
 
-    public record Indoor() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "indoor";
-        }
-    }
+    public record Indoor() implements TypedKey<String> {}
 
-    public record Park() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "park";
-        }
-    }
+    public record Park() implements TypedKey<String> {}
 }

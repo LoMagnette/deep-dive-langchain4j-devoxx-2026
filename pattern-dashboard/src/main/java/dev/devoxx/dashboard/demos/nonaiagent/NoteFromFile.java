@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.nonaiagent;
 
+import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * The one step here that genuinely needs a model: turning a row of fields into something a person
@@ -17,8 +18,8 @@ public interface NoteFromFile {
             the record does not contain. Under 120 words.
 
             The record:
-            {{facts}}
+            {{Facts}}
 
-            The stay: {{stay}}""")
-    String write(@V("facts") String facts, @V("stay") String stay);
+            The stay: {{Stay}}""")
+    String write(@K(Keys.Facts.class) String facts, @K(Stay.class) String stay);
 }

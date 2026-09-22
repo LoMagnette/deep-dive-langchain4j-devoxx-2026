@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.humanapproval;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface FinalNote {
     @Agent(description = "Writes what the sitter is told, once a person has had their say")
@@ -14,7 +14,7 @@ public interface FinalNote {
 
             Never reinstate anything they took out.
 
-            The draft: {{draft}}
-            What they said: {{decision}}""")
-    String write(@V("draft") String draft, @V("decision") String decision);
+            The draft: {{Draft}}
+            What they said: {{Decision}}""")
+    String write(@K(Keys.Draft.class) String draft, @K(Keys.Decision.class) String decision);
 }

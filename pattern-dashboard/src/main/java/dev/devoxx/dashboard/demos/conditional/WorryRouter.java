@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface WorryRouter {
     @Agent(description = "Sends the owner's worry to the one who can actually answer it")
@@ -11,6 +11,6 @@ public interface WorryRouter {
             Anything the dog has eaten that could poison him, and anything about breathing,
             bleeding or collapse, is always emergency. Return one word only.
 
-            Worry: {{worry}}""")
-    String classify(@V("worry") String worry);
+            Worry: {{Worry}}""")
+    String classify(@K(Keys.Worry.class) String worry);
 }

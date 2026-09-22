@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface EmergencyVet {
     @Agent(description = "Answers when the dog may be in danger right now")
@@ -14,6 +14,6 @@ public interface EmergencyVet {
             You are the last person there is to ask, so always end with exactly one word on its
             own line: ANSWERED.
 
-            Worry: {{worry}}""")
-    String handle(@V("worry") String worry);
+            Worry: {{Worry}}""")
+    String handle(@K(Keys.Worry.class) String worry);
 }

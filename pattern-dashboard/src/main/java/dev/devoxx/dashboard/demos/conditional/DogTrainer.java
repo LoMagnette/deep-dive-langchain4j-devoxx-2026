@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface DogTrainer {
     @Agent(description = "Answers questions about behaviour and training")
@@ -18,6 +18,6 @@ public interface DogTrainer {
             End with exactly one word on its own line: ANSWERED if you fully covered it, or
             ESCALATE if you are handing it on to someone else.
 
-            Worry: {{worry}}""")
-    String handle(@V("worry") String worry);
+            Worry: {{Worry}}""")
+    String handle(@K(Keys.Worry.class) String worry);
 }

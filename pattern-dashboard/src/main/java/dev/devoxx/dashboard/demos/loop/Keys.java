@@ -13,10 +13,5 @@ public final class Keys {
      * prose like 'I would rate this 0.85' and a double return type blows the loop up. See
      * Parsing.score.
      */
-    public record Score() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "score";
-        }
-    }
+    public record Score() implements TypedKey<String> {}
 }

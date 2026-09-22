@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.sequential;
 
+import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * <b>Sequential</b>
@@ -26,6 +27,6 @@ public interface FridgeChecklist {
             3. it gives the vet's telephone number
             4. under 100 words, so it fits on the door
 
-            What we know so far: {{notes}}""")
-    String checklist(@V("notes") String notes);
+            What we know so far: {{Notes}}""")
+    String checklist(@K(Notes.class) String notes);
 }

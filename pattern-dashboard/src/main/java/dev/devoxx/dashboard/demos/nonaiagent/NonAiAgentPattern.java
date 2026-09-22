@@ -71,7 +71,7 @@ public final class NonAiAgentPattern {
                 "Demo 7 said a HumanInTheLoop is a non-AI agent. This is the general "
                         + "case: your own class, no model, same wiring.",
                 "An agent does not have to be a model. Any object with one `@Agent` method goes "
-                        + "straight into `subAgents(...)` — its `@V` parameters are bound from the "
+                        + "straight into `subAgents(...)` — its `@K` parameters are bound from the "
                         + "scope and its return value is written to its output key, so **the "
                         + "sequence cannot tell**. Here Java is on both ends: the file supplies "
                         + "the numbers, the model writes the prose, and a plain `String::contains` "

@@ -13,10 +13,5 @@ public final class Keys {
      * never be generated. A non-AI agent writes this key, and nothing downstream can tell the
      * difference — which is the point.
      */
-    public record Facts() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "facts";
-        }
-    }
+    public record Facts() implements TypedKey<String> {}
 }

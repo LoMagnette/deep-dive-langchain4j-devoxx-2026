@@ -11,31 +11,11 @@ public final class Keys {
     /**
      * The ranked differential. Writing this is the goal state.
      */
-    public record Causes() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "causes";
-        }
-    }
+    public record Causes() implements TypedKey<String> {}
 
-    public record Home() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "home";
-        }
-    }
+    public record Home() implements TypedKey<String> {}
 
-    public record Problem() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "problem";
-        }
-    }
+    public record Problem() implements TypedKey<String> {}
 
-    public record Routine() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "routine";
-        }
-    }
+    public record Routine() implements TypedKey<String> {}
 }

@@ -2,7 +2,7 @@
  * <b>Non-AI agents</b>
  *
  * <p>An agent does not have to be a model. Any plain object with one {@code @Agent}-annotated
- * method can be handed straight to {@code subAgents(...)}: LangChain4j binds its {@code @V}
+ * method can be handed straight to {@code subAgents(...)}: LangChain4j binds its {@code @K}
  * parameters from the scope, writes its return value to its output key, and reports it to the
  * listener — so a sequence cannot tell that one of its steps never called anything.
  *

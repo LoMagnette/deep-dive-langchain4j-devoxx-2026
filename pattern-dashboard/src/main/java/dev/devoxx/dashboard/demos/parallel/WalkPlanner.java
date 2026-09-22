@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.parallel;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface WalkPlanner {
     @Agent(description = "Plans the dog's walks for the days the owners are away")
@@ -10,6 +10,6 @@ public interface WalkPlanner {
             Plan the dog's walks for the days the owners are away: when, how long, on or off
             the lead, and anywhere to avoid. Be brief.
 
-            The stay: {{stay}}""")
-    String plan(@V("stay") String stay);
+            The stay: {{Stay}}""")
+    String plan(@K(Keys.Stay.class) String stay);
 }

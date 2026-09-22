@@ -8,17 +8,7 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Motion() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "motion";
-        }
-    }
+    public record Motion() implements TypedKey<String> {}
 
-    public record Verdict() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "verdict";
-        }
-    }
+    public record Verdict() implements TypedKey<String> {}
 }

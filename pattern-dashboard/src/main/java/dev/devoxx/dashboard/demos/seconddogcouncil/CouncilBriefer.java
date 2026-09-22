@@ -2,9 +2,10 @@ package dev.devoxx.dashboard.demos.seconddogcouncil;
 
 import java.util.List;
 
+import dev.devoxx.dashboard.demos.p2p.Keys.Question;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface CouncilBriefer {
     /**
@@ -17,7 +18,7 @@ public interface CouncilBriefer {
             Write the motion this household should decide on, as one sentence: a second dog or
             not, and if so what kind and when.
 
-            Question: {{question}}
-            What the scouts found: {{findings}}""")
-    String brief(@V("question") String question, @V("findings") List<String> findings);
+            Question: {{Question}}
+            What the scouts found: {{Findings}}""")
+    String brief(@K(Question.class) String question, @K(Keys.Findings.class) List<String> findings);
 }

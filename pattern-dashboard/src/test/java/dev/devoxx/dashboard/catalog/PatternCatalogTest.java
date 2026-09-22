@@ -366,12 +366,12 @@ class PatternCatalogTest {
     @Test
     void anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast() {
         for (Class<?> notes : List.of(WalkNotes.class, RoutineNotes.class, HomeNotes.class)) {
-            assertEquals(List.of("problem"), inputKeys(notes),
-                    notes.getSimpleName() + " must read ONLY the problem. Give it a key another "
+            assertEquals(List.of("Problem"), inputKeys(notes),
+                    notes.getSimpleName() + " must read ONLY the Problem. Give it a key another "
                             + "contributor writes and the board has an order again, which is the "
                             + "sequence this demo was rewritten to stop being.");
         }
-        assertEquals(List.of("walks", "routine", "home"), inputKeys(TrainerLead.class),
+        assertEquals(List.of("Walks", "Routine", "Home"), inputKeys(TrainerLead.class),
                 "the lead reads the whole board, which is what makes it the step that ends the run");
 
         Run r = run(new PatternCatalog().byId("blackboard").orElseThrow());
@@ -382,17 +382,36 @@ class PatternCatalogTest {
                 "the lead needs all three, so it can only run once they have: " + r.invoked());
     }
 
-    /** The scope keys an agent interface declares as inputs, in declaration order. */
+    /**
+     * The scope keys an agent interface declares as inputs, in declaration order — resolved the
+     * way the framework resolves them, so this reads whichever annotation the agent used.
+     * {@code @K(Notes.class)} is the typed form and names the key {@code TypedKey.name()}
+     * returns; {@code @V("food")} survives only where there is no key to point at, which is the
+     * parallel mapper's item.
+     */
     private static List<String> inputKeys(Class<?> agent) {
         var method = java.util.Arrays.stream(agent.getMethods())
                 .filter(m -> m.isAnnotationPresent(dev.langchain4j.agentic.Agent.class))
                 .findFirst().orElseThrow(() -> new AssertionError(
                         agent.getSimpleName() + " has no @Agent method"));
         return java.util.Arrays.stream(method.getParameters())
-                .map(p -> p.getAnnotation(dev.langchain4j.service.V.class))
+                .map(PatternCatalogTest::declaredKey)
                 .filter(java.util.Objects::nonNull)
-                .map(dev.langchain4j.service.V::value)
                 .toList();
+    }
+
+    /** The key one parameter binds to, from {@code @K} or {@code @V}, or null if it binds none. */
+    private static String declaredKey(java.lang.reflect.Parameter p) {
+        var typed = p.getAnnotation(dev.langchain4j.agentic.declarative.K.class);
+        if (typed != null) {
+            try {
+                return typed.value().getDeclaredConstructor().newInstance().name();
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError("a TypedKey must be a no-args record: " + typed.value(), e);
+            }
+        }
+        var named = p.getAnnotation(dev.langchain4j.service.V.class);
+        return named == null ? null : named.value();
     }
 
     /**
@@ -429,7 +448,7 @@ class PatternCatalogTest {
         // So the proof that the Java steps ran is their EFFECT, not their events. The file's
         // output key reached the scope...
         assertTrue(r.events().stream().anyMatch(e -> e.scope() != null
-                        && e.scope().containsKey("facts")),
+                        && e.scope().containsKey("Facts")),
                 "the non-AI agent must write its output key into the scope");
 
         // ...and the guard earned its place: the model's note left two numbers out, and the run
@@ -769,6 +788,13 @@ class PatternCatalogTest {
      * invisible until it is wrong at run time — this repo lost a run to {@code "note"} against
      * {@code "notes"}, and another to findings declared {@code String} when the scope held a
      * {@code List}. The compiler cannot see either mistake; this can.
+     *
+     * <p>It covers <b>both ends</b> of the contract. The output side is the builder
+     * ({@code outputKey("x")}); the input side is the parameter, where {@code @V("x")} is what
+     * every LangChain4j example on the internet uses and {@code @K(Xxx.class)} is what this repo
+     * uses. A {@code @V} relapse does at least fail loudly at run time — the prompt template
+     * refuses an unknown variable — but it puts a key back in a string, which is the habit this
+     * whole mechanism exists to break.
      */
     @Test
     void noDemoAddressesTheScopeWithAStringLiteral() throws Exception {
@@ -787,6 +813,28 @@ class PatternCatalogTest {
                 }
             }
         }
+
+        // The input side, over every file in the demos. The two exceptions are the parallel
+        // mapper's item: MapperAgentInvoker injects it into the sub-agent's FIRST ARGUMENT by
+        // position, so that parameter names nothing in the scope and has no TypedKey to point
+        // at. Anything else naming a key in a string belongs in a Keys record.
+        var itemNames = Set.of("food", "angle");
+        var stringParam = java.util.regex.Pattern.compile("@V\\(\"(\\w+)\"\\)");
+        try (var paths = java.nio.file.Files.walk(demos)) {
+            // package-info is prose about the rule, and quotes the form it is telling you not
+            // to use.
+            for (var p : paths.filter(p -> p.toString().endsWith(".java")
+                    && !p.getFileName().toString().equals("package-info.java")).toList()) {
+                var m = stringParam.matcher(java.nio.file.Files.readString(p));
+                while (m.find()) {
+                    if (!itemNames.contains(m.group(1))) {
+                        offenders.add(p.getFileName() + " uses @V(\"" + m.group(1)
+                                + "\") — use @K(" + m.group(1) + ".class)");
+                    }
+                }
+            }
+        }
+
         assertTrue(offenders.isEmpty(), () -> "use a TypedKey from Keys instead:\n"
                 + String.join("\n", offenders));
     }

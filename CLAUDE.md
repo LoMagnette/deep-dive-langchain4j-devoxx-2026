@@ -130,7 +130,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **An agent does not have to be a model, and `nonAiAgent` is the general case.**
   `AgentUtil.agentToExecutor` falls through to `nonAiAgentToExecutor` for anything that is not
   already an agent, so **any plain object with one `@Agent` method goes straight into
-  `subAgents(...)`** — `@V` parameters bound from the scope, return value written to the output
+  `subAgents(...)`** — `@K` parameters bound from the scope, return value written to the output
   key, the sequence unable to tell. `HumanInTheLoop` (demo 7) is the library's own instance of
   this; `demos/nonaiagent/` is your own class, on both ends of an LLM step. **It is demo 8, the
   last of the workflows** — not in `production` with the other late additions — because "the
@@ -241,7 +241,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast`. The last of those asserts from
   the **interfaces**, not from a run, and that is the general lesson: a run shows one order, and
   one order is exactly what a sequence shows too — so the claim "any of them could go first" has
-  to be read off the declared `@V` keys, which is what actually makes it true.
+  to be read off the declared `@K` keys, which is what actually makes it true.
 - **Every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
   holding the keys it introduces, and later demos import them the way they import agents —
   `demos/loop/Keys.Score`, `demos/single/Keys.Notes`. A key is the contract between two agents
@@ -251,17 +251,36 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **They are records, not interfaces.** The framework *instantiates* a key to ask its name
     (`AgentUtil.keyName` → `stateInstance` → `name()`), so it needs a public, concrete,
     no-args-constructible type. An interface fails with "doesn't have a no-args constructor".
-  - **Each overrides `name()` to return the lowercase string it always used.** That is why the
-    `@V("notes")` parameters and the `{{notes}}` placeholders in the prompts are untouched —
-    the default name is the class's simple name, which would have capitalised every key.
-  - **The input side is still bound by name.** `@V` takes a string, and
-    `HumanInTheLoopBuilder.outputKey` has no `TypedKey` overload where `AgentBuilder` does — so
-    those sites read `new Draft().name()`. The typing is only ever as good as the narrowest API
+  - **A key declares its type and nothing else** — no `name()` override, no body:
+    `public record Notes() implements TypedKey<String> {}`. `TypedKey.name()` already defaults to
+    the record's simple name, so the key *is* `"Notes"` and the `{{Notes}}` placeholders in the
+    prompts are spelled the same way. The keys were briefly written with an override returning a
+    lowercase spelling, to keep the prompts untouched; that is one more line per key, and one
+    more thing that can disagree with the record's name, to buy a lowercase `n`.
+  - **The input side is typed too: `@K(Notes.class)`, not `@V("Notes")`.** `@K` (in
+    `agentic.declarative`, alongside `TypedKey`) takes the key *class* and resolves the prompt
+    variable through `TypedKey.name()`, so `{{Notes}}` is unchanged and neither end of the
+    contract is a string any more. Two things follow. It is wired by **ServiceLoader** —
+    `AgenticParameterNameResolver`, declared in the agentic jar's `META-INF/services` — which is
+    also what teaches `AgentInvoker.parameterName` about `@K`; a build that loses that file
+    (shading, native, the module path) fails loudly with "Parameter name not specified and no @V
+    or @K annotation present", not silently. And `@K` alone honours a key's `defaultValue()` on
+    the input side, via `AgentUtil.parameterDefaultValue` — which matters for `resilience`: every
+    key here defaults to null, so `Meds` still raises `MissingArgumentException` and
+    `optional(true)` still skips the step. **Give a key a non-null `defaultValue()` and that demo
+    stops working**, because the step would then always have an argument.
+    **The one name that is NOT a key** is the parallel mapper's item: `MapperAgentInvoker` binds
+    it to the sub-agent's *first argument* positionally, so `@V("food")` and `@V("angle")` name
+    nothing in the scope, correctly have no `Keys` entry, and are the only `@V` left in the
+    demos. Beyond them, three sites spell a key out because their API has no typed form:
+    `HumanInTheLoopBuilder.inputKey`/`outputKey` (hence `new Draft().name()`),
+    `MockChatModel.WORRY_ARG` (a planner's JSON names the agent's *parameter*, and the offline
+    model must not depend on `demos`), and `PatternCatalogTest.declaredKey`, which reads the
+    annotation the way the framework does. The typing is only ever as good as the narrowest API
     you touch, which is worth saying out loud on stage.
-  - **A typed read returns `null` when the key is absent** — it does *not* fall back to
-    `defaultValue()`, which is a builder-level mechanism. Hence `requireNonNullElse(...)` at the
-    display sites, and nothing at all where `Parsing.score`/`category` already treat null as "no
-    answer".
+  - **A typed *read* returns `null` when the key is absent** — `readState(Notes.class)` does not
+    fall back to `defaultValue()`. Hence `requireNonNullElse(...)` at the display sites, and
+    nothing at all where `Parsing.score`/`category` already treat null as "no answer".
   What it buys, concretely: the mapper's gathered verdicts read as a `List<String>` with no cast
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
@@ -449,7 +468,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   page is deliberate.
   Three traps these composites already paid for, worth knowing before writing a third:
   - **Scope values are passed through, never coerced.** The mapper writes `findings` as a `List`;
-    declaring `@V("findings") String` fails at runtime with a bare `argument type mismatch`.
+    declaring `@K(Findings.class) String` fails at runtime with a bare `argument type mismatch`.
   - **Parallel steps invoke the listener from several threads.** Anything collecting those events
     must be thread-safe — a plain `ArrayList` in a test silently drops them and reads as a flaky
     "that agent never ran". The SSE path is fine (Mutiny's emitter serialises), and is verified.
@@ -457,7 +476,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     a rule matching a word which appears in the *note* hijacks the loop's second pass, and the
     composite returns the wrong stage's answer with no error at all. See the rule ordering note
     in `MockChatModel`.
-- **`demos/<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@V`), so
+- **`demos/<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@K`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
@@ -568,7 +587,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `RunEvent.ScopeValue` (type + size + rendered value) is what makes the Scope tab a variables
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
-  bookkeeping. Worth noticing on stage: `score` shows as `String`, which is exactly why
+  bookkeeping. Worth noticing on stage: `Score` shows as `String`, which is exactly why
   `demos.loop.FridgeRuleCheck` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the

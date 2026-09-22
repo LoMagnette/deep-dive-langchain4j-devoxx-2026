@@ -15,10 +15,5 @@ public final class Keys {
      * this key rather than a String — which is why the Scope tab shows it as {@code <pending>}
      * for the first part of the run. Reading it is what blocks.
      */
-    public record VetLine() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "vetline";
-        }
-    }
+    public record VetLine() implements TypedKey<String> {}
 }

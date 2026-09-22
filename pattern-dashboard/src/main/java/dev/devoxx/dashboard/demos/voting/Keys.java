@@ -8,31 +8,11 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Household() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "household";
-        }
-    }
+    public record Household() implements TypedKey<String> {}
 
-    public record MoneyVote() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "moneyVote";
-        }
-    }
+    public record MoneyVote() implements TypedKey<String> {}
 
-    public record SpaceVote() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "spaceVote";
-        }
-    }
+    public record SpaceVote() implements TypedKey<String> {}
 
-    public record ZaoVote() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "zaoVote";
-        }
-    }
+    public record ZaoVote() implements TypedKey<String> {}
 }

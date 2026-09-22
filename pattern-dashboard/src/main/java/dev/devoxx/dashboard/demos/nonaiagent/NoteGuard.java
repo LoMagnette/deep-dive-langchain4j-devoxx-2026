@@ -5,7 +5,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.service.V;
+import dev.langchain4j.agentic.declarative.K;
 
 /**
  * The other end of the sandwich: a plain Java check that the facts survived the writing.
@@ -26,7 +26,7 @@ public class NoteGuard {
     @Agent(name = "NoteGuard",
            description = "Checks the record's numbers survived into the note",
            typedOutputKey = Notes.class)
-    public String check(@V("notes") String notes) {
+    public String check(@K(Notes.class) String notes) {
         List<String> missing = new ArrayList<>();
         for (String[] fact : MUST_SURVIVE) {
             if (notes == null || !notes.contains(fact[1])) {

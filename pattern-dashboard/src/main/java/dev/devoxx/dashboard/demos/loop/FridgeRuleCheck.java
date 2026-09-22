@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.loop;
 
+import dev.devoxx.dashboard.demos.single.Keys.Notes;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * Returns the score as a {@code String}, not a {@code double}, on purpose: a real chat model
@@ -18,6 +19,6 @@ public interface FridgeRuleCheck {
             under 100 words. Give the fraction of rules that hold as a number from 0.0 to
             1.0 — the number only, no words, no explanation, no markdown.
 
-            What we know so far: {{notes}}""")
-    String check(@V("notes") String notes);
+            What we know so far: {{Notes}}""")
+    String check(@K(Notes.class) String notes);
 }

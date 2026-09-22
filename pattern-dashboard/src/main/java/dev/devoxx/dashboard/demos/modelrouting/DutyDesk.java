@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.modelrouting;
 
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * The one agent on this page. It answers whatever comes in, and it is written without any idea
@@ -15,6 +16,6 @@ public interface DutyDesk {
             You are the desk a worried dog owner reaches. Answer the worry below directly and
             practically: what to do now, and whether it needs a vet today. Keep it short.
 
-            Worry: {{worry}}""")
-    String answer(@V("worry") String worry);
+            Worry: {{Worry}}""")
+    String answer(@K(Worry.class) String worry);
 }

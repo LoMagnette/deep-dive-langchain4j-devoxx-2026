@@ -8,10 +8,5 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Checklist() implements TypedKey<String> {
-        @Override
-        public String name() {
-            return "checklist";
-        }
-    }
+    public record Checklist() implements TypedKey<String> {}
 }

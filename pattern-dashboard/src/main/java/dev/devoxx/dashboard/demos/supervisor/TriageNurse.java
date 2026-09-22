@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.supervisor;
 
+import dev.devoxx.dashboard.demos.conditional.Keys.Worry;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * The one agent this demo adds, and it is what makes the hand-off reliable.
@@ -30,6 +31,6 @@ public interface TriageNurse {
             NEEDS: everyday care
             NEEDS: nobody
 
-            The call: {{worry}}""")
-    String triage(@V("worry") String worry);
+            The call: {{Worry}}""")
+    String triage(@K(Worry.class) String worry);
 }

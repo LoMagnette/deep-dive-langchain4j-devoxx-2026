@@ -48,7 +48,7 @@ public final class GoapPattern {
         UntypedAgent app = AgenticServices.plannerBuilder()
                 // Registered BACKWARDS on purpose, and it still runs indoor → garden → park.
                 // That is the whole pattern: the order comes from the I/O keys (ParkRecall
-                // needs 'garden', GardenRecall needs 'indoor'), not from the order you
+                // needs 'Garden', GardenRecall needs 'Indoor'), not from the order you
                 // happened to type. Say this out loud on stage — it is the one moment where
                 // GOAP is visibly not a sequence with extra ceremony.
                 .subAgents(park, garden, indoor)
@@ -75,11 +75,11 @@ public final class GoapPattern {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "goal", "input").withSub("registered: park first"),
                         node("indoor", "IndoorRecall", "agent").withSub("needs nothing"),
-                        node("garden", "GardenRecall", "agent").withSub("needs 'indoor'"),
-                        node("park", "ParkRecall", "agent").withSub("needs 'garden'")),
+                        node("garden", "GardenRecall", "agent").withSub("needs 'Indoor'"),
+                        node("park", "ParkRecall", "agent").withSub("needs 'Garden'")),
                 List.of(edge("in", "indoor"),
-                        edge("indoor", "garden", "writes 'indoor'"),
-                        edge("garden", "park", "writes 'garden'")));
+                        edge("indoor", "garden", "writes 'Indoor'"),
+                        edge("garden", "park", "writes 'Garden'")));
 
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 "Which begins, as everything does, with the recall you never finished "

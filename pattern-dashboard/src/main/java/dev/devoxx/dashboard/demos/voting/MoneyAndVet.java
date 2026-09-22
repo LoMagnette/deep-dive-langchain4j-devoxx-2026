@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.voting;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface MoneyAndVet {
     @Agent(description = "Votes on a second dog on what two dogs cost")
@@ -11,6 +11,6 @@ public interface MoneyAndVet {
             food, insurance, vet bills, boarding when they travel. Ignore everything else.
             Answer with one word: YES or LATER.
 
-            Household: {{household}}""")
-    String vote(@V("household") String household);
+            Household: {{Household}}""")
+    String vote(@K(Keys.Household.class) String household);
 }

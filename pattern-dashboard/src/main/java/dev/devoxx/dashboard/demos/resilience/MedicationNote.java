@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos.resilience;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * The optional step. It declares {@code meds}, and most stays never write that key — so most
@@ -17,6 +17,6 @@ public interface MedicationNote {
             Write the medication paragraph for a dog sitter who has never given a dog a tablet.
             Say what, how much, when, and what to do with a refused dose. Four lines at most.
 
-            The medication: {{meds}}""")
-    String paragraph(@V("meds") String meds);
+            The medication: {{Meds}}""")
+    String paragraph(@K(Keys.Meds.class) String meds);
 }

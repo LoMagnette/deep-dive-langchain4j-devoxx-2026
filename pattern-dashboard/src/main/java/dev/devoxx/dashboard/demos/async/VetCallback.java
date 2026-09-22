@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos.async;
 
+import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * The slow step. Nothing about this agent says "slow" — slowness is a property of the call, not
@@ -15,6 +16,6 @@ public interface VetCallback {
             Give the cover arrangements for the dates below in two or three lines: who is on
             call, the number to ring, and how far away they are. Nothing else.
 
-            The stay: {{stay}}""")
-    String cover(@V("stay") String stay);
+            The stay: {{Stay}}""")
+    String cover(@K(Stay.class) String stay);
 }

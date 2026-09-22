@@ -1,12 +1,13 @@
 package dev.devoxx.dashboard.demos.nonaiagent;
 
+import dev.devoxx.dashboard.demos.parallel.Keys.Stay;
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.service.V;
+import dev.langchain4j.agentic.declarative.K;
 
 /**
  * A class, not an interface — and that is the whole lesson. There is no proxy here, no prompt and
  * no model: {@code AgentUtil.nonAiAgentToExecutor} takes any object with one
- * {@code @Agent}-annotated method, binds the {@code @V} parameters from the scope and writes the
+ * {@code @Agent}-annotated method, binds the {@code @K} parameters from the scope and writes the
  * return value to the output key, exactly as it does for an LLM agent.
  *
  * <p>Two details that only apply on this side of the line:
@@ -37,7 +38,7 @@ public class HouseholdFile {
     @Agent(name = "HouseholdFile",
            description = "Looks the dog up in the household's own records",
            typedOutputKey = Keys.Facts.class)
-    public String lookup(@V("stay") String stay) {
+    public String lookup(@K(Stay.class) String stay) {
         // The parameter is here because the scope binding is the thing worth seeing — a real
         // lookup would key off it. One household, one dog, so it is the same row every time.
         return RECORD;
