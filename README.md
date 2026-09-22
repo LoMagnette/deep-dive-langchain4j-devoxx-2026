@@ -75,13 +75,15 @@ The demo app is not slideware: all 21 entries run live, on a real model, from th
 not `quarkus-langchain4j` — the builders are the subject, so there is no CDI magic between the
 slide and the call.
 
-- Every pattern: `pattern-dashboard/src/main/java/dev/devoxx/dashboard/demos/<id>/`, one package per
-  demo. The package is named after the pattern id, so the deep link on a slide (`#/loop`) names the
-  package to open (`demos.loop`).
+- Every pattern: `pattern-dashboard/src/main/java/dev/devoxx/dashboard/demos/_NN_<id>/`, one
+  package per demo, numbered by its place in the running order and then named after the pattern id
+  — so the packages read top to bottom in talk order, and the deep link on a slide (`#/loop`) still
+  names the package to open (`demos._03_loop`). The leading `_` is Java's, not a style choice: a
+  package segment cannot start with a digit.
 - Every `XxxPattern` opens with `run(model, input, listener)` — the wiring and nothing else, first
   in the file, because that is what gets projected.
 - The one piece of framework code written here rather than imported: `EscalationPlanner`, a
-  hand-written `dev.langchain4j.agentic.planner.Planner` in about forty lines (`demos/customplanner/`).
+  hand-written `dev.langchain4j.agentic.planner.Planner` in about forty lines (`demos/_16_customplanner/`).
 - Upstream, for the foils and the prose: `langchain4j-agentic-patterns/` (GOAP, BDI, blackboard,
   debate, voting, P2P) and the module's own tutorial, `docs/docs/tutorials/agents.md`.
 

@@ -440,7 +440,7 @@ public class MockChatModel implements ChatModel {
      */
     /**
      * The argument the nurse and the three desks all take. A planner's JSON names the agent's
-     * parameter, so this is {@code demos.conditional.Keys.Worry} spelled out — the mock cannot
+     * parameter, so this is {@code demos._06_conditional.Keys.Worry} spelled out — the mock cannot
      * import it without making the offline model depend on the demos, so it is named here
      * instead of hidden inside two string concatenations.
      */

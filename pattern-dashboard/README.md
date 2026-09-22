@@ -236,8 +236,9 @@ One package per demo, plus a few shared ones. Every package carries a `package-i
 what it is for — that is the shortest way in.
 
 ```
-demos/<id>/      EVERYTHING for one demo and nothing else: its agent interfaces
-                 (one per file), its Keys, its XxxPattern, its package-info
+demos/_NN_<id>/  EVERYTHING for one demo and nothing else: its agent interfaces
+                 (one per file), its Keys, its XxxPattern, its package-info.
+                 NN is its place in the running order: _01_single … _21_resilience
 catalog/         PatternCatalog (the registry) · PatternDef · Topology
 support/         Parsing · Errors — the shared pieces that are ours, not LangChain4j's
 model/           ModelFactory · MockChatModel · MockStreamingChatModel · ChatCallLog
@@ -245,8 +246,11 @@ run/             RunEvent · StreamingListener · AskHuman · HumanQuestions · 
 web/             PatternResource · LogResource · LogStream — REST and SSE
 ```
 
-The package is named after the pattern id, lowercased, so the deep link on a slide (`#/loop`) names
-the package to open on stage (`demos.loop`).
+A demo package is `_NN_<id>`: its position in the running order, then the pattern id, lowercased.
+The packages therefore sort into talk order, and the deep link on a slide (`#/loop`) still names the
+package to open on stage (`demos._03_loop`). The leading underscore is required — a Java package
+segment cannot start with a digit. The number is documentation: nothing reads it at run time, so
+reordering the catalogue means renaming the packages by hand.
 
 Every `XxxPattern` is two methods in this order: **`run` then `define`**. `run(model, input,
 listener)` is the wiring and nothing else — it is what gets opened in front of the room, so it comes
@@ -279,7 +283,9 @@ snapshots stream back as `RunEvent`s → the page animates the topology and upda
 
 ## Adding a pattern
 
-1. Make a package `demos/<id>/`, named after the pattern id in lowercase.
+1. Make a package `demos/_NN_<id>/` — its position in `PatternCatalog.build()`, then the pattern
+   id in lowercase. The leading `_` is required; inserting rather than appending renumbers the
+   packages after it.
 2. Put one `@Agent` interface per file in it, a `Keys.java` for any scope keys it introduces, an
    `XxxPattern` with `run` then `define`, and a `package-info.java`.
 3. Add one line to `PatternCatalog.build()`, in the place the rail order argues for.

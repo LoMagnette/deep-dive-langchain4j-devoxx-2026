@@ -5,7 +5,7 @@ import dev.langchain4j.model.chat.ChatModel;
 /**
  * The two models a run may choose between: a cheap one and a strong one.
  *
- * <p>It exists for exactly one demo — {@code demos.modelrouting}, which picks a model per
+ * <p>It exists for exactly one demo — {@code demos._19_modelrouting}, which picks a model per
  * invocation with {@code AgentBuilder.chatModel(Function<AgenticScope, ChatModel>)}. Sixteen
  * other demos want one model and get it as the {@code Runner}'s first argument; widening that
  * signature for the seventeenth would have cost every demo a parameter it never reads.

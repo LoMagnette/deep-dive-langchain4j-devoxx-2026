@@ -1,0 +1,16 @@
+package dev.devoxx.dashboard.demos._07_humanapproval;
+
+import dev.langchain4j.agentic.declarative.TypedKey;
+
+/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+public final class Keys {
+
+    private Keys() {
+    }
+
+    public record Decision() implements TypedKey<String> {}
+
+    public record Draft() implements TypedKey<String> {}
+
+    public record Instruction() implements TypedKey<String> {}
+}

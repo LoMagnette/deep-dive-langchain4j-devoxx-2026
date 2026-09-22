@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import dev.devoxx.dashboard.demos.blackboard.HomeNotes;
-import dev.devoxx.dashboard.demos.blackboard.RoutineNotes;
-import dev.devoxx.dashboard.demos.blackboard.TrainerLead;
-import dev.devoxx.dashboard.demos.blackboard.WalkNotes;
+import dev.devoxx.dashboard.demos._12_blackboard.HomeNotes;
+import dev.devoxx.dashboard.demos._12_blackboard.RoutineNotes;
+import dev.devoxx.dashboard.demos._12_blackboard.TrainerLead;
+import dev.devoxx.dashboard.demos._12_blackboard.WalkNotes;
 import dev.devoxx.dashboard.model.MockChatModel;
 import dev.devoxx.dashboard.model.MockStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
@@ -773,13 +773,48 @@ class PatternCatalogTest {
 
         // And the trainer has to be told to refuse the case, or it will helpfully answer it and
         // there will be nothing to hand on. The rule is in its @UserMessage.
-        String prompt = dev.devoxx.dashboard.demos.conditional.DogTrainer.class
+        String prompt = dev.devoxx.dashboard.demos._06_conditional.DogTrainer.class
                 .getMethods()[0].getAnnotation(dev.langchain4j.service.UserMessage.class)
                 .value()[0];
         assertTrue(prompt.contains("ESCALATE"),
                 "the trainer must have a way to decline: " + prompt);
         assertTrue(prompt.toLowerCase().contains("until a vet"),
                 "the trainer must be told WHEN to decline, or it will just answer: " + prompt);
+    }
+
+    /**
+     * A demo package is {@code _NN_<id>}, where {@code NN} is its position in
+     * {@code PatternCatalog.build()} — so the source tree reads in the order the talk runs.
+     *
+     * <p>This is asserted because <b>nothing at run time reads that number</b>: no code derives a
+     * package from an id, so a package left at {@code _08_} after the demo moved to ninth is
+     * wrong only to a reader, and readers of this repo are the speaker mid-talk and the room. The
+     * numbering is documentation, and undefended documentation drifts — moving {@code nonAiAgent}
+     * once already cost a renumbering of every {@code buildsOn} line, which is exactly the kind
+     * of edit that renames twelve directories and forgets one.
+     */
+    @Test
+    void everyDemoPackageIsNumberedByItsPlaceInTheRunningOrder() throws Exception {
+        var demos = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos");
+        var infos = new PatternCatalog().infos();
+
+        var expected = new ArrayList<String>();
+        for (int i = 0; i < infos.size(); i++) {
+            expected.add(String.format("_%02d_%s", i + 1,
+                    infos.get(i).id().toLowerCase(java.util.Locale.ROOT)));
+        }
+
+        List<String> actual;
+        try (var paths = java.nio.file.Files.list(demos)) {
+            actual = paths.filter(java.nio.file.Files::isDirectory)
+                    .map(p -> p.getFileName().toString())
+                    .sorted()
+                    .toList();
+        }
+
+        assertEquals(expected, actual, "a demo package is its catalogue position then its id, "
+                + "lowercased — renumber the packages when you reorder PatternCatalog.build(), "
+                + "and keep the leading '_' (a package segment cannot start with a digit)");
     }
 
     /**

@@ -1,9 +1,11 @@
 /**
  * <b>One package per demo.</b> Each one holds everything that demo needs and nothing else: its
  * agent contracts (one interface per file), its {@code XxxPattern} wiring, and a
- * {@code package-info} saying what the demo is for. The package is named after the pattern id,
- * so the deep link on a slide ({@code #/loop}) names the package to open on stage
- * ({@code demos.loop}).
+ * {@code package-info} saying what the demo is for. A package is {@code _NN_<id>} — its place in
+ * the running order, then the pattern id — so the tree reads in talk order and the deep link on a
+ * slide ({@code #/loop}) still names the package to open on stage ({@code demos._03_loop}). The
+ * leading underscore is Java's requirement, not a style choice: a package segment cannot start
+ * with a digit.
  *
  * <p>The setting is <b>Zao</b>, a Belgian shepherd, and the household he runs — so the talk's
  * "From Puppy to Pack" thread holds from the puppy's first hour to the question of whether to

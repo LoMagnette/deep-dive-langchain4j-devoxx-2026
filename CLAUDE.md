@@ -61,16 +61,18 @@ few shared packages; the frontend is four static files (no build step). Every pa
 `package-info.java` saying what it is for — read that first, it is the shortest path in.
 
 ```
-demos/<id>/      EVERYTHING for one demo, and nothing else:
+demos/_NN_<id>/  EVERYTHING for one demo, and nothing else:
                    its agent contracts, one interface per file
                    its XxxPattern — topology + Runner
                    package-info.java — what this demo is for
-  single/ sequential/ loop/ parallel/ parallelmapper/ conditional/ humanapproval/
-  nonaiagent/
-  supervisor/
-  goap/ p2p/ blackboard/ voting/ debate/ bdi/ customplanner/
-  sitternote/ seconddogcouncil/
-  modelrouting/ async/ resilience/
+                 NN is its place in the talk, so the tree reads in running order
+  _01_single/ _02_sequential/ _03_loop/ _04_parallel/ _05_parallelmapper/
+  _06_conditional/ _07_humanapproval/ _08_nonaiagent/
+  _09_supervisor/
+  _10_goap/ _11_p2p/ _12_blackboard/ _13_voting/ _14_debate/ _15_bdi/
+  _16_customplanner/
+  _17_sitternote/ _18_seconddogcouncil/
+  _19_modelrouting/ _20_async/ _21_resilience/
 catalog/         PatternCatalog (the registry) · PatternDef · Topology
 support/         Parsing · Errors — the shared pieces that are OURS, not LangChain4j's
 model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
@@ -113,10 +115,19 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     states its conclusion last, and anything before it is usually a rule index), then the last
     number rescaled. Emphasis is stripped first because `**0.85** out of 1.0` puts the asterisks
     exactly between the two halves of the fraction.
-- **The package is named after the pattern id**, lowercased. So the deep link on a slide
-  (`#/loop`) names the package to open on stage (`demos.loop`), and `#/secondDogCouncil` is
-  `demos.seconddogcouncil`. Keep that rule when adding a demo — it is the whole reason the
-  packages are named this way rather than after the concept.
+- **A demo package is `_NN_<id>`: its place in the running order, then the pattern id**,
+  lowercased. So the packages sort into the talk's order in the IDE tree, and the deep link on a
+  slide (`#/loop`) still names the package to open on stage (`demos._03_loop`), with
+  `#/secondDogCouncil` at `demos._18_seconddogcouncil`. Two things about that shape:
+  - **The leading `_` is not decoration — a package segment cannot start with a digit.** `01_single`
+    is a compile error ("illegal underscore"); `_` is one of the three characters Java allows a
+    segment to begin with, so it is the price of having the number first.
+  - **`NN` is the index into `PatternCatalog.build()`, and nothing reads it at run time.** The id
+    in `PatternDef` is still `loop`, the route is still `#/loop`, and no code derives a package
+    from an id — so a number that has drifted out of step with the catalogue is invisible to the
+    build and wrong only to a reader. **Reordering the rail now means renaming packages**, on top
+    of the `buildsOn` renumbering that moving `nonAiAgent` already cost once. That is the standing
+    price of this scheme; pay it deliberately or not at all.
 - **An agent lives in the demo that introduces it**, and later demos import it from there. That is
   deliberate, and worth pointing at on stage: `sitternote` imports the loop's `FridgeRuleCheck`
   and the routing demo's `WorryRouter`; `seconddogcouncil` imports the three assessors `voting`
@@ -132,7 +143,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   already an agent, so **any plain object with one `@Agent` method goes straight into
   `subAgents(...)`** — `@K` parameters bound from the scope, return value written to the output
   key, the sequence unable to tell. `HumanInTheLoop` (demo 7) is the library's own instance of
-  this; `demos/nonaiagent/` is your own class, on both ends of an LLM step. **It is demo 8, the
+  this; `demos/_08_nonaiagent/` is your own class, on both ends of an LLM step. **It is demo 8, the
   last of the workflows** — not in `production` with the other late additions — because "the
   model decides nothing at all" is a genuine position on the autonomy dial, and the far-left one.
   It was in `production` first, and moving it cost a renumbering of every `buildsOn` from
@@ -244,7 +255,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   to be read off the declared `@K` keys, which is what actually makes it true.
 - **Every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
   holding the keys it introduces, and later demos import them the way they import agents —
-  `demos/loop/Keys.Score`, `demos/single/Keys.Notes`. A key is the contract between two agents
+  `demos/_03_loop/Keys.Score`, `demos/_01_single/Keys.Notes`. A key is the contract between two agents
   that never see each other, and nothing checks that the two spellings match: this repo lost a
   run to `"note"` against `"notes"`, and another to `findings` declared `String` when the scope
   held a `List`. Four things worth knowing before writing one:
@@ -411,7 +422,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   missed it too, because the result echoes the person's words and a naive `contains("nothing")`
   passed on those — assert on the instruction section, not the whole result.
 - **`customPlanner` is the §7 "middle ground" made runnable**, and the only pattern whose
-  behaviour lives in this repo rather than in the library. `demos/customplanner/` holds all of
+  behaviour lives in this repo rather than in the library. `demos/_16_customplanner/` holds all of
   it — the three tier agents, the planner, and the wiring. `EscalationPlanner` implements
   `dev.langchain4j.agentic.planner.Planner` — which is a smaller interface than it looks:
   `nextAction(PlanningContext)` returns `call(...)` to invoke agents or `done()` / `done(result)`
@@ -476,7 +487,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     a rule matching a word which appears in the *note* hijacks the loop's second pass, and the
     composite returns the wrong stage's answer with no error at all. See the rule ordering note
     in `MockChatModel`.
-- **`demos/<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@K`), so
+- **`demos/_NN_<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@K`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
   so the endpoint discovery and probe run at boot; `activeModel()` reports what is actually live, and
@@ -588,7 +599,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `Score` shows as `String`, which is exactly why
-  `demos.loop.FridgeRuleCheck` returns one.
+  `demos._03_loop.FridgeRuleCheck` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
   markdown subset, topology layout/drawing — functions of their arguments, which is why the same
@@ -779,7 +790,9 @@ stream back as `RunEvent`s → the page animates the topology and updates the sc
 
 ## Adding a pattern (the common task)
 
-1. Make a package `demos/<id>/`, named after the pattern id in lowercase.
+1. Make a package `demos/_NN_<id>/` — the position it takes in `PatternCatalog.build()`, then
+   the pattern id in lowercase. The leading `_` is required: a package segment cannot start with
+   a digit. Inserting rather than appending means renumbering the packages after it.
 2. Put one file per agent in it (one `@Agent` interface each), a `Keys.java` for any scope keys
    it introduces, an `XxxPattern`, and a `package-info.java` saying what the demo shows. Then add
    one line to `PatternCatalog.build()`.
