@@ -92,22 +92,3 @@ Two claims the talk makes are asserted by the build rather than by the speaker:
 pattern back into decoration goes red) and `everyTopologyShowsWhatItsPatternActuallyDoes` (a diagram
 that stops showing the mechanism goes red).
 
-## Notes for the speaker
-
-- Flag once, early: the `langchain4j-agentic` module is **experimental / subject to change**.
-- **Pull the model and check `dashboard.ollama.model-name` matches it before you walk on.** With
-  `dashboard.model=auto`, a model the server does not serve falls back to the mock — loudly in the
-  log and in every `run-start` event, but the gallery headline will still read "runs live against a
-  real model". `dashboard.model=ollama` disables the fallback if you would rather fail loudly.
-- **Set `dashboard.ollama.cheap-model-name`** (and pull it) or `modelRouting` honestly reports that
-  both tiers are the same model and demonstrates no saving.
-- **The mock proves wiring, not behaviour.** Green tests have coexisted with a broken live demo
-  before (the supervisor hand-off). Re-run anything whose prompts you touched against real Ollama.
-- The **timing badge** is the best visual in the app — `parallel` and `parallelMapper` win their own
-  arguments with no slide. Show it in §4, again in §8½.
-- Every section = one git checkpoint you can `git checkout`; keep a known-good tag per section so a
-  live-code slip never strands you.
-- If time runs short: compress §7's pattern zoo to name-drops; **protect §6 (supervisor) and §7's
-  GOAP** — they're the "aha."
-- `-Ddashboard.model=mock` is the conference-wifi escape hatch. It runs everything, offline,
-  deterministically.
