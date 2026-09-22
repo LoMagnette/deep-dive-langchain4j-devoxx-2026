@@ -690,9 +690,17 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
   keep that order if you extend it. Known simplification: nested bullets flatten to one level.
   **Theming rule: the dog is in the craft, not in the jokes.** This is shown on a Devoxx stage, so
-  the canine character lives in the palette (fawn/rust on warm paper — **note this was picked for
-  a Malinois and Zao is a Bouvier des Flandres**, who is steel grey, brindle or black; the palette
-  has not been re-cut and that is a live decision, not an oversight), a
+  the canine character lives in the palette (**a Bouvier's coat**: cool salt-and-pepper neutrals,
+  a steel blue-grey accent — the "blue" a grey Bouvier is called — and wheaten as the warm
+  secondary, for the brindle stripe and the beard. It was fawn/rust on warm cream until
+  2026-09-22, which is Malinois colouring, from when the catalogue had the breed wrong. Two
+  things worth keeping if you re-cut it again: **the accent cannot be achromatic**, because
+  `--accent` marks identity and selection and grey-on-grey marks nothing; and **the one warm
+  note earns its place on a cool page** — a working agent still pulses wheaten, and on cool
+  structure the warm box is the one the eye goes to, which is what that state is for. The paw
+  mark and the canvas trail are `data:` URIs, so they bake the accent in and cannot read
+  `var()`: both need editing by hand, and the trail needs a **separate dark rule** because a
+  dark paw at 3% on a dark panel is absent, not faint), a
   drawn paw mark shared by the header and favicon, a near-subliminal paw texture on the empty
   canvas, and the pulse on a working agent. It must NOT live in emoji decoration, pun button labels
   ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
