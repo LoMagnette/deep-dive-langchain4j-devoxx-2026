@@ -378,6 +378,25 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
       GOAP now has a real precondition chain and is registered **backwards on purpose**; BDI has
       three desires whose priorities (not declaration order) pick the winner; blackboard's three
       contributors each read only `problem`, so any of them can go first.
+      **`p2p` was the fourth, and it hid for longer because its exit predicate looked fine.**
+      It was `hasState(Agreement.class)`, and `Agreement` was the *second peer's own output
+      key* — so it was true the instant that peer had run, on any model, and the run always
+      stopped after exactly one exchange. A two-step sequence with a planner bolted on top, and
+      its own test asserted the two invocations and called that correct. **Check a predicate
+      for the failure in both directions: one that can never be true never terminates, and one
+      that can never be false terminates immediately and silently.** It now reads the *content*
+      of either peer's key (`Parsing.agreed`), so the run is propose → counter → sign, and the
+      test asserts three turns precisely because two would mean the old bug is back.
+      Two things `P2PPlanner` pinned down on the way:
+      - **It activates an agent only once every input it declares is present.** With nothing
+        seeded for the first peer to read, neither can start and the run ends "stable after 0
+        invocations" — no agents, no error, no result. `P2pPattern` seeds an empty `Counter`
+        for that reason, in plain Java, and that seeding is also what makes the peers symmetric.
+      - **It is reactive, and an agent re-fires when an input changes.** So two peers writing
+        one *shared* key trigger each other **and themselves**, race, and run to the cap with
+        the value oscillating — which is what happened when this was first rewritten that way.
+        Distinct keys, each peer reading the other's, give the ping-pong a direction without
+        giving either peer authority.
     - *Output nobody can check.* "Write a vivid tale" makes a failed run look like a good one.
   - **2. The audience must not need the domain explained.** This is the rule the *second* rewrite
     was for. A version of this catalogue set in a professional boarding kennel satisfied rule 1
@@ -758,9 +777,20 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     The nurse is now `1 · always first` with a two-way edge (the supervisor reads her answer),
     and the three desks are `2 · if she says so` behind one arrow.
   - `blackboard` was four identical satellites round a box, which said nothing about where the
-    problem comes from, why the order is free, or how the run ever stops. The sub-lines carry all
-    three now: the board holds `the problem + every note`, each note-taker `needs only the
-    problem` (so any of them can go first), and the lead `needs all three, ends it`.
+    problem comes from, why the order is free, or how the run ever stops. Sub-lines were the
+    first attempt at that and were not enough — **no sub-line survives being attached to a box
+    the layout has already put in the wrong place.** `star` spaces satellites at top / right /
+    bottom / left in declaration order, so `TrainerLead` — which can only act once all three
+    notes exist, and is the step that *ends the run* — sat at the far **left**, where the eye
+    starts, reading as a fourth peer. Plus eight arrows radiating from one box, no way in and
+    no way out. It is `stages` now: the three note-takers share **one column**, which is how a
+    picture says "no order"; the lead has its own after them, reached by an edge that arcs over
+    them (`all three notes` — what "reads the whole board" looks like drawn rather than said);
+    and the problem and the goal state are both on the page. The board keeps its own dashed
+    box, because the shared state really is this pattern.
+    Their three sub-lines are deliberately **identical** (`needs only the problem`): three boxes
+    that say the same thing are three agents with nothing to tell them apart, which is the
+    claim. The fourth reads differently because it is different.
   - `goap`'s goal box says `registered: park first` while the boxes run indoor → garden → park.
     That one line is the pattern's whole claim; without it the order looks typed, and the reader
     has to be *told* it was derived — not having to be told is what the picture is for.
@@ -773,25 +803,55 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   the layout maths is untouched. `everyTopologyShowsWhatItsPatternActuallyDoes` asserts these
   three claims, because each of them is a distinction that would quietly disappear in a tidy-up.
 - **A circle has no before and after, so a directional pattern must not be drawn in one.** The
-  `star` and `mesh` layouts space nodes evenly round a circle in declaration order, which is right
-  for a blackboard (the board is genuinely the centre and the contributors genuinely have no order)
-  and wrong for everything else. It drew the debate's judge to the *left* of its advocates — a
-  verdict arriving before the argument — and the supervisor as a wheel with four equal spokes,
-  which is a picture of the fan-out that demo spends its time denying. Both are `stages` now, and
-  a test pins them there. When a pattern has a direction, give it columns.
+  `star` and `mesh` layouts space nodes evenly round a circle in declaration order. That drew the
+  debate's judge to the *left* of its advocates — a verdict arriving before the argument — and
+  the supervisor as a wheel with four equal spokes, which is a picture of the fan-out that demo
+  spends its time denying. Both are `stages`, and a test pins them there.
+  **Blackboard was the last holdout and it has gone the same way**, which retires the exception
+  this note used to carve out for it ("the board is genuinely the centre and the contributors
+  genuinely have no order"). Half of that is still true — the three note-takers have no order —
+  but a pattern only needs **one** node with a position to lose the right to a circle, and the
+  lead is that node. `star` and `mesh` are now used by nothing; keep them for the pattern that
+  is genuinely orderless end to end, and reach for columns first. When *any* part of a pattern
+  has a direction, give the whole thing columns and let the shared column carry the symmetry.
 - **Every diagram needs its way out drawn, not only its way round.** Three of them didn't:
   - the **loop** had the return arc and no exit, so it was two agents circling for ever and the
     exit condition — the whole of what you have to get right — was the one thing not on the page;
   - **p2p** was two boxes passing a proposal back and forth with no end at all, which is the
-    pattern's *caveat* rather than its behaviour (the exit predicate is the box on the right);
+    pattern's *caveat* rather than its behaviour (the exit predicate is the box on the right).
+    Two further things were wrong with it, and both drew a hierarchy the pattern exists to
+    deny: the question arrived at **one** peer, and **one** peer reached the exit. Both peers
+    read the question and either can sign, so it is two arrows in and two arrows out now, and
+    the test pins both counts;
   - the **escalation ladder** stacked its three rungs in one column, which is pixel-for-pixel demo
     6's branch diagram — one input arriving at one of three desks, the exact reading a cost ladder
     exists to correct. One column per rung now, cost rising left to right.
+- **An arrow between two agents beats any caption underneath it.** This is the strongest rule on
+  this list and the one that cost the most: `goap` was drawn `goal → hoover → children →
+  cyclists`, nose to tail, with `needs 'Hoover'` written under the boxes. That is
+  pixel-for-pixel the sequential demo, and a reader takes the arrows and ignores the small
+  print — so the picture said *somebody typed this order* while the text said *the planner
+  derived it*, and the picture won. Sub-lines cannot argue a diagram out of its own shape.
+  The fix is structural, not textual: **no edge may join two GOAP agents.** They sit in one
+  column in *registration* order (which is backwards), a `planner` node fans out to them, and
+  the positions the search derived ride on those arrows — `runs 3rd`, `runs 2nd`, `runs 1st`,
+  reading down. The mismatch between the order they are listed in and the order they run in is
+  the whole pattern, and it is now the first thing you see.
+  `everyTopologyShowsWhatItsPatternActuallyDoes` asserts both halves: no agent→agent edge, and
+  three arrows labelled `runs …`. The `planner` **role** exists for this — framework machinery
+  drawn as a dotted italic box (`render.js` class list, `.node.planner` in `app.css`), so the
+  thing deciding the order does not read as a fourth agent.
 - **In a `stages` diagram an edge that skips a column arcs over the top** (`span` in `drawGraph`,
   nested by how far it jumps so the short hop stays lowest). Node fills are opaque, so a
   skip-ahead edge drawn flat does not look crowded — it silently *disappears* behind whatever
   stands between its ends. The ladder's three ways out are all skip-ahead edges, and flat they
   said only the last rung can answer.
+  **The row layouts need this too, and for a long time did not.** `chain`/`dag`/`loop` place
+  nodes in declaration order along one row, so an edge skipping a node is just as hidden — and
+  `bdi` paid for it: the edge from the first desire to the third, straight behind the second,
+  is the one that makes it a DAG of preconditions rather than a chain, and it was invisible.
+  `span` now measures the declaration-index gap for those layouts instead of returning 0, and a
+  test asserts `bdi` still has an edge that skips a node.
 - **A label is trimmed at 22 characters and a sub-line at 26, silently.** `fit()` does it with no
   error, so an over-long one is simply wrong on the projector and nowhere else.
   `everyTopologyShowsWhatItsPatternActuallyDoes` caps labels at 22 and subs at **24** — not 26,

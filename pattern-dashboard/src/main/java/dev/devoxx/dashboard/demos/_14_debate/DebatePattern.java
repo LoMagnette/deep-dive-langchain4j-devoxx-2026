@@ -59,10 +59,17 @@ public final class DebatePattern {
                 List.of(node("in", "motion", "input", 0),
                         node("take", "TeamTuscany", "agent", 1),
                         node("leave", "TeamStaycation", "agent", 1),
+                        // "only if they never agree" is what this said, and it was simply
+                        // false: DebatePlanner invokes the judge when the rounds END, and
+                        // convergence is one of the two ways they can end — the holiday debate
+                        // converges in round one and is still ruled on. What unanimous()
+                        // changes is how many rounds happen, which belongs on the edge between
+                        // the advocates, not on the judge.
                         node("verdict", "FinalBoarding", "judge", 2)
-                                .withSub("only if they never agree")),
+                                .withSub("always rules, at the end")),
                 List.of(edge("in", "take"), edge("in", "leave"),
-                        edge("take", "leave", "rebut"), edge("leave", "take", "up to 2 rounds"),
+                        edge("take", "leave", "rebut"),
+                        edge("leave", "take", "≤2 rounds · unless unanimous"),
                         edge("take", "verdict"), edge("leave", "verdict")));
         return new PatternDef("debate", "Debate", "pattern-zoo",
                 "And before any of it, two weeks in Tuscany in August. Does he come? Both of "

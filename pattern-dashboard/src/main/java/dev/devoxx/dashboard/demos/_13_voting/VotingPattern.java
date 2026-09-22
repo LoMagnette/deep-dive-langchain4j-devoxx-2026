@@ -88,7 +88,10 @@ public final class VotingPattern {
                         node("money", "MoneyAndVet", "agent"),
                         node("zao", "AskZaoHimself", "agent"),
                         // Without the tally this is just a fan-out; the tally IS the pattern.
-                        node("vote", "majority()", "join")),
+                        // The sub-line is the thing people get wrong about ensembles: a
+                        // strategy can only tally answers that can be EQUAL, which is why
+                        // every voter here is asked for one word.
+                        node("vote", "majority()", "join").withSub("tallies one-word votes")),
                 List.of(edge("in", "space"), edge("in", "money"), edge("in", "zao"),
                         edge("space", "vote", "YES / LATER"),
                         edge("money", "vote"), edge("zao", "vote")));

@@ -108,6 +108,11 @@ function layout(topo){
     const midX = sink ? cx : W*0.7;
     const step=H/(mids.length+1);
     mids.forEach((m,i)=>{ m.x=midX; m.y=step*(i+1); });
+  /* star/mesh space nodes evenly round a circle, and NOTHING in the catalogue uses them any
+     more: a circle has no before and after, and a pattern only needs one node with a position
+     to lose the right to one. Blackboard was the last holdout — its three note-takers really
+     are orderless, but its lead can only go last, and on the ring it landed at the far left.
+     Kept for a pattern that is genuinely orderless end to end; reach for 'stages' first. */
   } else if(lay==='star'){
     const center = nodes.find(n=>n.role==='supervisor')||nodes.find(n=>n.role==='board')||nodes[0];
     const others = nodes.filter(n=>n!==center);
@@ -156,9 +161,16 @@ function drawGraph(topo){
   /* An edge that skips a column is drawn straight THROUGH whatever stands between its ends —
      opaque boxes, so the arrow simply disappears behind them. The escalation ladder's three
      ways out all do this, and drawn flat the picture said only the last rung can answer. Lift
-     them over the top instead, nested by how far they jump, so the short hop stays lowest. */
-  const span = e => topo.layout!=='stages' ? 0
-    : Math.abs((idx[e.to]?.stage ?? 0) - (idx[e.from]?.stage ?? 0));
+     them over the top instead, nested by how far they jump, so the short hop stays lowest.
+
+     The row layouts need this too, and for a long time did not: chain/dag/loop place nodes in
+     declaration order along one row, so an edge that skips a node is just as hidden. BDI paid
+     for it — 'needs been out' runs from the first desire to the third, straight behind the
+     second, so the one edge that makes it a DAG of preconditions rather than a chain was
+     invisible, and the diagram said the opposite of what the demo claims. */
+  const span = e => topo.layout==='stages'
+    ? Math.abs((idx[e.to]?.stage ?? 0) - (idx[e.from]?.stage ?? 0))
+    : arcLayout ? Math.abs((order[e.to] ?? 0) - (order[e.from] ?? 0)) : 0;
 
   /* Labels are collected, not drawn, in this pass: they are placed once every node position is
      known and appended AFTER the nodes. See placeEdgeLabels. */
@@ -200,8 +212,11 @@ function drawGraph(topo){
   // nodes
   nodes.forEach(n=>{
     const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    /* 'planner' is framework machinery rather than one of your agents — GOAP's search, drawn
+       so the room can see that the thing deciding the order is not one of the three boxes it
+       is deciding about. */
     g.setAttribute('class','node '+(n.role==='board'||n.role==='join'||n.role==='human'
-    ||n.role==='code'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
+    ||n.role==='code'||n.role==='planner'?n.role:'')); g.dataset.id=n.id; g.dataset.tok=leadTok(n.label);
     /* One agent invoked once per item is drawn as a stack. A single box says "one call", which
        is the opposite of what a mapper does. */
     if(n.stacked){

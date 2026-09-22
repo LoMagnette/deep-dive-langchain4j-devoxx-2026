@@ -305,6 +305,10 @@ body.resizing{cursor:ns-resize;user-select:none}
 /* A join is a step, not an agent — drawn plainer so it never reads as one. */
 .node.join rect{fill:var(--panel2);stroke:var(--node-line);stroke-dasharray:4 3}
 .node.join text{fill:var(--muted);font-style:italic}
+/* Framework machinery, not one of your agents: GOAP's search sits between the goal and the
+   agents and is the thing that decides their order, so it must not look like a fourth agent. */
+.node.planner rect{fill:var(--panel2);stroke:var(--node-line);stroke-width:2;stroke-dasharray:2 4}
+.node.planner text{font-style:italic}
 .node.active rect{fill:var(--node-active);stroke:var(--node-active-line);stroke-width:2.5}
 .node.done rect{fill:var(--node-done);stroke:var(--node-done-line)}
 .node text{fill:var(--ink);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle}

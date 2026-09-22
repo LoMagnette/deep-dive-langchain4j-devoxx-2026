@@ -64,16 +64,33 @@ public final class GoapPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Every box says what it NEEDS, and the goal box says they were registered backwards
-        // — otherwise this is pixel-for-pixel the sequential demo's diagram.
-        Topology.Graph topo = graph("dag",
-                List.of(node("in", "goal", "input").withSub("registered: bikes first"),
-                        node("hoover", "NotTheHoover", "agent").withSub("needs nothing"),
-                        node("children", "NotTheChildren", "agent").withSub("needs 'Hoover'"),
-                        node("cyclists", "NotTheCyclists", "agent").withSub("needs 'Children'")),
-                List.of(edge("in", "hoover"),
-                        edge("hoover", "children", "writes 'Hoover'"),
-                        edge("children", "cyclists", "writes 'Children'")));
+        // NO ARROWS BETWEEN THE AGENTS, and that is the entire design of this diagram. Drawn
+        // as goal → hoover → children → cyclists it was pixel-for-pixel the sequential demo:
+        // three boxes wired nose to tail, which is a picture of a path somebody typed. The
+        // sub-lines said "needs 'Hoover'" underneath arrows that had already claimed the order,
+        // so the caption was arguing with the drawing and the drawing wins.
+        //
+        // What actually happens: you hand the planner a BAG of agents — here in registration
+        // order, which is backwards — and it searches for a chain from what each one needs to
+        // what each one writes. Nobody connected them. So the agents sit in one column in the
+        // order they were declared, the planner fans out to them, and the arrows carry the
+        // positions it DERIVED: 3rd, 2nd, 1st, reading down. That mismatch between the order
+        // they are listed in and the order they run in is the pattern, and now it is the first
+        // thing you see rather than a line of small print.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "goal", "input", 0),
+                        node("plan", "GoalOrientedPlanner", "planner", 1)
+                                .withSub("the order is an OUTPUT"),
+                        node("cyclists", "NotTheCyclists", "agent", 2)
+                                .withSub("needs 'Children'"),
+                        node("children", "NotTheChildren", "agent", 2)
+                                .withSub("needs 'Hoover'"),
+                        node("hoover", "NotTheHoover", "agent", 2)
+                                .withSub("needs nothing")),
+                List.of(edge("in", "plan", "3 agents, unordered"),
+                        edge("plan", "cyclists", "runs 3rd"),
+                        edge("plan", "children", "runs 2nd"),
+                        edge("plan", "hoover", "runs 1st")));
 
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
                 "He is a cattle dog with no cattle, so he has improvised. The hoover has "
