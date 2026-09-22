@@ -25,28 +25,6 @@ import org.jboss.logging.Logger;
 
 /**
  * Decides which {@link ChatModel} the patterns run against, and keeps that decision honest.
- *
- * <p>{@code dashboard.model} picks the backend:
- * <ul>
- *   <li>{@code auto} (the default) — find a live Ollama endpoint serving the wanted model; if
- *       there isn't one, fall back to the deterministic {@link MockChatModel} with a loud
- *       warning. A dead Ollama then costs a degraded demo instead of thirteen failing ones.</li>
- *   <li>{@code ollama} — use the endpoint, no fallback (fail loudly if it's down).</li>
- *   <li>{@code mock} — always the deterministic offline model.</li>
- * </ul>
- *
- * <p>Two things here exist because they bit us on this project:
- *
- * <p><b>The base URL is discovered, not hardcoded.</b> The right host depends on where the app
- * runs, and getting it wrong is invisible: {@code localhost} is correct on the speaker's laptop
- * but reaches nothing from inside a container, while {@code host.docker.internal} is correct
- * inside a container but does not resolve at all on the laptop — and an unresolvable host fails
- * exactly like a stopped Ollama. So {@link #CANDIDATES} are probed in order unless
- * {@code OLLAMA_BASE_URL} pins one explicitly.
- *
- * <p><b>The probe checks the model, not just the socket.</b> {@code /api/tags} is one cheap
- * round-trip that both proves the server is up and lists what it can serve, so a typo or an
- * un-pulled model is reported at boot by name instead of surfacing mid-demo.
  */
 @ApplicationScoped
 public class ModelFactory {
@@ -105,10 +83,6 @@ public class ModelFactory {
 
     /**
      * The model to run a pattern against.
-     *
-     * <p>Re-probes when the last attempt fell back to the mock, so starting Ollama (or fixing the
-     * model name) recovers on the next run instead of requiring a restart — losing a demo to a
-     * decision cached at boot is a bad way to spend time on stage.
      */
     public ChatModel currentModel() {
         ChatModel current = model;
@@ -261,10 +235,6 @@ public class ModelFactory {
     /**
      * One cheap round-trip against Ollama's model list. Returns null when the endpoint is up and
      * serving {@code wanted}, else why it isn't.
-     *
-     * <p>Deliberately not a real {@code chat()} call: that runs inference, and a thinking model can
-     * take 10-20s to answer even "ping" — comfortably past {@link #PROBE_TIMEOUT}, which made the
-     * probe fail (and silently fall back) while Ollama was up and healthy the whole time.
      */
     private String probe(String baseUrl, String wanted) {
         List<String> available;
@@ -307,10 +277,8 @@ public class ModelFactory {
                 .baseUrl(baseUrl)
                 .modelName(modelName)
                 .timeout(timeout)
-                // Not logRequests/logResponses: those log at DEBUG, which means the most
-                // interesting lines in the demo are invisible unless somebody remembered to
-                // raise a log level first. The listener logs at INFO, in one line per call,
-                // formatted for the Server log tab.
+                // Not logRequests/logResponses: those log at DEBUG, so the best lines in the
+                // demo are off unless someone raised a log level. This logs at INFO.
                 .listeners(List.of(new ChatCallLog()))
                 .build();
     }

@@ -18,13 +18,13 @@ import dev.devoxx.dashboard.demos._12_blackboard.TrainerLead;
 import dev.devoxx.dashboard.demos._12_blackboard.WalkNotes;
 import dev.devoxx.dashboard.model.MockChatModel;
 import dev.devoxx.dashboard.model.MockStreamingChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.devoxx.dashboard.run.AskHuman;
 import dev.devoxx.dashboard.run.ModelTiers;
 import dev.devoxx.dashboard.run.RunEvent;
 import dev.devoxx.dashboard.run.StreamingListener;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 /**

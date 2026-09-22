@@ -7,14 +7,6 @@ import java.util.regex.Pattern;
 
 /**
  * Defensive readers for what a model actually returns, as opposed to what it was asked for.
- *
- * <p>These take the model's answer as a plain {@code String} rather than reaching into an
- * {@code AgenticScope} themselves. That is deliberate: reading the scope is LangChain4j API and
- * belongs in the demo where the room can see it, so a predicate reads
- * {@code scope.readState(Score.class)} and hands the text here. What is left in this class is
- * only the part that is ours — the parsing no framework can do for you.
- * Every method here exists because a real model broke a pattern in a way that produced no
- * error at all — a score as prose, a category wrapped in a sentence, a list that wasn't one.
  */
 public final class Parsing {
 
@@ -36,21 +28,6 @@ public final class Parsing {
 
     /**
      * Reads the loop's quality score defensively, in the order a reader would.
-     *
-     * <p>Asked for "just a number from 0.0 to 1.0", a real model answers "3 of 4", "9/10",
-     * "I'd rate this **0.85** out of 1.0" or "85%". Three passes, narrowest first:
-     * <ol>
-     *   <li>a stated <b>fraction</b> — {@code 3/4}, {@code 3 of 4}, {@code 8.5 out of 10};</li>
-     *   <li>otherwise the <b>last</b> number that is already in 0.0–1.0, because a model states
-     *       its conclusion at the end and any number before it is usually a rule index
-     *       ("rule 3 fails, so 0.4");</li>
-     *   <li>otherwise the last number at all, rescaled down — which is what turns 85 into 0.85.</li>
-     * </ol>
-     *
-     * <p>An unparseable answer scores 0, which keeps the loop iterating rather than exiting on
-     * garbage. Taking the <i>first</i> number instead — as this did — is the version that reads
-     * "4 of 4 rules hold: 1.0" as 0.4, runs the loop to {@code maxIterations} on a note that was
-     * already perfect, and reports no error at all.
      */
     public static double score(String answer) {
         // Emphasis first: a model writes "**0.85** out of 1.0", and the asterisks sit exactly
@@ -129,21 +106,14 @@ public final class Parsing {
 
     /**
      * Splits the user's typed input into items for the parallel mapper.
-     *
-     * <p>Only an <b>empty</b> input falls back to the canned blanket. A single item is honoured as
-     * a single item: this used to treat "one chunk" as "nothing to fan out over" and quietly
-     * substitute five unrelated things, so typing one item on stage produced five answers about
-     * food nobody had mentioned — which reads as the demo ignoring you, not as a fallback.
      */
     public static List<String> items(String input) {
         String text = input == null ? "" : input;
         if (text.isBlank()) {
             return BLANKET;
         }
-        // Semicolons and newlines win over commas when both are present, because an item can
-        // itself contain a comma ("a bar of dark chocolate, most of it"). Splitting on every
-        // separator at once fans the mapper out over shrapnel — with no error at all, just a
-        // list of answers to half-items.
+        // Semicolons and newlines beat commas when both are present: an item can contain a
+        // comma, and splitting on everything fans the mapper out over half-items.
         String separators = text.matches("(?s).*[;\n].*") ? "[;\n]" : ",";
         List<String> parsed = Arrays.stream(text.split(separators))
                 .map(String::trim)

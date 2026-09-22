@@ -10,10 +10,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * A model that drops its first {@code failures} calls and then behaves. It is the only way to
  * demonstrate a retry policy deterministically: a demo that waits for the network to misbehave
  * on its own is a demo that works perfectly on stage and teaches nothing.
- *
- * <p>It wraps rather than replaces, so the real model (or the mock) still answers the calls that
- * do go through — and because it delegates to {@code chat} rather than reimplementing it, the
- * delegate's own listeners still fire and the prompts still reach the Server log tab.
  */
 final class FlakyModel implements ChatModel {
 

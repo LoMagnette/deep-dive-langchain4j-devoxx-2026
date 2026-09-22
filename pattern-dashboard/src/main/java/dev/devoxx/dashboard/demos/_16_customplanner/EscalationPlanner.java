@@ -13,34 +13,6 @@ import dev.langchain4j.agentic.planner.PlanningContext;
  * A planner written by hand, to show that the whole pattern zoo is just implementations of one
  * small interface — and that writing your own is the middle of the autonomy dial rather than the
  * deep end of it.
- *
- * <p><b>The policy: ask the cheapest source first, and stop at the first one that can actually
- * answer.</b> Sub-agents are declared in cost order (the book on the shelf, then the trainer on
- * the phone, then the vet). Each one answers and says whether it was out of its depth; this
- * planner reads that and either stops or moves one rung up the ladder.
- *
- * <p>Why this is not one of the built-in builders, which is the only reason to write a planner:
- * <ul>
- *   <li>a <b>sequence</b> would run all three every time — triple the cost, and you would then
- *       have to work out which answer to keep;</li>
- *   <li>a <b>conditional</b> router picks a tier up front from the question alone, and the whole
- *       point here is that you often cannot tell in advance — you find out from what the cheap
- *       attempt came back with;</li>
- *   <li>a <b>loop</b> re-runs the same agents rather than advancing through different ones;</li>
- *   <li>a <b>supervisor</b> could do it, but then an LLM is deciding your cost policy. Escalation
- *       rules are exactly the kind of thing you want in Java where you can read it, test it, and
- *       be sure it never rings the emergency vet to ask which food to buy.</li>
- * </ul>
- *
- * <p>The whole interface is {@link #nextAction}: return {@code call(...)} to invoke agents,
- * {@code done()} or {@code done(result)} to stop. {@code init} hands you the sub-agents in
- * declaration order, and {@link PlanningContext#previousAgentInvocation()} is what makes a
- * planner like this possible at all — it carries what the last agent actually returned, so the
- * next decision can depend on the answer rather than only on the input.
- *
- * <p>Not implemented here, and worth saying on stage: {@code executionState()} /
- * {@code restoreExecutionState(...)} are how a planner survives being suspended and resumed
- * (human-in-the-loop). This one is a demo, so its state is a cursor and a flag in memory.
  */
 public final class EscalationPlanner implements Planner {
 

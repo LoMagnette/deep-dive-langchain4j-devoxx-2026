@@ -41,10 +41,8 @@ public final class VotingPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Three DIFFERENT criteria over the same household: money says yes while the other
-        // two say later. Three copies of one prompt always agree, and then the tally is
-        // decoration. Each voter also writes its own key — the strategy does not need them,
-        // but the result pane does, or a split is invisible.
+        // Three DIFFERENT criteria, or the tally is decoration. Each voter writes its own key
+        // too: the strategy does not need it, but a split is invisible without it.
         var space = AgenticServices.agentBuilder(SpaceAndTime.class)
                 .chatModel(model)
                 .name("SpaceAndTime")

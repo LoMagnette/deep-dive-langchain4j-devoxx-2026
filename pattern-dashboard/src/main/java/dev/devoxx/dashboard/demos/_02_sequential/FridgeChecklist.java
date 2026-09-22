@@ -7,14 +7,6 @@ import dev.langchain4j.service.UserMessage;
 
 /**
  * <b>Sequential</b>
- *
- * <p>The one agent three demos share, and the reason the chain is worth building. Here it turns
- * the clerk's card into the list on the fridge door. The <b>loop</b> demo puts the very same
- * agent in a loop with a critic and lets it rewrite its own output until the four rules hold —
- * no new agent, just different control around it. The capstone uses it a third time.
- *
- * <p>It reads {@code notes}, not "card", deliberately: whatever we know so far, in whatever shape
- * it is currently in. That is what lets the loop feed the agent its own output.
  */
 public interface FridgeChecklist {
     @Agent(description = "Writes the checklist that goes on the fridge door")

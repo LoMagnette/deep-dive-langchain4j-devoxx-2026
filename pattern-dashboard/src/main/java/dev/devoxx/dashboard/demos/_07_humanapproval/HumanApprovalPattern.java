@@ -28,10 +28,6 @@ import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Wiring for the <b>human in the loop</b> demo — the previous demo, with a person added.
- *
- * <p>Literally: the same router and the same three desks, and then one more step before anything
- * reaches the sitter standing in your kitchen. That is the cleanest way to show what a human step
- * is, because everything else on this page is unchanged from the demo before it.
  */
 public final class HumanApprovalPattern {
 

@@ -21,11 +21,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 /**
  * Bridges LangChain4j agentic observability callbacks into {@link RunEvent}s pushed to a sink.
  * Inherited by sub-agents so every agent invocation in a composite is observed.
- *
- * <p>It also carries the run's channel to a person ({@link AskHuman}) and, for the one demo that
- * chooses a model per invocation, the run's {@link ModelTiers}. Both live here rather than being
- * extra arguments to every {@code Runner} because the listener already <i>is</i> the per-run
- * context object, and in each case exactly one demo out of twenty-one needs the thing.
  */
 public class StreamingListener implements AgentListener {
 
@@ -38,10 +33,6 @@ public class StreamingListener implements AgentListener {
     private final StreamingChatModel streaming;
     /**
      * When each in-flight invocation started, so an {@code agent-after} can say how long it took.
-     *
-     * <p>Keyed by {@code agentId()} rather than the agent's name, because a loop invokes the same
-     * name several times and a mapper fans one agent out over every item at once — names repeat,
-     * ids do not. Concurrent by necessity: a parallel step calls back from several threads.
      */
     private final Map<String, Long> startedNanos = new ConcurrentHashMap<>();
 
@@ -102,10 +93,6 @@ public class StreamingListener implements AgentListener {
 
     /**
      * Puts a question to whoever is watching this run and blocks until they answer.
-     *
-     * <p>The {@code human-ask} event is emitted first and the wait happens after, so the page has
-     * the question on screen before anything is waiting on it — do it the other way round and the
-     * run blocks on a question nobody has been shown.
      */
     public String askHuman(String agent, String question) {
         emit("human-ask", agent, question, null, null);

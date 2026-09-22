@@ -53,11 +53,8 @@ public final class DebatePattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // The mesh layout spaces nodes evenly round a circle in declaration order, which put the
-        // judge to the LEFT of the two advocates: a picture of a verdict arriving before the
-        // argument. A debate has a direction — motion, argument, ruling — so it gets columns.
-        // The two advocates share the middle column, which is what makes their rebuttals a
-        // vertical pair of bowed arrows between them rather than part of the flow.
+        // Columns, not a circle: a debate has a direction — motion, argument, ruling. The two
+        // advocates share the middle column, so their rebuttals bow between them.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
                         node("take", "TakeHimAdvocate", "agent", 1),

@@ -4,13 +4,6 @@ import java.nio.channels.UnresolvedAddressException;
 
 /**
  * Error formatting for the dashboard.
- *
- * <p>LangChain4j wraps agent failures in an {@code AgentInvocationException} whose own message is
- * only {@code "Failed to invoke agent method: <signature>"} — the interesting part (a
- * {@code ConnectException} because Ollama isn't running, an {@code OutputParsingException} because
- * the model answered in prose, an HTTP 404 because the model isn't pulled) lives further down the
- * cause chain. Showing just {@code getMessage()} makes every failure look identical and
- * undiagnosable, so we walk the chain and surface the whole story.
  */
 public final class Errors {
 

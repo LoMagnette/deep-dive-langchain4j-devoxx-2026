@@ -12,12 +12,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._21_resilience.Keys.MedNote;
-import dev.devoxx.dashboard.demos._21_resilience.Keys.Meds;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
 import dev.devoxx.dashboard.demos._01_single.Keys.Message;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.devoxx.dashboard.demos._01_single.SitterCardClerk;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos._21_resilience.Keys.MedNote;
+import dev.devoxx.dashboard.demos._21_resilience.Keys.Meds;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;

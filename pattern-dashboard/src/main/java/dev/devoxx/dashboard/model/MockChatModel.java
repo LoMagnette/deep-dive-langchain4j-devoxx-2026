@@ -20,35 +20,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Deterministic, no-API-key chat model. It inspects the last user prompt and returns a short,
  * PARSEABLE answer so every pattern can run on stage without a real LLM — which is also what
  * {@code mvn test} runs against.
- *
- * <p>The rules are an ORDERED table on purpose. Prompts overlap a lot (three agents mention the
- * sitter note; the park step quotes the garden step), so the specific rule has to be listed
- * before the general one, and putting them all in one list makes that ordering visible instead of
- * hiding it in a ladder of ifs. Each rule's comment says what it is standing in front of.
- *
- * <p>Three hazards this table already pays for, each of which produced a wrong demo with no error
- * at all:
- * <ul>
- *   <li><b>Whitespace is collapsed before matching.</b> The prompts are text blocks, so
- *       "PASS or FAIL" is one phrase to a reader and {@code "PASS or\nFAIL"} to
- *       {@code String.contains} — a rule that looks obviously right silently never fires.</li>
- *   <li><b>Rules matching quoted content go BELOW rules matching an instruction.</b> A
- *       refinement loop feeds the note it just wrote back into the next prompt, so a rule keyed
- *       on a word that appears in the note hijacks the loop's second pass and the composite
- *       returns the wrong stage's answer.</li>
- *   <li><b>Trigger words must not be ordinary English.</b> The score rule used to fire on the
- *       word "number", which quietly claimed every agent whose rules mention "the vet's
- *       telephone number" — so they answered "0.60" instead of writing a note.</li>
- * </ul>
- *
- * <p>The replies are deliberately good demo content rather than filler: run with
- * {@code -Ddashboard.model=mock} and the picnic-blanket mapper really does clear the cheddar and
- * condemn the grapes, the refinement loop really does score 0.60 and then 0.95, and the
- * second-dog vote really does split two to one.
- *
- * <p>A rule whose trigger no prompt contains any more is worse than no rule: it reads as live
- * behaviour, and its comment describes a demo that no longer exists. When a demo's prompts
- * change, delete the rules they stranded — this table has carried orphans from two rewrites.
  */
 public class MockChatModel implements ChatModel {
 
@@ -95,11 +66,6 @@ public class MockChatModel implements ChatModel {
 
     /**
      * The LAST user message only — plus any system prompt, which carries the agent's role.
-     *
-     * <p>Concatenating the whole conversation instead would be a bug with teeth: the supervisor's
-     * planner is a multi-turn conversation, so round 1's text (including the
-     * {@code last received response is: ''} marker that means "nothing has run yet") would stay
-     * visible forever, pinning the planner to its first choice and never letting it reach "done".
      */
     private String lastUserText(ChatRequest request) {
         StringBuilder sb = new StringBuilder();
@@ -126,30 +92,22 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("planner expert") || p.contains("agent invocation"),
                         this::supervisorPlan),
 
-                // --- 1. The loop critic. Keyed on "0.0 to 1.0" and NOT on the word "number":
-                // three agents' rules mention "the vet's telephone number", and they must write
-                // notes, not scores. Alternates 0.60 then 0.95 so a loop visibly runs a second
-                // pass and then reliably crosses the 0.8 bar instead of spinning to maxIterations.
+                // --- 1. The loop critic. Keyed on "0.0 to 1.0", NOT on "number": three agents'
+                // rules mention the vet's telephone number. 0.60 then 0.95, so a loop iterates
+                // once and then crosses the 0.8 bar.
                 new Rule(p -> p.contains("0.0 to 1.0") || has(p, "score", "rate"),
                         p -> String.format(Locale.US, "%.2f",
                                 scoreCounter.getAndIncrement() % 2 == 0 ? 0.60 : 0.95)),
 
-                // --- 2. The second-dog vote. ONE WORD, and deliberately NOT the same word for
-                // all three: the money is fine, the flat and Zao are not. That is a real 2-1
-                // majority rather than three agents agreeing because they were asked the same
-                // thing, which is the only reason to run a vote at all.
+                // --- 2. The second-dog vote. One word, and deliberately NOT the same word for
+                // all three — a real 2-1 majority rather than three agents agreeing.
                 new Rule(p -> p.contains("what a second dog costs"), p -> "YES"),
                 new Rule(p -> p.contains("yes or later"), p -> "LATER"),
 
-                // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or the
-                // router picks a branch that does not exist. Returns the first destination named
-                // in the prompt, which for the shipped worry is also the RIGHT one: emergency.
-                // Classified from the WORRY, not from the destinations listed in the prompt.
-                // Matching the prompt returned whichever category was named first — always
-                // "emergency", whatever was asked — so offline the router looked like it worked
-                // (the shipped worry really is an emergency) while routing everything to the vet.
-                // The model-routing demo is what exposed it: every question bought the strong
-                // tier. Must stay in step with Parsing.CATEGORIES.
+                // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or it
+                // picks a branch that does not exist. Classified from the WORRY, never from the
+                // destinations the prompt lists — matching those routes everything to the vet,
+                // which looks right offline because the shipped worry really is an emergency.
                 new Rule(p -> p.contains("classify this worry"), p -> switch (kind(p)) {
                     case MEDICAL -> "emergency";
                     case BEHAVIOUR -> "training";
@@ -213,11 +171,9 @@ public class MockChatModel implements ChatModel {
                                 + "whole time. Avoid the park after dark while the fireworks are "
                                 + "going."),
 
-                // --- 8. The three people a worry can reach. Listed AFTER the composite's rules
-                // because the merger's prompt quotes whichever of these answered.
-                // Each desk ends with the word the escalation ladder branches on. The vet is the
-                // last rung, so it always answers; the other two escalate outside their subject.
-                // She always names who is needed, so the hand-off never depends on a refusal.
+                // --- 8. The three desks, AFTER the composite's rules because the merger's
+                // prompt quotes whichever of them answered. Each ends with the word the
+                // escalation ladder branches on; the vet is the last rung, so it always answers.
                 new Rule(p -> p.contains("out-of-hours line"), MockChatModel::nurse),
 
                 new Rule(p -> p.contains("emergency vet"),
@@ -346,17 +302,11 @@ public class MockChatModel implements ChatModel {
                                 + "— he is lonely — but the answer to a lonely dog is a dog "
                                 + "walker, not another dog."),
 
-                // --- 15. The holiday debate, and the rule that ENDS it: "comes or stays" is the
-                // JUDGE's prompt (HolidayVerdict), not an advocate's. The advocates fall through
-                // to the catch-all below, which hands both sides the same words — and THAT is
-                // what makes ConvergenceStrategy.unanimous() (all responses equal) fire after
-                // round one.
-                //
-                // So the catch-all is load-bearing, not a safety net: put a rule between these
-                // two that tells the advocates apart and the holiday debate stops converging,
-                // runs its full two rounds like the council's, and the page quietly loses the
-                // contrast it exists to show. theDebateConvergesOnAgreementAndNotOtherwise
-                // is what goes red if that happens.
+                // --- 15. The holiday debate. "comes or stays" is the JUDGE's prompt; the two
+                // advocates fall through to the catch-all, which hands them the same words and
+                // is what makes unanimous() converge after round one. The catch-all is
+                // load-bearing: a rule between these two that tells the advocates apart kills
+                // the contrast with the council's debate, and turns that test red.
                 new Rule(p -> p.contains("comes or stays"),
                         p -> "He stays, with the sitter. The fact that decided it: a house with "
                                 + "no shade in Tuscany in August is dangerous for a black "
@@ -369,20 +319,16 @@ public class MockChatModel implements ChatModel {
                                 + "double-coated dog. Two weeks with a sitter he knows costs him "
                                 + "a fortnight of missing you; the alternative could cost more."),
 
-                // --- 16. Running it for real. Last in the table and safely so: each of these is
-                // keyed on an instruction of its own, and no rule above quotes any of them.
-                //
-                // The out-of-hours DESK, not the out-of-hours LINE — the nurse owns that phrase
-                // nine rules up, and the two prompts are one word apart.
+                // --- 16. Running it for real. Last and safely so: each is keyed on an
+                // instruction no rule above quotes. The out-of-hours DESK, not the out-of-hours
+                // LINE — the nurse owns that phrase nine rules up.
                 new Rule(p -> p.contains("cover arrangements"),
                         p -> "Mr Devos is on call from 19:00 to 08:00 both nights. Ring 061 22 "
                                 + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
                                 + "surgery is in Marche, twenty minutes by car — ring before you "
                                 + "set off, they do not always have someone on site."),
-                // Deliberately DROPS the microchip and the policy number. The note reads
-                // perfectly well without them, which is exactly the failure the guard is there
-                // to catch — a canned answer that copied everything would make the non-AI step
-                // look like ceremony.
+                // Deliberately DROPS the microchip and the policy number, so the guard has
+                // something to catch. Copy them here and that step becomes ceremony.
                 new Rule(p -> p.contains("from the record below"),
                         p -> """
                                 Zao is a four-year-old Belgian shepherd, 32 kg.
@@ -429,14 +375,6 @@ public class MockChatModel implements ChatModel {
      */
     /**
      * The canned supervisor plan — and it is deliberately a <b>reactive</b> one.
-     *
-     * <p>It does not replay a fixed list. It calls the trainer first, then reads what came back:
-     * if the trainer said ESCALATE, it calls the vet, and otherwise it stops. That is the same
-     * decision a real planner makes, so the offline demo shows the thing the demo claims — the
-     * second call happening <i>because of</i> the first — rather than a script that would look
-     * identical if the first agent had said something else.
-     *
-     * <p>Try it: an input the trainer can answer ends after one call.
      */
     /**
      * The argument the nurse and the three desks all take. A planner's JSON names the agent's
@@ -522,15 +460,6 @@ public class MockChatModel implements ChatModel {
 
     /**
      * The three desks answer what they were actually ASKED, not one canned line each.
-     *
-     * <p>Mostly {@code contains}, because the keywords are stems and the worry says "snapping"
-     * rather than "snap". The exception is "ear", which goes through {@link #has}: it is a
-     * substring of "near". Stems need prefix matching, short words need boundaries.
-     *
-     * <p>That matters because the same three agents serve four demos now: routing sends one
-     * worry to one of them, the supervisor puts a three-part message to all three, and the
-     * escalation ladder walks them in order. A fixed reply per desk made the supervisor's
-     * roll-call read "called 3 of 3" over three answers about the wrong problems.
      */
     private static String vet(String prompt) {
         String q = worry(prompt);
@@ -608,9 +537,6 @@ public class MockChatModel implements ChatModel {
 
     /**
      * Just what was asked, never the agent's own instructions — see {@link #kind}.
-     *
-     * <p>Every label a prompt uses for its input must be listed here. A missing one makes that
-     * agent fall through to its catch-all answer, with no error anywhere.
      */
     private static final List<String> ASKED_LABELS =
             List.of("worry:", "question:", "the call:");
@@ -643,10 +569,6 @@ public class MockChatModel implements ChatModel {
      * against the whole prompt finds "injur" every single time, classifies every question as
      * medical, and the ladder walks to the top no matter what is asked — a planner that looks
      * exactly like a sequence.
-     *
-     * <p>The question is the last thing in every tier's template, hence {@code lastIndexOf}. A
-     * missing marker means the wording in the escalation agents changed: fall back to MEDICAL, so the
-     * ladder visibly runs to the top rather than silently answering everything from the book.
      */
     private static Kind kind(String prompt) {
         String lower = prompt.toLowerCase(Locale.ROOT);

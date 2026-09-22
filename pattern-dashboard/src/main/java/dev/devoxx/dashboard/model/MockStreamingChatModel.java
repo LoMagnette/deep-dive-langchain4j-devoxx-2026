@@ -12,13 +12,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 /**
  * The offline half of the streaming demo: the same canned answers {@link MockChatModel} gives,
  * handed over a few characters at a time with a small pause between them.
- *
- * <p>It delegates rather than duplicating the rule table — there is exactly one place canned
- * answers are decided, and a second copy would drift from it the first time a prompt changed.
- *
- * <p>The pause is the honest part. Without it every token arrives in the same millisecond and
- * the demo shows a block of text appearing at once, which is precisely what streaming is meant
- * to look different from. {@link #DELAY_MS} is what a small local model roughly feels like.
  */
 public class MockStreamingChatModel implements StreamingChatModel {
 

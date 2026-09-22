@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._17_sitternote;
 
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;

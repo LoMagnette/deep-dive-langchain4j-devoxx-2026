@@ -46,11 +46,8 @@ public final class BdiPattern {
                 .name("FirstTraining")
                 .outputKey(Session.class)
                 .build();
-        // Priorities, not order. Nobody needs telling that a puppy goes out before he is fed
-        // and long before he is taught anything — so the room can see the planner making the
-        // right call instead of taking it on trust. Shuffle these three declarations and the
-        // behaviour does not change, which is the point of BDI and impossible to show with
-        // two agents in the only order they could ever have run.
+        // Priorities, not declaration order: shuffle these three and the behaviour is the
+        // same. Everyone knows a puppy goes out before he is fed, so the room can check it.
         List<Desire> desires = List.of(
                 Desire.of("out-first", 30, s -> true, s -> s.hasState(Out.class),
                         ToiletTrip.class),

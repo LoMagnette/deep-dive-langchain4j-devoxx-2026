@@ -29,11 +29,7 @@ public final class SinglePattern {
     private SinglePattern() {
     }
 
-    /**
-     * The message every household sends the friend who is watching the dog. Shared with the
-     * sequential demo, which runs the same input through a second agent — seeing the identical
-     * text produce a different artefact is the point of putting them side by side.
-     */
+    /** Shared with the sequential demo, which runs the same text through a second agent. */
     public static final String SITTER_MESSAGE =
             "hey so thanks again for having zao!! he's the big black belgian shepherd, food's "
                     + "in the tub by the back door he has two scoops morning and evening, oh and "
@@ -58,15 +54,9 @@ public final class SinglePattern {
     }
 
     /**
-     * The same one agent, with {@code streamingChatModel} instead of {@code chatModel} and an
-     * interface whose method returns a {@link TokenStream}. Everything else — the builder, the
-     * sequence, the key, the listener — is identical, which is the whole content of the toggle.
-     *
-     * <p>Two things make the stream reach this method rather than being drained inside the
-     * framework: the agent's return type is a {@code TokenStream}, and it is the <b>last</b>
-     * agent of an {@code UntypedAgent} sequence. Put another step after it and the tokens are
-     * consumed internally and the scope gets the finished text instead — which is the right
-     * behaviour, and the reason only a final agent can stream to a screen.
+     * The same agent with {@code streamingChatModel} and a {@link TokenStream} return type —
+     * that return type is what makes it stream, not the builder. It reaches the screen only
+     * because it is the LAST agent: put a step after it and the framework drains it internally.
      */
     private static String streamed(StreamingListener listener, String input) {
         var clerk = AgenticServices.agentBuilder(StreamingSitterCardClerk.class)
@@ -78,8 +68,7 @@ public final class SinglePattern {
                 .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
         Object result = app.invokeWithAgenticScope(Map.of(new Message().name(), input)).result();
         if (!(result instanceof TokenStream stream)) {
-            // Not an error worth throwing: the answer is right, it just arrived in one piece.
-            return String.valueOf(result);
+            return String.valueOf(result);   // right answer, just not streamed
         }
 
         var done = new CompletableFuture<String>();
@@ -90,17 +79,14 @@ public final class SinglePattern {
                 })
                 .onCompleteResponse(response -> done.complete(response.aiMessage().text()))
                 .onError(done::completeExceptionally)
-                // Nothing happens until start(): the handlers are registered first, so a stream
-                // that began on the line above would drop the tokens sent before this one.
-                .start();
+                .start();   // handlers first: an earlier start() drops the opening tokens
         try {
             return done.get(STREAM_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return text.toString();
         } catch (ExecutionException | TimeoutException e) {
-            // Whatever arrived is still the honest answer, and on a projector it is the visible
-            // one — the page has been showing it token by token.
+            // Whatever arrived is what the page has been showing token by token.
             return text.isEmpty() ? "the stream failed: " + e : text.toString();
         }
     }

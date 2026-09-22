@@ -46,10 +46,8 @@ public final class ModelRoutingPattern {
                 .outputKey(Category.class)
                 .build();
 
-        // THE line. chatModel takes a Function<AgenticScope, ChatModel>, so the model is resolved
-        // when the agent is invoked — by which time the router has written 'category'. Built
-        // eagerly it could only ever have one model, and the choice would have to become a
-        // branch in the topology instead of a property of one step.
+        // THE line. chatModel takes a Function<AgenticScope, ChatModel>, so the model is
+        // resolved at invocation — by which time the router has written the category.
         var desk = AgenticServices.agentBuilder(DutyDesk.class)
                 .chatModel(scope -> {
                     boolean serious = "emergency".equals(category(scope.readState(Category.class)));
@@ -72,9 +70,6 @@ public final class ModelRoutingPattern {
     /**
      * Leads with the choice, because the answer alone is the one thing that does <i>not</i>
      * demonstrate this pattern — it looks identical whichever model produced it.
-     *
-     * <p>{@link ModelTiers#note()} is where the honesty lives: with one model pulled, both tiers
-     * are the same model and it says so rather than letting the run imply a saving.
      */
     private static String answerWithItsTier(AgenticScope scope, ModelTiers tiers, String picked) {
         String kind = category(scope.readState(Category.class));

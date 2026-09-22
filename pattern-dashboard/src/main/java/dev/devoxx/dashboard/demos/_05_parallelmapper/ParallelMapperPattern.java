@@ -13,9 +13,9 @@ import java.util.stream.IntStream;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Eaten;
 import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Verdicts;
+import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -48,13 +48,9 @@ public final class ParallelMapperPattern {
         // hard-coded list — otherwise the input box on the page has no effect here.
         List<String> eaten = items(input);
         var r = app.invokeWithAgenticScope(Map.of(new Eaten().name(), eaten));
-        // Each verdict is paired back with the item it is about. The mapper preserves
-        // order, and String.valueOf(List) would put five unlabelled verdicts on the screen
-        // for the room to match up by counting — the moment the demo loses them.
-        //
-        // Note what the typed key bought: Verdicts is a TypedKey<List<String>>, so this
-        // reads as a List with no cast and no instanceof. The string version of this line
-        // returned Object and had to be interrogated at run time.
+        // Paired back with the item each verdict is about — the mapper preserves order, and
+        // five unlabelled verdicts would leave the room counting. Verdicts is a
+        // TypedKey<List<String>>, so this reads as a List with no cast.
         var scope = r.agenticScope();
         List<String> said = scope == null ? List.of()
                 : requireNonNullElse(scope.readState(Verdicts.class), List.<String>of());

@@ -73,10 +73,9 @@ public class PatternResource {
         String runId = UUID.randomUUID().toString();
 
         return Multi.createFrom().emitter(em -> {
-            // Closing the tab cancels the subscription but tells the running thread nothing, so
-            // without this a run blocked on a question nobody will now answer sits out the full
-            // HumanQuestions.WAIT holding one of four pool threads — and the next few runs
-            // silently never start. Fires on normal completion too, where it is a no-op.
+            // Closing the tab tells the running thread nothing, so without this a run blocked
+            // on a question holds a pool thread for the full HumanQuestions.WAIT and the next
+            // few runs silently never start.
             em.onTermination(() -> humans.cancel(runId));
             pool.submit(() -> {
             AtomicLong seq = new AtomicLong();
@@ -119,10 +118,6 @@ public class PatternResource {
     /**
      * The other half of a human-in-the-loop run: the answer, posted back against the run id the
      * stream announced.
-     *
-     * <p><b>409</b> rather than 404 when the run is not asking anything, because the common cause
-     * is a late answer to a question that already timed out — the run exists, it just is not
-     * waiting any more, and a 404 would send the caller looking for the wrong problem.
      */
     @POST
     @Path("/runs/{runId}/answer")

@@ -46,11 +46,8 @@ public final class GoapPattern {
                 .outputKey(Park.class)
                 .build();
         UntypedAgent app = AgenticServices.plannerBuilder()
-                // Registered BACKWARDS on purpose, and it still runs indoor → garden → park.
-                // That is the whole pattern: the order comes from the I/O keys (ParkRecall
-                // needs 'Garden', GardenRecall needs 'Indoor'), not from the order you
-                // happened to type. Say this out loud on stage — it is the one moment where
-                // GOAP is visibly not a sequence with extra ceremony.
+                // Registered BACKWARDS on purpose, and it still runs indoor → garden → park:
+                // the order comes from the I/O keys, not from the order you typed.
                 .subAgents(park, garden, indoor)
                 .planner(GoalOrientedPlanner::new)
                 .outputKey(Park.class)
@@ -67,11 +64,8 @@ public final class GoapPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Every box says what it NEEDS, because that is the only thing distinguishing this
-        // picture from the sequential demo's. The planner was handed these three backwards; the
-        // arrows are what it worked out from the keys, not an order anybody typed — and the
-        // goal box says so, because otherwise the reader has to be TOLD the order was derived,
-        // and not having to be told is what the picture is for.
+        // Every box says what it NEEDS, and the goal box says they were registered backwards
+        // — otherwise this is pixel-for-pixel the sequential demo's diagram.
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "goal", "input").withSub("registered: park first"),
                         node("indoor", "IndoorRecall", "agent").withSub("needs nothing"),

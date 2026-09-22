@@ -11,9 +11,9 @@ import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -58,12 +58,8 @@ public final class LoopPattern {
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("loop",
-                // The same FridgeChecklist the sequential demo used, with a critic added and a
-                // loop drawn round it. The lesson is that nothing about the agent changed.
-                //
-                // Both ways out of the critic, not just the way round: with only the return arc
-                // drawn, this was two agents circling for ever, and the thing that ENDS a loop —
-                // the whole of what you have to get right — was the one thing not on the page.
+                // Demo 2's agent unchanged, with a critic and a loop drawn round it. Both ways
+                // out of the critic: the arc back AND the exit, which is what ends a loop.
                 List.of(node("in", "notes", "input"),
                         node("writer", "FridgeChecklist", "agent"),
                         node("check", "FridgeRuleCheck", "agent").withSub("4 rules, scored"),

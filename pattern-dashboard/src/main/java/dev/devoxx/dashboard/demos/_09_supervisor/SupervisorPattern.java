@@ -23,20 +23,6 @@ import dev.langchain4j.model.chat.ChatModel;
 /**
  * Wiring for the <b>supervisor</b> demo — the same three people the router chose between, except
  * that now nobody wrote down who to ask.
- *
- * <p>This is the pivot of the talk and it is deliberately built from parts the room has already
- * met: the three desks are demo 6's, unchanged. Demo 6 routes to <b>one</b> of them, chosen by a
- * classifier you wrote. Here the model calls as many as it thinks it needs and decides when it is
- * done — which is the only thing routing cannot do, and exactly what this input requires.
- *
- * <p>The one agent this demo adds is {@link TriageNurse}, and she is the reason the hand-off is
- * reliable rather than lucky. An earlier version had the <i>trainer</i> decline cases that smelled
- * of pain: it reads beautifully and on a live model it called one agent and stopped, because a
- * refusal is a conditional exception sitting under a positive instruction ("give the owner one
- * thing to change this week") and a small model takes the positive instruction every time. The
- * nurse never treats and never trains; her whole job is to assess and name who is needed, so she
- * always succeeds at what she was asked and the supervisor's next decision rests on a fact it was
- * given rather than a judgement the model had to volunteer.
  */
 public final class SupervisorPattern {
 
@@ -95,10 +81,6 @@ public final class SupervisorPattern {
 
     /**
      * Who was actually called, and what each of them said.
-     *
-     * <p>The count is the whole point of the demo. With only the last answer on screen — which is
-     * what {@code SupervisorResponseStrategy.LAST} gives you — three calls and one call look
-     * identical, and the pattern reads as a router with extra steps.
      */
     private static String answerWithItsRoute(AgenticScope scope) {
         var calls = scope.agentInvocations().stream()
@@ -152,10 +134,8 @@ public final class SupervisorPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Drawn as a star this was a wheel with four equal spokes, which is a picture of a
-        // fan-out — the exact thing the demo spends five minutes denying. Laid out left to
-        // right it is a picture of a decision instead: the worry arrives at the supervisor,
-        // never at an agent, and the only arrow that comes BACK is the nurse's.
+        // Columns, not a star: a wheel of equal spokes is a picture of the fan-out this demo
+        // exists to deny. The worry arrives at the supervisor, never at an agent.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "worry", "input", 0),
                         node("supervisor", "Supervisor", "supervisor", 1)
@@ -164,14 +144,9 @@ public final class SupervisorPattern {
                         node("care", "EverydayCare", "agent", 2).withSub("2 · if she says so"),
                         node("trainer", "DogTrainer", "agent", 2).withSub("2 · if she says so"),
                         node("vet", "EmergencyVet", "agent", 2).withSub("2 · if she says so")),
-                // Both directions on the nurse: the supervisor invokes her and READS the answer,
-                // which is the edge the whole demo turns on, and the only two-way pair on the
-                // page. The other three are one-way because only one of them is ever called,
-                // and only after her.
-                // Only the return arrow is labelled. Both halves of a two-way pair bow through
-                // the same gap, so "invoke" and the answer landed on top of each other — and of
-                // the two it is the answer that carries the mechanism. Same convention as the
-                // blackboard, where the write is labelled and the read is not.
+                // Two-way on the nurse only — the supervisor reads her answer, and that is the
+                // edge the demo turns on. Only the return half is labelled: both halves bow
+                // through the same gap, and the answer is the one carrying the mechanism.
                 List.of(edge("in", "supervisor"),
                         edge("supervisor", "nurse"),
                         edge("nurse", "supervisor", "names who it needs"),

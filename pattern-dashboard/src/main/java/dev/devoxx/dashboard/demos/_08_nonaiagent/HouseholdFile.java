@@ -9,17 +9,6 @@ import dev.langchain4j.agentic.declarative.K;
  * no model: {@code AgentUtil.nonAiAgentToExecutor} takes any object with one
  * {@code @Agent}-annotated method, binds the {@code @K} parameters from the scope and writes the
  * return value to the output key, exactly as it does for an LLM agent.
- *
- * <p>Two details that only apply on this side of the line:
- *
- * <ul>
- *   <li><b>{@code name} has to be on the annotation.</b> There is no builder to call
- *       {@code .name("X")} on, and the default is the <i>method</i> name — this agent would be
- *       called "lookup" on the diagram and in every event. Same trap as the builder's, one layer
- *       further down.</li>
- *   <li><b>{@code typedOutputKey} is the annotation's version of {@code outputKey(Facts.class)}</b>,
- *       so a non-AI agent obeys the repo's no-string-literals rule like everything else.</li>
- * </ul>
  */
 public class HouseholdFile {
 

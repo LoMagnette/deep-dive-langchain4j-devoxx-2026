@@ -24,11 +24,6 @@ import jakarta.enterprise.event.Observes;
  * Mirrors the server log into the browser, so the interesting half of the demo — the supervisor
  * choosing its next agent, the blackboard activating experts, a model falling back — is visible
  * on the projector instead of in a terminal nobody is showing.
- *
- * <p>Works by attaching a JUL {@link Handler} to the root logger: Quarkus logs through
- * JBoss LogManager, which is a JUL implementation, so this sees every category at whatever level
- * is configured. Records go into a bounded ring buffer (replayed to each new viewer) and to a
- * broadcast stream (pushed live over SSE by {@link LogResource}).
  */
 @ApplicationScoped
 public class LogStream {

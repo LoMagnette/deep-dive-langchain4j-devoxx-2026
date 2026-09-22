@@ -61,10 +61,8 @@ public final class CustomPlannerPattern {
                 .listener(listener)
                 .build();
         var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
-        // Report WHICH rung settled it and how many were asked. Returning just the answer
-        // would hide the only thing this pattern does differently from a sequence — the
-        // scope's invocation history is what makes that reportable without threading state
-        // out of the planner.
+        // WHICH rung settled it, read from the scope's invocation history. Return just the
+        // answer and the one thing separating this from a sequence becomes invisible.
         String answer = String.valueOf(r.result());
         var scope = r.agenticScope();
         if (scope == null) {
@@ -85,11 +83,9 @@ public final class CustomPlannerPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // One column per rung, because the ladder IS the pattern: the cost rises left to right
-        // and the run stops at the first rung that answers. Stacking all three in one column —
-        // which is how this was drawn first — produces the branch diagram of demo 6, one input
-        // arriving at one of three desks, which is the exact reading this planner exists to
-        // correct. The three ways out arc over the rungs they skip.
+        // One column per rung, cost rising left to right. Stacked in one column this is demo
+        // 6's branch diagram — one input, three desks — which is the opposite reading. The
+        // three ways out arc over the rungs they skip.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "worry", "input", 0),
                         node("book", "EverydayCare", "agent", 1).withSub("rung 1 · cheapest"),

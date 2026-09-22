@@ -7,12 +7,6 @@ import dev.langchain4j.service.UserMessage;
 
 /**
  * The one agent this demo adds, and it is what makes the hand-off reliable.
- *
- * <p>Do not rebuild this on a specialist <i>refusing</i> a case. A refusal is a conditional
- * exception underneath a positive instruction ("give the owner one thing to change this week"),
- * and a model — a small local one especially — takes the positive instruction. Handing on is the
- * nurse's job rather than an exception to it, so the supervisor's next decision rests on a fact
- * it was given instead of a judgement the model had to volunteer.
  */
 public interface TriageNurse {
     @Agent(description = "Takes the out-of-hours call, works out what is going on, and says who "

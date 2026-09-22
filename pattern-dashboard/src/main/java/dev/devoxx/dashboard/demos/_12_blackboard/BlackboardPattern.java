@@ -10,11 +10,11 @@ import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Causes;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Home;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Problem;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Routine;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -71,14 +71,9 @@ public final class BlackboardPattern {
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("star",
-                // The only pattern that still draws the shared state: here it is not plumbing,
-                // it is the pattern. Every other topology dropped its AgenticScope sink — it was
-                // the same box in all 13 diagrams, and the scope now has its own tab.
-                //
-                // Four identical satellites said nothing about where the problem comes from,
-                // why the order is free, or how the run ever stops. The sub-lines carry all
-                // three: the board holds the problem, the note-takers each need only that (so
-                // any of them can go first), and the lead needs all three and ends it.
+                // The only diagram that still draws the shared state, because here it IS the
+                // pattern. The sub-lines say why the order is free: each note-taker needs only
+                // the problem, and the lead needs all three, so it can only go last.
                 List.of(node("board", "The board", "board").withSub("the problem + every note"),
                         node("walks", "WalkNotes", "agent").withSub("needs only the problem"),
                         node("routine", "RoutineNotes", "agent").withSub("needs only the problem"),

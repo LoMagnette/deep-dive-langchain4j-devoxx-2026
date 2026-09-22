@@ -9,8 +9,8 @@ import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
+import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -26,10 +26,8 @@ public final class NonAiAgentPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Two of these three "agents" are `new`. No builder, no chatModel, no prompt — the
-        // objects go straight into subAgents(), and everything downstream treats them the same
-        // as the one in the middle: bound from the scope, written to an output key, timed and
-        // reported to the listener.
+        // Two of these three "agents" are `new`: no builder, no model, no prompt. They go
+        // straight into subAgents() and the sequence cannot tell the difference.
         var file = new HouseholdFile();
         var guard = new NoteGuard();
 

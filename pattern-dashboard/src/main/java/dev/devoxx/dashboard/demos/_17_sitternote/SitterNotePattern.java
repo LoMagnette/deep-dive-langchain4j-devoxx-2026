@@ -11,13 +11,8 @@ import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
-import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
-import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
+import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
 import dev.devoxx.dashboard.demos._03_loop.FridgeRuleCheck;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
@@ -25,8 +20,13 @@ import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.MealPlanner;
 import dev.devoxx.dashboard.demos._04_parallel.WalkPlanner;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
-import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
+import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
+import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
+import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
+import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -84,10 +84,8 @@ public final class SitterNotePattern {
                 .subAgents(meals, walks)
                 .build();
 
-        // 3. Loop — refine the note until the four fridge-door rules hold, never forever.
-        //    This IS demo 3's loop, both agents unchanged: the same checklist writer and
-        //    the same critic, with the merged note fed in instead of a typed one. A
-        //    composite reuses the parts rather than re-implementing them.
+        // 3. Loop — refine until the four fridge-door rules hold, never forever. This IS
+        //    demo 3's loop, both agents unchanged, with the merged note fed in.
         var tighten = AgenticServices.agentBuilder(FridgeChecklist.class)
                 .chatModel(model)
                 .name("FridgeChecklist")
@@ -116,11 +114,9 @@ public final class SitterNotePattern {
                 .outputKey(Notes.class)
                 .listener(listener)
                 .build();
-        // The same text under two keys, and not by accident: the router and the three
-        // specialists ask "what is the worry", the two planners ask "what is the stay".
-        // Reusing an agent means accepting the key IT already declared — this one line is
-        // the seam the caveat is about, and getting it wrong is a MissingArgumentException
-        // pointing at a step that looks unrelated.
+        // The same text under two keys: the router and specialists ask "what is the worry",
+        // the planners ask "what is the stay". Reusing an agent means accepting the key it
+        // already declared — get it wrong and MissingArgumentException blames another step.
         var r = app.invokeWithAgenticScope(
                 Map.of(new Worry().name(), input, new Stay().name(), input));
         return String.valueOf(r.result());

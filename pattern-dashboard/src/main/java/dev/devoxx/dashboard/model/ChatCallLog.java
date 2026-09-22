@@ -19,29 +19,6 @@ import dev.langchain4j.model.output.TokenUsage;
  * {@code chat}. It is what makes the "Server log" tab worth projecting: without it the tab
  * carries only the framework talking about itself ("activating agent X"), which is the shape of
  * a run and none of its content.
- *
- * <p>Three decisions worth keeping:
- *
- * <ul>
- * <li><b>INFO, not DEBUG.</b> The model's own {@code logRequests}/{@code logResponses} do this at
- * DEBUG, which meant the most interesting half of the demo was invisible unless somebody
- * remembered to raise a log level before going on stage. {@link ModelFactory} no longer sets
- * those flags — this replaces them, so there is exactly one source of prompt logging and no
- * duplicate lines.</li>
- * <li><b>It works for the mock too.</b> {@code ChatModel.chat()}'s default implementation fires
- * {@code listeners()} and then calls {@code doChat()} — so {@link MockChatModel} overrides
- * {@code doChat}, not {@code chat}, and takes a listener list in its constructor.</li>
- * <li><b>One line per call.</b> {@link #trim} flattens newlines to {@code ⏎} and caps at 700
- * chars; a prompt is a thirty-line text block, and thirty log records per call is a wall nobody
- * reads.</li>
- * </ul>
- *
- * <p>The start time rides in the per-call {@link ChatModelRequestContext#attributes()} map rather
- * than a field or a ThreadLocal: a parallel step runs several calls at once, on several threads,
- * and that map is the only thing the framework guarantees is scoped to one call.
- *
- * <p>This is also the hook §8½ hangs OpenTelemetry off — the same listener interface, a different
- * body.
  */
 public class ChatCallLog implements ChatModelListener {
 

@@ -9,11 +9,6 @@ import dev.langchain4j.agentic.declarative.K;
 
 /**
  * The other end of the sandwich: a plain Java check that the facts survived the writing.
- *
- * <p>It is here because "use the numbers exactly" is an instruction, and an instruction is not a
- * guarantee. Asking a second model whether the first one copied a microchip number correctly
- * would be slower, dearer and less reliable than {@code String::contains} — which is the test for
- * whether a step should be an LLM at all.
  */
 public class NoteGuard {
 

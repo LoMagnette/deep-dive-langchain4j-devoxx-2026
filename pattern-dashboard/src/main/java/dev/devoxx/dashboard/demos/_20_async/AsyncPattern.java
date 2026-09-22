@@ -10,12 +10,12 @@ import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._20_async.Keys.VetLine;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.MealPlanner;
 import dev.devoxx.dashboard.demos._04_parallel.WalkPlanner;
+import dev.devoxx.dashboard.demos._20_async.Keys.VetLine;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -64,11 +64,6 @@ public final class AsyncPattern {
 
     /**
      * The join, and it does not look like one — which is the lesson.
-     *
-     * <p>While {@code VetCallback} is still running the scope holds an {@code AsyncResponse}
-     * under {@code vetline}, and {@code readState} blocks on it. So the waiting happens HERE, on
-     * the line that needs the value, and not at the step that started the work. Read the meals
-     * and the walks first and the vet has that much longer to answer for free.
      */
     private static String note(AgenticScope scope) {
         return "**Meals**\n\n" + requireNonNullElse(scope.readState(Meals.class), "")

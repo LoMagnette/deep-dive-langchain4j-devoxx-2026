@@ -7,9 +7,6 @@ import dev.langchain4j.service.UserMessage;
 /**
  * The optional step. It declares {@code meds}, and most stays never write that key — so most
  * runs skip this agent entirely and the note goes out without a medication paragraph.
- *
- * <p>Nothing here says "optional": that is set on the builder, because whether an argument is
- * reliably present is a fact about the system this agent is wired into, not about the agent.
  */
 public interface MedicationNote {
     @Agent(description = "Writes the medication paragraph for the fridge note")
