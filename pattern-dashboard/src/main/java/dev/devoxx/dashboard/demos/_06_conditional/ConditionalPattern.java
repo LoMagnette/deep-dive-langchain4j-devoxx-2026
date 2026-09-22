@@ -96,8 +96,8 @@ public final class ConditionalPattern {
                         + "choose which way it falls. The fallback here is the vet, because that "
                         + "is the mistake you can live with.",
                 topo,
-                "he's just eaten a whole bar of dark chocolate off the coffee table, the wrapper "
-                        + "is on the floor",
+                "he's eaten a whole bar of dark chocolate off the coffee table — 85%, the good "
+                        + "stuff. The wrapper is on the floor and he is wagging",
                 ConditionalPattern::run);
     }
 }

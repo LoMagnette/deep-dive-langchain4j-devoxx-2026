@@ -4,7 +4,7 @@ Talk workspace. Two halves, and only one of them is code:
 
 | | |
 |---|---|
-| **[`pattern-dashboard/`](pattern-dashboard/)** | **The live demo.** A Quarkus app that visualizes and *runs* 19 agentic patterns plus two composite systems, all set in the life of Zao, a Belgian shepherd. This is the thing that goes on the projector, and the thing you build and edit. See [its README](pattern-dashboard/README.md). |
+| **[`pattern-dashboard/`](pattern-dashboard/)** | **The live demo.** A Quarkus app that visualizes and *runs* 19 agentic patterns plus two composite systems, all set in the life of Zao, a Bouvier des Flandres. This is the thing that goes on the projector, and the thing you build and edit. See [its README](pattern-dashboard/README.md). |
 | This file | The talk's spine: thesis, through-line, section order, speaker notes. |
 
 ## The one-sentence thesis

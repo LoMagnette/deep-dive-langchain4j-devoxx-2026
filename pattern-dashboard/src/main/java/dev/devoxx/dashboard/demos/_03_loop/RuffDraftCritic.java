@@ -11,7 +11,7 @@ import dev.langchain4j.service.UserMessage;
  * blows up the whole loop with an OutputParsingException. The caller extracts the number
  * defensively — see {@link dev.devoxx.dashboard.support.Parsing#score}.
  */
-public interface FridgeRuleCheck {
+public interface RuffDraftCritic {
     @Agent(description = "Checks a sitter note against the four fridge-door rules")
     @UserMessage("""
             Check this note against four rules: every meal has a time and an amount, it says

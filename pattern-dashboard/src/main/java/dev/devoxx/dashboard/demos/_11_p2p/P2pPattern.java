@@ -77,7 +77,7 @@ public final class P2pPattern {
                 "No hierarchy — needs a solid exit predicate or it never terminates, and "
                         + "\"they'll converge eventually\" is not one.",
                 topo,
-                "should Zao be allowed to sleep on the bed?",
+                "should Zao be allowed to sleep on the bed? He is asleep on the bed.",
                 P2pPattern::run);
     }
 }

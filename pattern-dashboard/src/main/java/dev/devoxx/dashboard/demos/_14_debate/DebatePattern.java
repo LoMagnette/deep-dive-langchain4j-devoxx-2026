@@ -28,17 +28,17 @@ public final class DebatePattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var take = AgenticServices.agentBuilder(TakeHimAdvocate.class)
+        var take = AgenticServices.agentBuilder(TeamTuscany.class)
                 .chatModel(model)
-                .name("TakeHimAdvocate")
+                .name("TeamTuscany")
                 .build();
-        var leave = AgenticServices.agentBuilder(LeaveHimAdvocate.class)
+        var leave = AgenticServices.agentBuilder(TeamStaycation.class)
                 .chatModel(model)
-                .name("LeaveHimAdvocate")
+                .name("TeamStaycation")
                 .build();
-        var verdict = AgenticServices.agentBuilder(HolidayVerdict.class)
+        var verdict = AgenticServices.agentBuilder(FinalBoarding.class)
                 .chatModel(model)
-                .name("HolidayVerdict")
+                .name("FinalBoarding")
                 .outputKey(Verdict.class)
                 .build();
         UntypedAgent app = AgenticServices.plannerBuilder()
@@ -57,9 +57,9 @@ public final class DebatePattern {
         // advocates share the middle column, so their rebuttals bow between them.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
-                        node("take", "TakeHimAdvocate", "agent", 1),
-                        node("leave", "LeaveHimAdvocate", "agent", 1),
-                        node("verdict", "HolidayVerdict", "judge", 2)
+                        node("take", "TeamTuscany", "agent", 1),
+                        node("leave", "TeamStaycation", "agent", 1),
+                        node("verdict", "FinalBoarding", "judge", 2)
                                 .withSub("only if they never agree")),
                 List.of(edge("in", "take"), edge("in", "leave"),
                         edge("take", "leave", "rebut"), edge("leave", "take", "up to 2 rounds"),
@@ -78,9 +78,9 @@ public final class DebatePattern {
                         + "token-hungry. Check the ruling against the facts yourself; that is why "
                         + "the motion states them.",
                 topo,
-                "two weeks in Tuscany in August: take Zao, or leave him with a sitter? It is a "
-                        + "twelve-hour drive, the house has no shade, and he has never been left "
-                        + "for more than two nights.",
+                "two weeks in Tuscany in August: take Zao, or leave him with a sitter? Twelve "
+                        + "hours in the car, a house with no shade, and a black double-coated dog "
+                        + "who has never been left for more than two nights.",
                 DebatePattern::run);
     }
 }

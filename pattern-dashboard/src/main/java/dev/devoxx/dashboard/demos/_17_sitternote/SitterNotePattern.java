@@ -12,14 +12,14 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
-import dev.devoxx.dashboard.demos._03_loop.FridgeRuleCheck;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
+import dev.devoxx.dashboard.demos._03_loop.RuffDraftCritic;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
-import dev.devoxx.dashboard.demos._04_parallel.MealPlanner;
-import dev.devoxx.dashboard.demos._04_parallel.WalkPlanner;
+import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
+import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
 import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
@@ -70,14 +70,14 @@ public final class SitterNotePattern {
                 .build();
 
         // 2. Parallel — meals and walks do not need each other, so fan them out.
-        var meals = AgenticServices.agentBuilder(MealPlanner.class)
+        var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
-                .name("MealPlanner")
+                .name("ChowHound")
                 .outputKey(Meals.class)
                 .build();
-        var walks = AgenticServices.agentBuilder(WalkPlanner.class)
+        var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
-                .name("WalkPlanner")
+                .name("LeadDeveloper")
                 .outputKey(Walks.class)
                 .build();
         UntypedAgent plan = AgenticServices.parallelBuilder()
@@ -86,14 +86,14 @@ public final class SitterNotePattern {
 
         // 3. Loop — refine until the four fridge-door rules hold, never forever. This IS
         //    demo 3's loop, both agents unchanged, with the merged note fed in.
-        var tighten = AgenticServices.agentBuilder(FridgeChecklist.class)
+        var tighten = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
-                .name("FridgeChecklist")
+                .name("FridgeMagnet")
                 .outputKey(Notes.class)
                 .build();
-        var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
+        var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
                 .chatModel(model)
-                .name("FridgeRuleCheck")
+                .name("RuffDraftCritic")
                 .outputKey(Score.class)
                 .build();
         UntypedAgent refine = AgenticServices.loopBuilder()
@@ -130,11 +130,11 @@ public final class SitterNotePattern {
                         node("vet", "EmergencyVet", "agent", 2),
                         node("trainer", "DogTrainer", "agent", 2),
                         node("care", "EverydayCare", "agent", 2),
-                        node("meals", "MealPlanner", "agent", 2),
-                        node("walks", "WalkPlanner", "agent", 2),
+                        node("meals", "ChowHound", "agent", 2),
+                        node("walks", "LeadDeveloper", "agent", 2),
                         node("merge", "SitterNoteMerger", "join", 3),
-                        node("tighten", "FridgeChecklist", "agent", 4),
-                        node("check", "FridgeRuleCheck", "agent", 4)),
+                        node("tighten", "FridgeMagnet", "agent", 4),
+                        node("check", "RuffDraftCritic", "agent", 4)),
                 List.of(edge("in", "router"),
                         edge("router", "vet", "emergency"),
                         edge("router", "trainer", "training"),
@@ -162,9 +162,9 @@ public final class SitterNotePattern {
                 "Composites fail at the seams: every step depends on a key an earlier one wrote, "
                         + "so one agent answering off-format breaks a step that looks unrelated.",
                 topo,
-                "we're away Friday to Sunday and my sister is having Zao. He's on two scoops "
-                        + "morning and evening, he pulls like a train on the lead, and it's New "
-                        + "Year so there will be fireworks both nights.",
+                "we're away Friday to Sunday and my sister is having Zao. Two scoops morning "
+                        + "and evening, he pulls like a train on the lead, and it's New Year, so "
+                        + "there will be fireworks both nights and he will be under the table.",
                 SitterNotePattern::run);
     }
 }

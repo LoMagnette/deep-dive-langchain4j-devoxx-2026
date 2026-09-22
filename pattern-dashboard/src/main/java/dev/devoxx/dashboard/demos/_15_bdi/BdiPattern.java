@@ -31,32 +31,32 @@ public final class BdiPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var out = AgenticServices.agentBuilder(ToiletTrip.class)
+        var out = AgenticServices.agentBuilder(GardenLeave.class)
                 .chatModel(model)
-                .name("ToiletTrip")
+                .name("GardenLeave")
                 .outputKey(Out.class)
                 .build();
-        var fed = AgenticServices.agentBuilder(FirstMeal.class)
+        var fed = AgenticServices.agentBuilder(FirstBytes.class)
                 .chatModel(model)
-                .name("FirstMeal")
+                .name("FirstBytes")
                 .outputKey(Fed.class)
                 .build();
-        var train = AgenticServices.agentBuilder(FirstTraining.class)
+        var train = AgenticServices.agentBuilder(HelloWorld.class)
                 .chatModel(model)
-                .name("FirstTraining")
+                .name("HelloWorld")
                 .outputKey(Session.class)
                 .build();
         // Priorities, not declaration order: shuffle these three and the behaviour is the
         // same. Everyone knows a puppy goes out before he is fed, so the room can check it.
         List<Desire> desires = List.of(
                 Desire.of("out-first", 30, s -> true, s -> s.hasState(Out.class),
-                        ToiletTrip.class),
+                        GardenLeave.class),
                 Desire.of("then-feed", 20,
                         s -> s.hasState(Out.class), s -> s.hasState(Fed.class),
-                        FirstMeal.class),
+                        FirstBytes.class),
                 Desire.of("then-teach", 5,
                         s -> s.hasState(Out.class) && s.hasState(Fed.class),
-                        s -> s.hasState(Session.class), FirstTraining.class));
+                        s -> s.hasState(Session.class), HelloWorld.class));
         UntypedAgent app = AgenticServices.plannerBuilder()
                 .subAgents(out, fed, train)
                 .planner(() -> new BDIPlanner(desires))
@@ -82,9 +82,9 @@ public final class BdiPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "first hour", "input"),
-                        node("out", "ToiletTrip", "agent").withSub("desire · priority 30"),
-                        node("fed", "FirstMeal", "agent").withSub("desire · priority 20"),
-                        node("train", "FirstTraining", "agent").withSub("desire · priority 5")),
+                        node("out", "GardenLeave", "agent").withSub("desire · priority 30"),
+                        node("fed", "FirstBytes", "agent").withSub("desire · priority 20"),
+                        node("train", "HelloWorld", "agent").withSub("desire · priority 5")),
                 // The training session is gated on BOTH of the others, which is what makes this a
                 // DAG of desires rather than a chain: 'needs' labels are preconditions, not
                 // hand-offs.
@@ -94,7 +94,7 @@ public final class BdiPattern {
                         edge("fed", "train", "needs fed")));
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
                 "Think back to his first hour here. Eight weeks old, forty minutes in the "
-                        + "car, three needs — and only one of them can go first.",
+                        + "car, three needs at once. Get the order wrong and you mop.",
                 null,
                 "The agent pursues prioritised desires, always acting on the highest-priority one "
                         + "that is achievable and not yet met. The puppy's first hour: out ranks "
@@ -104,8 +104,9 @@ public final class BdiPattern {
                 "Powerful but fiddly: the achievable and satisfied predicates are hard to get "
                         + "right, and a desire that can never be satisfied stalls the whole plan.",
                 topo,
-                "the puppy has just come home — eight weeks old, first hour in the house, "
-                        + "he's been in the car for forty minutes",
+                "the puppy has just come home — eight weeks old, first hour in the house, forty "
+                        + "minutes in the car and not one of them spent asleep. He has not been "
+                        + "out since the breeder's",
                 BdiPattern::run);
     }
 }

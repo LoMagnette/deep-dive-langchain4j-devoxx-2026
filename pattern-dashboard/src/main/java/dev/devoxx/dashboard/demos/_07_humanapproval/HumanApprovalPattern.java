@@ -131,7 +131,7 @@ public final class HumanApprovalPattern {
                         edge("owner", "final", "decision")));
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
-                "Same call, same three desks. Except this time the person acting on the "
+                "Same three desks, a different disaster. Except the person acting on the "
                         + "answer is your sister, and she will do exactly what it says.",
                 "Demo 6 exactly — same router, same three desks — with one person added "
                         + "before anything reaches the sitter.",
@@ -145,8 +145,8 @@ public final class HumanApprovalPattern {
                         + "too often and it is a form nobody fills in; ask too rarely and the "
                         + "approval is a rubber stamp. Put it where the action is hard to undo.",
                 topo,
-                "he has just eaten a whole bar of dark chocolate off the coffee table, and my "
-                        + "sister is the one standing there, not me",
+                "he has swallowed a sock. A whole sock. We have counted them and there are "
+                        + "eleven. My sister is the one standing there, not me",
                 HumanApprovalPattern::run);
     }
 }

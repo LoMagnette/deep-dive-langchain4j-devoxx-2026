@@ -4,11 +4,11 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
-public interface WalkPlanner {
-    @Agent(description = "Plans the dog's walks for the days the owners are away")
+public interface ChowHound {
+    @Agent(description = "Plans the dog's meals for the days the owners are away")
     @UserMessage("""
-            Plan the dog's walks for the days the owners are away: when, how long, on or off
-            the lead, and anywhere to avoid. Be brief.
+            Plan the dog's meals for the days the owners are away: times, amounts, and
+            anything he must not be given. Be brief.
 
             The stay: {{Stay}}""")
     String plan(@K(Keys.Stay.class) String stay);

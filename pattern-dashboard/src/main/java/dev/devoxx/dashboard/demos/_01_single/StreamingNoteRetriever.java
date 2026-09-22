@@ -6,11 +6,11 @@ import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 
 /**
- * {@link SitterCardClerk} with one thing changed: it returns a {@link TokenStream} instead of a
+ * {@link NoteRetriever} with one thing changed: it returns a {@link TokenStream} instead of a
  * String. The prompt is copied word for word, deliberately — the toggle on the page is only
  * honest if the two runs differ in nothing but how the answer arrives.
  */
-public interface StreamingSitterCardClerk {
+public interface StreamingNoteRetriever {
     @Agent(description = "Turns a rambling message about the dog into a structured sitter card")
     @UserMessage("""
             Turn this message into a sitter card with exactly these five lines. Invent

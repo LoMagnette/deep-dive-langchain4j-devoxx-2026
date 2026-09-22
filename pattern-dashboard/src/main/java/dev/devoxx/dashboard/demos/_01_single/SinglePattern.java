@@ -31,20 +31,23 @@ public final class SinglePattern {
 
     /** Shared with the sequential demo, which runs the same text through a second agent. */
     public static final String SITTER_MESSAGE =
-            "hey so thanks again for having zao!! he's the big black belgian shepherd, food's "
-                    + "in the tub by the back door he has two scoops morning and evening, oh and "
-                    + "he CANNOT have the dried liver treats anymore they upset him. don't let "
-                    + "him off the lead in the park he won't come back yet. vet is 061 22 33 44 "
-                    + "if anything happens. he'll cry the first night, ignore it, he's fine!!";
+            "hey!! ok so — zao, the big grey hairy one. he is a bouvier. he is not a bear and "
+                    + "he is not a sheep, people ask. "
+                    + "food's in the tub by the back door, two scoops morning and evening. he "
+                    + "CANNOT have the dried liver treats any more, they go straight through him "
+                    + "and you will know about it. do NOT let him off the lead in the park. he "
+                    + "does not come back. he has never come back. vet's 061 22 33 44. he will "
+                    + "scream the first night like you are taking him apart — ignore it, he's "
+                    + "fine, he does it to us too. thank you!!! x";
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
             return streamed(listener, input);
         }
-        var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
                 .chatModel(model)
-                .name("SitterCardClerk")
+                .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
@@ -59,9 +62,9 @@ public final class SinglePattern {
      * because it is the LAST agent: put a step after it and the framework drains it internally.
      */
     private static String streamed(StreamingListener listener, String input) {
-        var clerk = AgenticServices.agentBuilder(StreamingSitterCardClerk.class)
+        var clerk = AgenticServices.agentBuilder(StreamingNoteRetriever.class)
                 .streamingChatModel(listener.streamingModel())
-                .name("SitterCardClerk")
+                .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
@@ -75,7 +78,7 @@ public final class SinglePattern {
         var text = new StringBuilder();
         stream.onPartialResponse(chunk -> {
                     text.append(chunk);
-                    listener.emitToken("SitterCardClerk", chunk);
+                    listener.emitToken("NoteRetriever", chunk);
                 })
                 .onCompleteResponse(response -> done.complete(response.aiMessage().text()))
                 .onError(done::completeExceptionally)
@@ -98,7 +101,7 @@ public final class SinglePattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "message", "input"),
-                        node("clerk", "SitterCardClerk", "agent")),
+                        node("clerk", "NoteRetriever", "agent")),
                 List.of(edge("in", "clerk")));
         return new PatternDef("single", "Single Agent", "workflow",
                 "You are away this weekend. A friend said yes to having Zao before reading "

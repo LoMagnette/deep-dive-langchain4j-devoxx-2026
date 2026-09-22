@@ -12,7 +12,7 @@ import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Message;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._01_single.SitterCardClerk;
+import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
 import dev.devoxx.dashboard.demos._02_sequential.Keys.Checklist;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -29,14 +29,14 @@ public final class SequentialPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
                 .chatModel(model)
-                .name("SitterCardClerk")
+                .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
-        var list = AgenticServices.agentBuilder(FridgeChecklist.class)
+        var list = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
-                .name("FridgeChecklist")
+                .name("FridgeMagnet")
                 .outputKey(Checklist.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
@@ -49,13 +49,13 @@ public final class SequentialPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "message", "input"),
-                        node("clerk", "SitterCardClerk", "agent"),
-                        node("list", "FridgeChecklist", "agent")),
+                        node("clerk", "NoteRetriever", "agent"),
+                        node("list", "FridgeMagnet", "agent")),
                 List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
         return new PatternDef("sequential", "Sequential", "workflow",
-                "They need it on the fridge door at 07:00, not on page four of a phone "
-                        + "somebody left charging downstairs.",
-                "Demo 1's SitterCardClerk, unchanged — this adds the second step.",
+                "Your friend is not a dog person. At 07:00 they will be holding a lead, a "
+                        + "phone, and a dog who has decided the day starts now.",
+                "Demo 1's NoteRetriever, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "
                         + "a different reader, someone standing in your kitchen at 07:00. That is "

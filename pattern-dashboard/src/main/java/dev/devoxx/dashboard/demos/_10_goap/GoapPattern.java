@@ -10,10 +10,10 @@ import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Garden;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Children;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Cyclists;
 import dev.devoxx.dashboard.demos._10_goap.Keys.Goal;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Indoor;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Park;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Hoover;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -30,36 +30,36 @@ public final class GoapPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var indoor = AgenticServices.agentBuilder(IndoorRecall.class)
+        var hoover = AgenticServices.agentBuilder(NotTheHoover.class)
                 .chatModel(model)
-                .name("IndoorRecall")
-                .outputKey(Indoor.class)
+                .name("NotTheHoover")
+                .outputKey(Hoover.class)
                 .build();
-        var garden = AgenticServices.agentBuilder(GardenRecall.class)
+        var children = AgenticServices.agentBuilder(NotTheChildren.class)
                 .chatModel(model)
-                .name("GardenRecall")
-                .outputKey(Garden.class)
+                .name("NotTheChildren")
+                .outputKey(Children.class)
                 .build();
-        var park = AgenticServices.agentBuilder(ParkRecall.class)
+        var cyclists = AgenticServices.agentBuilder(NotTheCyclists.class)
                 .chatModel(model)
-                .name("ParkRecall")
-                .outputKey(Park.class)
+                .name("NotTheCyclists")
+                .outputKey(Cyclists.class)
                 .build();
         UntypedAgent app = AgenticServices.plannerBuilder()
-                // Registered BACKWARDS on purpose, and it still runs indoor → garden → park:
-                // the order comes from the I/O keys, not from the order you typed.
-                .subAgents(park, garden, indoor)
+                // Registered BACKWARDS on purpose, and it still runs hoover → children →
+                // cyclists: the order comes from the I/O keys, not from the order you typed.
+                .subAgents(cyclists, children, hoover)
                 .planner(GoalOrientedPlanner::new)
-                .outputKey(Park.class)
+                .outputKey(Cyclists.class)
                 .listener(listener)
                 .build();
         var r = app.invokeWithAgenticScope(Map.of(new Goal().name(), input));
-        String indoorText = requireNonNullElse(r.agenticScope().readState(Indoor.class), "");
-        String gardenText = requireNonNullElse(r.agenticScope().readState(Garden.class), "");
-        String parkText = requireNonNullElse(r.agenticScope().readState(Park.class), "");
-        return "**Indoors** — " + indoorText
-                + "\n\n**Garden** — " + gardenText
-                + "\n\n**Park** — " + parkText;
+        String hooverText = requireNonNullElse(r.agenticScope().readState(Hoover.class), "");
+        String childrenText = requireNonNullElse(r.agenticScope().readState(Children.class), "");
+        String cyclistText = requireNonNullElse(r.agenticScope().readState(Cyclists.class), "");
+        return "**The hoover** — " + hooverText
+                + "\n\n**The children** — " + childrenText
+                + "\n\n**The cyclists** — " + cyclistText;
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -67,28 +67,30 @@ public final class GoapPattern {
         // Every box says what it NEEDS, and the goal box says they were registered backwards
         // — otherwise this is pixel-for-pixel the sequential demo's diagram.
         Topology.Graph topo = graph("dag",
-                List.of(node("in", "goal", "input").withSub("registered: park first"),
-                        node("indoor", "IndoorRecall", "agent").withSub("needs nothing"),
-                        node("garden", "GardenRecall", "agent").withSub("needs 'Indoor'"),
-                        node("park", "ParkRecall", "agent").withSub("needs 'Garden'")),
-                List.of(edge("in", "indoor"),
-                        edge("indoor", "garden", "writes 'Indoor'"),
-                        edge("garden", "park", "writes 'Garden'")));
+                List.of(node("in", "goal", "input").withSub("registered: bikes first"),
+                        node("hoover", "NotTheHoover", "agent").withSub("needs nothing"),
+                        node("children", "NotTheChildren", "agent").withSub("needs 'Hoover'"),
+                        node("cyclists", "NotTheCyclists", "agent").withSub("needs 'Children'")),
+                List.of(edge("in", "hoover"),
+                        edge("hoover", "children", "writes 'Hoover'"),
+                        edge("children", "cyclists", "writes 'Children'")));
 
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
-                "Which begins, as everything does, with the recall you never finished "
-                        + "teaching him. He comes back indoors. Reliably. Indoors.",
+                "He is a cattle dog with no cattle, so he has improvised. The hoover has "
+                        + "been gathered. The children have been gathered.",
                 null,
                 "The planner orders agents automatically by matching each output to the next "
-                        + "input. Nobody has to be told this order: recall works indoors before "
-                        + "it works in the garden, and in the garden before it works at the park. "
-                        + "So there is genuinely an order to discover, and you can see it was "
-                        + "discovered rather than typed.",
+                        + "input. Nobody has to be told this order: you can call him off a hoover "
+                        + "long before you can call him off a child, and off a child long before "
+                        + "you can call him off a cyclist — loud but stationary, then fast but "
+                        + "biddable, then fast and silent and gone. So there is genuinely an "
+                        + "order to discover, and you can see it was discovered rather than typed.",
                 // caveat: planning is only as good as the declared pre/post-conditions (I/O keys).
                 "Needs well-declared I/O keys; a missing link means the goal is unreachable — and "
                         + "the failure is silence, not an error.",
                 topo,
-                "teach Zao to come back when he's called, even at the park with other dogs about",
+                "Zao has decided the hoover is livestock. So are the children. So, increasingly, "
+                        + "are cyclists. Teach him that none of them are.",
                 GoapPattern::run);
     }
 }

@@ -99,7 +99,7 @@ class PatternCatalogTest {
             // only on the step it breaks on purpose — anything else erroring is still a bug,
             // and the result assertion below still has to hold for it like everything else.
             r.errors().stream()
-                    .filter(e -> !("resilience".equals(info.id()) && e.contains("SitterCardClerk")))
+                    .filter(e -> !("resilience".equals(info.id()) && e.contains("NoteRetriever")))
                     .forEach(e -> failures.add(info.id() + " -> " + e));
             if (r.result() == null || r.result().isBlank() || "null".equals(r.result())) {
                 // The old conditional-routing bug produced exactly this: no error, no answer.
@@ -129,11 +129,11 @@ class PatternCatalogTest {
         assertTrue(invoked.stream().anyMatch(a -> a.equals("EmergencyVet")
                         || a.equals("DogTrainer") || a.equals("EverydayCare")),
                 "routing reached nobody: " + invoked);
-        assertTrue(invoked.contains("MealPlanner") && invoked.contains("WalkPlanner"),
+        assertTrue(invoked.contains("ChowHound") && invoked.contains("LeadDeveloper"),
                 "the parallel step did not fan out: " + invoked);
         assertTrue(invoked.contains("SitterNoteMerger"), "nothing merged the parts: " + invoked);
         // The mock alternates 0.60 then 0.95, so a working exit condition scores exactly twice.
-        assertEquals(2, invoked.stream().filter("FridgeRuleCheck"::equals).count(),
+        assertEquals(2, invoked.stream().filter("RuffDraftCritic"::equals).count(),
                 "refinement loop should iterate once then exit: " + invoked);
 
         assertTrue(r.result() != null && !r.result().isBlank(), "no sitter note produced");
@@ -145,7 +145,7 @@ class PatternCatalogTest {
         Run r = run(def);
         // The mock alternates 0.60 then 0.95, so the scorer must run twice: once below the
         // 0.8 bar, once above it. One invocation would mean the exit condition never gated.
-        long scorings = r.invoked().stream().filter("FridgeRuleCheck"::equals).count();
+        long scorings = r.invoked().stream().filter("RuffDraftCritic"::equals).count();
         assertEquals(2, scorings, "loop should refine once, then exit: " + r.invoked());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
     }
@@ -214,7 +214,7 @@ class PatternCatalogTest {
         // Both halves of the note get planned at once and the join brings them back — a fan-out
         // that never rejoins is only half the pattern.
         Run halves = run(catalog.byId("parallel").orElseThrow());
-        assertTrue(halves.invoked().containsAll(List.of("MealPlanner", "WalkPlanner")),
+        assertTrue(halves.invoked().containsAll(List.of("ChowHound", "LeadDeveloper")),
                 "both halves must be planned: " + halves.invoked());
         assertTrue(halves.result().contains("Meals") && halves.result().contains("Walks"),
                 "the join must bring both halves back together: " + halves.result());
@@ -228,27 +228,27 @@ class PatternCatalogTest {
         // GOAP's agents are registered backwards on purpose, so the only way to get this order
         // is for the planner to have derived it from the declared I/O keys.
         List<String> recall = run(catalog.byId("goap").orElseThrow()).invoked();
-        assertTrue(recall.indexOf("IndoorRecall") < recall.indexOf("GardenRecall"),
-                "the garden step cannot come before the indoor step: " + recall);
-        assertTrue(recall.indexOf("GardenRecall") < recall.indexOf("ParkRecall"),
-                "the park step comes last: " + recall);
+        assertTrue(recall.indexOf("NotTheHoover") < recall.indexOf("NotTheChildren"),
+                "the children cannot come before the hoover: " + recall);
+        assertTrue(recall.indexOf("NotTheChildren") < recall.indexOf("NotTheCyclists"),
+                "the cyclists come last: " + recall);
 
-        // Five things off the blanket, five verdicts, and they must NOT all be the same — the
-        // room knows the cheddar is fine and the grapes are not.
+        // Five things out of the beard, five verdicts, and they must NOT all be the same — the
+        // room knows the croissant is fine and the cooked bone is not.
         List<String> verdicts = run(catalog.byId("parallelMapper").orElseThrow())
                 .result().lines().toList();
         assertEquals(5, verdicts.size(), "one verdict per item: " + verdicts);
         assertTrue(verdicts.stream().anyMatch(v -> v.contains("Dangerous")),
-                "the grapes must be flagged: " + verdicts);
+                "the cooked bone must be flagged: " + verdicts);
         assertTrue(verdicts.stream().anyMatch(v -> v.contains("Fine")),
-                "the cheddar must be cleared: " + verdicts);
+                "the croissant must be cleared: " + verdicts);
 
         // BDI orders by priority and precondition, not by declaration order. Nobody needs to be
         // told a puppy goes out before he is fed and long before he is taught anything.
         List<String> hour = run(catalog.byId("bdi").orElseThrow()).invoked();
-        assertTrue(hour.indexOf("ToiletTrip") < hour.indexOf("FirstMeal"),
+        assertTrue(hour.indexOf("GardenLeave") < hour.indexOf("FirstBytes"),
                 "out before food: " + hour);
-        assertTrue(hour.indexOf("FirstMeal") < hour.indexOf("FirstTraining"),
+        assertTrue(hour.indexOf("FirstBytes") < hour.indexOf("HelloWorld"),
                 "fed before taught: " + hour);
 
         // The refinement loop has to actually fix the note it was given: rule 3 is the vet's
@@ -310,13 +310,13 @@ class PatternCatalogTest {
 
         Run holiday = run(catalog.byId("debate").orElseThrow());
         assertTrue(holiday.errors().isEmpty(), holiday.errors()::toString);
-        assertEquals(1, times(holiday, "TakeHimAdvocate"),
+        assertEquals(1, times(holiday, "TeamTuscany"),
                 "both advocates said the same thing, so the debate must stop after ONE round: "
                         + holiday.invoked());
-        assertEquals(1, times(holiday, "LeaveHimAdvocate"),
+        assertEquals(1, times(holiday, "TeamStaycation"),
                 "both advocates said the same thing, so the debate must stop after ONE round: "
                         + holiday.invoked());
-        assertEquals(1, times(holiday, "HolidayVerdict"),
+        assertEquals(1, times(holiday, "FinalBoarding"),
                 "the judge rules once, on the round that converged: " + holiday.invoked());
 
         Run council = run(catalog.byId("secondDogCouncil").orElseThrow());
@@ -482,7 +482,7 @@ class PatternCatalogTest {
         // The saving, which is the entire reason to do this: an ordinary question must NOT
         // reach the expensive tier. This is the assertion that separates the demo from one
         // that always picks the big model and never says so.
-        Run kibble = run(def, "which food should I buy for a four-year-old shepherd?", tiers);
+        Run kibble = run(def, "which food should I buy for a four-year-old bouvier?", tiers);
         assertTrue(kibble.result().startsWith("**everyday → tiny"),
                 "a kibble question must settle on the cheap model: " + kibble.result());
 
@@ -578,14 +578,14 @@ class PatternCatalogTest {
         List<RunEvent> done = events.stream()
                 .filter(e -> "agent-after".equals(e.type())).toList();
         long agentTime = done.stream()
-                .filter(e -> List.of("VetCallback", "MealPlanner", "WalkPlanner")
+                .filter(e -> List.of("VetCallback", "ChowHound", "LeadDeveloper")
                         .contains(e.agent()))
                 .mapToLong(RunEvent::millis).sum();
         long step = done.stream().filter(e -> "Sequential".equals(e.agent()))
                 .mapToLong(RunEvent::millis).max().orElseThrow();
 
-        assertEquals(3, done.stream().filter(e -> List.of("VetCallback", "MealPlanner",
-                        "WalkPlanner").contains(e.agent())).count(),
+        assertEquals(3, done.stream().filter(e -> List.of("VetCallback", "ChowHound",
+                        "LeadDeveloper").contains(e.agent())).count(),
                 "all three steps must run: " + done.stream().map(RunEvent::agent).toList());
         assertTrue(step < agentTime * 0.8,
                 "the async step must overlap the ones after it: the sequence took " + step
@@ -611,7 +611,7 @@ class PatternCatalogTest {
 
         // Ordinary kibble question: the cheapest rung answers it and nothing else is called.
         // This is the assertion that distinguishes the planner from a sequence.
-        Run basics = run(def, "which food should I buy for a four-year-old shepherd?");
+        Run basics = run(def, "which food should I buy for a four-year-old bouvier?");
         assertEquals(List.of("EverydayCare"), basics.invoked().stream()
                         .filter(a -> !a.equals("invoke")).toList(),
                 "everyday care answered, so nobody should have rung the trainer or the vet");
@@ -639,11 +639,11 @@ class PatternCatalogTest {
         var asked = new ArrayList<String>();
         Run approved = run(def, def.defaultInput(), q -> {
             asked.add(q);
-            return "Yes, but also tell her to take a photo of the wrapper first.";
+            return "Yes, but also tell her to count the socks again before she sets off.";
         });
         assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
         assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
-        assertTrue(asked.get(0).contains("wrapper"),
+        assertTrue(asked.get(0).contains("sock"),
                 "the question must carry the draft being approved: " + asked.get(0));
         assertTrue(approved.invoked().contains("WorryRouter"),
                 "the approval demo is the routing demo plus a person: " + approved.invoked());
@@ -695,8 +695,10 @@ class PatternCatalogTest {
                 "every agent-after must carry a duration: " + done.stream()
                         .map(e -> e.agent() + "=" + e.millis()).toList());
 
+        // Named, not matched on a suffix: the two branches are demo 4's own agents, and a
+        // heuristic over their names goes quietly to zero the day either one is renamed.
         List<RunEvent> branches = done.stream()
-                .filter(e -> e.agent().endsWith("Planner")).toList();
+                .filter(e -> List.of("ChowHound", "LeadDeveloper").contains(e.agent())).toList();
         assertEquals(2, branches.size(), "both halves should have been planned: " + done.stream()
                 .map(RunEvent::agent).toList());
         assertTrue(branches.stream().allMatch(e -> e.millis() >= delay),
@@ -716,7 +718,7 @@ class PatternCatalogTest {
         mapper.run(new MockChatModel(), mapper.defaultInput(),
                 new StreamingListener(mapped::add, new AtomicLong()));
         long timed = mapped.stream().filter(e -> "agent-after".equals(e.type())
-                && e.agent().startsWith("FoodSafetyCheck") && e.millis() != null).count();
+                && e.agent().startsWith("BeardOverflow") && e.millis() != null).count();
         assertEquals(5, timed, "each mapped item needs its own timing: " + mapped.stream()
                 .filter(e -> "agent-after".equals(e.type())).map(RunEvent::agent).toList());
     }
@@ -853,7 +855,7 @@ class PatternCatalogTest {
         // mapper's item: MapperAgentInvoker injects it into the sub-agent's FIRST ARGUMENT by
         // position, so that parameter names nothing in the scope and has no TypedKey to point
         // at. Anything else naming a key in a string belongs in a Keys record.
-        var itemNames = Set.of("food", "angle");
+        var itemNames = Set.of("item", "angle");
         var stringParam = java.util.regex.Pattern.compile("@V\\(\"(\\w+)\"\\)");
         try (var paths = java.nio.file.Files.walk(demos)) {
             // package-info is prose about the rule, and quotes the form it is telling you not
@@ -897,12 +899,12 @@ class PatternCatalogTest {
         // The sitter-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
         // used a third time by the capstone.
         for (String id : List.of("sequential", "loop", "sitterNote")) {
-            assertTrue(labels(catalog, id).contains("FridgeChecklist"),
+            assertTrue(labels(catalog, id).contains("FridgeMagnet"),
                     id + " should reuse the checklist agent: " + labels(catalog, id));
         }
 
         // The capstone's fan-out is demo 4's, unchanged.
-        assertTrue(labels(catalog, "sitterNote").containsAll(List.of("MealPlanner", "WalkPlanner")),
+        assertTrue(labels(catalog, "sitterNote").containsAll(List.of("ChowHound", "LeadDeveloper")),
                 "the capstone should reuse the parallel demo's planners");
 
         // And the council ratifies with the very assessors that voted two demos earlier.

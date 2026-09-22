@@ -4,7 +4,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
-public interface FirstMeal {
+public interface FirstBytes {
     @Agent(description = "Gives the puppy his first meal, once he has been out")
     @UserMessage("""
             Now he has been out, give him his first meal in the new house: how much, where,
