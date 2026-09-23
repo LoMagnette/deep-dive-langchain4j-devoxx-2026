@@ -2,8 +2,8 @@ package dev.devoxx.dashboard.demos._02_sequential;
 
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /**
  * <b>Sequential</b>
@@ -20,5 +20,5 @@ public interface FridgeMagnet {
             4. under 100 words, so it fits on the door
 
             What we know so far: {{Notes}}""")
-    String checklist(@V("Notes") String notes);
+    String checklist(@K(Notes.class) String notes);
 }

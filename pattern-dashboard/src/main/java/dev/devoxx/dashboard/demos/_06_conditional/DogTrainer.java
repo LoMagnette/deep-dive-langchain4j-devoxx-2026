@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface DogTrainer {
     @Agent(description = "Answers questions about behaviour and training")
@@ -19,5 +19,5 @@ public interface DogTrainer {
             ESCALATE if you are handing it on to someone else.
 
             Worry: {{Worry}}""")
-    String handle(@V("Worry") String worry);
+    String handle(@K(Keys.Worry.class) String worry);
 }
