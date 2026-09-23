@@ -2,10 +2,7 @@ package dev.devoxx.dashboard.catalog;
 
 import static java.util.stream.Collectors.toSet;
 import static dev.devoxx.dashboard.support.Parsing.agreed;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -383,7 +380,7 @@ class PatternCatalogTest {
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
         assertTrue(r.invoked().containsAll(List.of("WalkNotes", "RoutineNotes", "HomeNotes")),
                 "every angle must reach the board: " + r.invoked());
-        assertEquals("TrainerLead", r.invoked().get(r.invoked().size() - 1),
+        assertEquals("TrainerLead", r.invoked().getLast(),
                 "the lead needs all three, so it can only run once they have: " + r.invoked());
     }
 
@@ -649,7 +646,7 @@ class PatternCatalogTest {
         assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
         assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
         assertTrue(asked.get(0).contains("sock"),
-                "the question must carry the draft being approved: " + asked.get(0));
+                "the question must carry the draft being approved: " + asked.getFirst());
         assertTrue(approved.invoked().contains("WorryRouter"),
                 "the approval demo is the routing demo plus a person: " + approved.invoked());
 
@@ -659,8 +656,7 @@ class PatternCatalogTest {
         Run refused = run(def, def.defaultInput(), q -> "No. Do not ring anyone, wait for me.");
         assertTrue(instruction(refused).contains("Do not act on it"),
                 "a refusal must survive to the instruction: " + instruction(refused));
-        assertTrue(!instruction(refused).contains("Ring the practice now"),
-                "a refusal must not be quietly overridden: " + instruction(refused));
+        assertFalse(instruction(refused).contains("Ring the practice now"), "a refusal must not be quietly overridden: " + instruction(refused));
 
         // And the run has to be legible on the page: a question event, then an answer event.
         List<String> types = refused.events().stream().map(RunEvent::type).toList();
@@ -1069,9 +1065,9 @@ class PatternCatalogTest {
         var spanning = edges(catalog, "async").stream()
                 .filter(e -> e.from().equals("vet") && e.to().equals("join")).toList();
         assertEquals(1, spanning.size(), "the async step must reach the join directly");
-        assertTrue(spanning.get(0).label() != null && spanning.get(0).label().contains("read"),
+        assertTrue(spanning.getFirst().label() != null && spanning.getFirst().label().contains("read"),
                 "the long edge has to say that the READ is the join, not the step: "
-                        + spanning.get(0).label());
+                        + spanning.getFirst().label());
         assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "vet"),
                 "the async edge must skip columns, or it is drawn flat and disappears behind "
                         + "the boxes it passes");

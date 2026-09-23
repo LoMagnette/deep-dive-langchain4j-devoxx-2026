@@ -1,15 +1,5 @@
 package dev.devoxx.dashboard.demos._04_parallel;
 
-import static dev.devoxx.dashboard.catalog.Topology.edge;
-import static dev.devoxx.dashboard.catalog.Topology.graph;
-import static dev.devoxx.dashboard.catalog.Topology.node;
-import static java.util.Objects.requireNonNullElse;
-import static java.util.stream.Collectors.joining;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
@@ -19,6 +9,12 @@ import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
+
+import java.util.List;
+import java.util.Map;
+
+import static dev.devoxx.dashboard.catalog.Topology.*;
+import static java.util.Objects.requireNonNullElse;
 
 /**
  * Wiring for the <b>parallel</b> demo — two independent checks, and a join that DECIDES.
