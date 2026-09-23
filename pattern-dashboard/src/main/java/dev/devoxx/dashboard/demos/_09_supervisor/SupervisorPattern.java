@@ -185,7 +185,7 @@ public final class SupervisorPattern {
                 // trainer has looked at it. That is the point: the second call is not in anyone's
                 // plan at the start, it is caused by the first agent's answer.
                 "he is four and he has started snapping when the children go near his bed. He has "
-                        + "never done that before in his life.",
+                        + "never done that in his life. Nothing here has changed except him.",
                 SupervisorPattern::run);
     }
 }

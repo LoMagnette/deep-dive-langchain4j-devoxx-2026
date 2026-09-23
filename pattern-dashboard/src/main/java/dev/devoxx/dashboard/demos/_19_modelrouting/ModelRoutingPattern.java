@@ -96,7 +96,7 @@ public final class ModelRoutingPattern {
                         edge("desk", "out")));
         return new PatternDef("modelRouting", "Dynamic Model Selection", "production",
                 "You do not ring the emergency vet to ask which kibble to buy, and you do not "
-                        + "ask the pet shop about a seizure.",
+                        + "ask the pet shop about a face swelling shut.",
                 "Demo 6's WorryRouter, unchanged. The three desks are gone — here one "
                         + "agent answers everything and only its model changes.",
                 "`chatModel(...)` has an overload taking a `Function<AgenticScope, ChatModel>`, "
@@ -113,8 +113,8 @@ public final class ModelRoutingPattern {
                         + "answered — if you need that for a bill, you have to write it down "
                         + "yourself.",
                 topo,
-                "he's just eaten a whole bar of dark chocolate off the coffee table, the wrapper "
-                        + "is on the floor",
+                "a wasp has stung him on the nose and it has swollen up like a tennis ball. He "
+                        + "has gone to find the wasp",
                 ModelRoutingPattern::run);
     }
 }

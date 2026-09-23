@@ -9,15 +9,15 @@ Built on **standard LangChain4j**, not `quarkus-langchain4j`: every agent is wir
 `AgenticServices` builders, because the builders are what the talk is about. There is deliberately
 no helper that shortens them.
 
-The setting is **Zao**, a Belgian shepherd, and the household he runs. Every demo problem has to
+The setting is **Zao**, a Bouvier des Flandres, and the household he runs. Every demo problem has to
 pass two tests at once, and both are load-bearing:
 
 1. **The pattern must be load-bearing** — take it away and the answer visibly degrades. The vote
    can genuinely split, the critic has named rules to check, the planner has an order to discover.
 2. **The audience must not need the domain explained** — the constraint each demo turns on is one
-   everybody already holds. Grapes are dangerous and cheddar is not. Hot pavement burns paws. A
-   puppy goes to the garden before he gets a training session. Recall works in the garden before
-   it works at the park. Neither half of a couple outranks the other about the bed.
+   everybody already holds. A cooked bone is dangerous and a croissant is not. A puppy goes to
+   the garden before he gets a training session. You can call a dog off a hoover long before you
+   can call him off a cyclist. Neither half of a couple outranks the other about the bed.
 
 The second test is the one that is easy to fail: a scenario that needs a sentence of setup needs
 it fifteen times over, and then the room spends the talk learning the domain instead of the
@@ -115,8 +115,8 @@ mvn -DskipTests package
 java -Ddashboard.model=mock -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The canned answers are written to be good demo content rather than filler: the picnic mapper really
-does clear the cheddar and condemn the grapes, the refinement loop really does score 0.60 and then
+The canned answers are written to be good demo content rather than filler: the beard mapper really
+does clear the croissant and condemn the cooked bone, the refinement loop really does score 0.60 and then
 0.95, and the second-dog vote really does split two to one.
 
 > **What the mock does not prove.** It pins the *wiring*, never that a real model will follow a
@@ -178,7 +178,7 @@ rail, the gallery and the talk all use it.
 | 2 | `sequential` | …then the timed checklist for the fridge door — a different reader, so a second agent |
 | 3 | `loop` | A useless note ("just feed him twice, he knows the routine") refined until four named rules hold |
 | 4 | `parallel` | Demo 1's card, fanned out: what he eats and when he goes out, planned at once and joined |
-| 5 | `parallelMapper` | Five things off the picnic blanket, one verdict each — and you know all five answers |
+| 5 | `parallelMapper` | Five things out of the beard, one verdict each — and you know all five answers |
 | 6 | `conditional` | He ate a bar of dark chocolate: vet, trainer, or everyday care? |
 | 7 | `humanApproval` | The same chocolate, except your sister is the one standing there — **a person approves the answer** before it reaches her |
 | 8 | `nonAiAgent` | A record lookup and a guard, both plain Java, on either side of an LLM step — nobody should invent a microchip number |
@@ -193,7 +193,7 @@ rail, the gallery and the talk all use it.
 
 | # | Pattern | The problem it is shown on |
 |---|---|---|
-| 10 | `goap` | Recall: indoors → garden → park, **registered backwards on purpose** |
+| 10 | `goap` | Un-herding: hoover → children → cyclists, **registered backwards on purpose** |
 | 11 | `p2p` | Should the dog sleep on the bed? Neither half of the household outranks the other |
 | 12 | `blackboard` | He has started barking all day: exercise, what changed, or what he can see? |
 | 13 | `voting` | A second dog? Three criteria over one household — money says yes, the other two say later |
@@ -258,7 +258,7 @@ first and carries no topology or catalogue text. `define()` holds the diagram an
 and hands the wiring over as a method reference.
 
 An agent lives in the demo that **introduces** it, and later demos import it from there —
-`sitterNote` imports the loop's `FridgeChecklist` and the routing demo's `WorryRouter`;
+`sitterNote` imports the loop's `FridgeMagnet` and the routing demo's `WorryRouter`;
 `secondDogCouncil` imports the three assessors `voting` introduced. A composite reuses the parts
 rather than re-implementing them, and its import list says so before a word of explanation.
 

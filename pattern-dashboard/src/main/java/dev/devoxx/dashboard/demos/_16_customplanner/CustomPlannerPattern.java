@@ -99,8 +99,8 @@ public final class CustomPlannerPattern {
                         edge("trainer", "out", "ANSWERED"),
                         edge("vet", "out")));
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
-                "By now you know who to ask, and in what order, and that the vet charges "
-                        + "for the phone call.",
+                "By now you know who to ask, in what order, and that the vet charges for "
+                        + "the phone call. Escalation, with the bill in view.",
                 "Demo 6's three desks a third time. Routing picks one, the supervisor "
                         + "picks several, and this tries them cheapest-first and stops early.",
                 "Every planner above is an implementation of one small interface — here is one "
@@ -117,9 +117,10 @@ public final class CustomPlannerPattern {
                         + "cannot say what you mean.",
                 topo,
                 // Escalates all the way, so the default run walks the whole ladder. Try
-                // "which food should I buy for a four-year-old shepherd?" and it stops at the
+                // "which food should I buy for a four-year-old bouvier?" and it stops at the
                 // book; try "he pulls like a train on the lead" and it stops at the trainer.
-                "he's suddenly limping on his back left leg and won't put weight on it",
+                "he's suddenly limping on his back left leg and won't put weight on it — and "
+                        + "the out-of-hours vet charges €180 before anybody has touched the dog",
                 CustomPlannerPattern::run);
     }
 }

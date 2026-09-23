@@ -99,10 +99,10 @@ public final class Parsing {
         return best;
     }
 
-    /** What the blanket had on it, for when there is genuinely nothing to fan out over. */
-    private static final List<String> BLANKET =
-            List.of("a handful of grapes", "a slice of cheddar", "a square of dark chocolate",
-                    "a crust of bread", "half a raw onion");
+    /** What the beard held, for when there is genuinely nothing to fan out over. */
+    private static final List<String> BEARD =
+            List.of("a cooked chicken bone", "half a croissant", "one conker",
+                    "somebody's left glove", "roughly a litre of yesterday's puddle");
 
     /**
      * Splits the user's typed input into items for the parallel mapper.
@@ -110,7 +110,7 @@ public final class Parsing {
     public static List<String> items(String input) {
         String text = input == null ? "" : input;
         if (text.isBlank()) {
-            return BLANKET;
+            return BEARD;
         }
         // Semicolons and newlines beat commas when both are present: an item can contain a
         // comma, and splitting on everything fans the mapper out over half-items.
@@ -122,6 +122,6 @@ public final class Parsing {
                 .filter(s -> s.matches("(?s).*[\\p{L}\\p{N}].*"))
                 .toList();
         // Only when the split produced nothing at all (an input of separators and spaces).
-        return parsed.isEmpty() ? BLANKET : parsed;
+        return parsed.isEmpty() ? BEARD : parsed;
     }
 }

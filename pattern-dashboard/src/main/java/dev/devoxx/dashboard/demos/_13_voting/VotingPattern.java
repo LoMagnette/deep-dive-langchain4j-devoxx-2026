@@ -35,9 +35,10 @@ public final class VotingPattern {
      * question through a whole debate before these same three assessors ratify the answer.
      */
     public static final String HOUSEHOLD =
-            "two-bedroom flat, no garden, both of us out from eight until six, we can afford a "
-                    + "second one comfortably. Zao is four and he stiffens up and growls when "
-                    + "another dog comes at him in the park.";
+            "two-bedroom flat, no garden, both of us out from eight until six. We can afford a "
+                    + "second one comfortably — that is the only part of this that is easy. Zao "
+                    + "is four, and when another dog comes at him in the park he goes stiff and "
+                    + "makes a noise I do not have a word for.";
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {

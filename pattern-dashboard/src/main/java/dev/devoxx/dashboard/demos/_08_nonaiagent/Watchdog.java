@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.declarative.K;
 /**
  * The other end of the sandwich: a plain Java check that the facts survived the writing.
  */
-public class NoteGuard {
+public class Watchdog {
 
     /** Every value from the record that must appear untouched, with what to call it. */
     private static final List<String[]> MUST_SURVIVE = List.of(
@@ -18,7 +18,7 @@ public class NoteGuard {
             new String[] {"the microchip", "981098106123456"},
             new String[] {"the insurance policy", "AG-4471209"});
 
-    @Agent(name = "NoteGuard",
+    @Agent(name = "Watchdog",
            description = "Checks the record's numbers survived into the note",
            typedOutputKey = Notes.class)
     public String check(@K(Notes.class) String notes) {

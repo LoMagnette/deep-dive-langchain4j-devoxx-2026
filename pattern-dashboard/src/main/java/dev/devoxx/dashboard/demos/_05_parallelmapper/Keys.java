@@ -11,9 +11,9 @@ public final class Keys {
     }
 
     /**
-     * What he got off the blanket — the collection the mapper fans out over.
+     * What came out of the beard — the collection the mapper fans out over.
      */
-    public record Eaten() implements TypedKey<List<String>> {}
+    public record Beard() implements TypedKey<List<String>> {}
 
     public record Verdicts() implements TypedKey<List<String>> {}
 }

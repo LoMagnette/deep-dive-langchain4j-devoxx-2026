@@ -114,10 +114,10 @@ public class MockChatModel implements ChatModel {
                     case BASICS -> "everyday";
                 }),
 
-                // --- 4. The picnic blanket, one item at a time. Item-aware, so the gathered
-                // verdicts differ per item — five identical lines would run the pattern perfectly
-                // and demonstrate nothing.
-                new Rule(p -> p.contains("picnic blanket"), MockChatModel::foodVerdict),
+                // --- 4. The beard, one item at a time. Item-aware, so the gathered verdicts
+                // differ per item — five identical lines would run the pattern perfectly and
+                // demonstrate nothing.
+                new Rule(p -> p.contains("out of the beard"), MockChatModel::beardVerdict),
 
                 // --- 5. The sitter note, narrowest first. All three of these prompts talk about
                 // notes and cards, and the checklist's prompt quotes the words "sitter card".
@@ -132,7 +132,7 @@ public class MockChatModel implements ChatModel {
                                 Lead and poo bags: hook by the back door. Vet: 061 22 33 44."""),
                 new Rule(p -> p.contains("sitter card with exactly"),
                         p -> """
-                                Dog: Zao, Belgian shepherd
+                                Dog: Zao, Bouvier des Flandres
                                 Meals: two scoops morning and evening, food in the tub by the back door
                                 Walks: not given
                                 Watch out for: no dried liver treats; never off the lead in the park
@@ -155,7 +155,7 @@ public class MockChatModel implements ChatModel {
                                 Vet: 061 22 33 44."""),
 
                 // --- 7. The weekend-away composite, narrowest first. Its refining loop reuses
-                // demo 3's FridgeChecklist rather than an agent of its own, so it is claimed by
+                // demo 3's FridgeMagnet rather than an agent of its own, so it is claimed by
                 // the checklist rule above — there is deliberately no rule of its own here.
                 new Rule(p -> p.contains("goes on the fridge for the dog sitter"),
                         p -> """
@@ -195,22 +195,27 @@ public class MockChatModel implements ChatModel {
                                 + "furniture on a word. Three months is enough for all three if "
                                 + "you start with the mat."),
 
-                // --- 10. Recall in three steps. The park rule is FIRST because the park prompt
-                // quotes "garden step already done", and the garden prompt quotes the indoor step.
-                new Rule(p -> p.contains("park step"),
-                        p -> "At the park, on a fifteen-metre line, when there are dogs in the "
-                                + "distance but not near him. The line is there so he can never "
-                                + "learn that ignoring you works. Drop it when he has come back "
-                                + "ten times out of ten with a dog in sight."),
-                new Rule(p -> p.contains("garden step"),
-                        p -> "Same word, same reward, now in the garden with the smells and the "
-                                + "birds. If he ignores you, do not repeat it — walk to him, take "
-                                + "his collar, and make the next one easier."),
-                new Rule(p -> p.contains("indoor step for"),
-                        p -> "In the hall, two metres away, nothing else going on. Say his name "
-                                + "once, then the word, and pay him the moment he turns. Five "
-                                + "goes, twice a day. It is working when he turns on the word "
-                                + "before he has thought about it."),
+                // --- 10. Un-herding, in three steps. The cyclist rule is FIRST because the
+                // cyclist prompt quotes "children step already done", and the children prompt
+                // quotes the hoover step.
+                new Rule(p -> p.contains("cyclist step"),
+                        p -> "Park, fifteen-metre line, sitting well back from the cycle path — "
+                                + "close enough that he can see them, far enough that he can "
+                                + "still hear you. The line exists so he never once gets to find "
+                                + "out that chasing works. Drop it when ten bikes have gone past "
+                                + "and he has looked at you instead of at them."),
+                new Rule(p -> p.contains("children step"),
+                        p -> "Same word, now with the children running in the garden, and start "
+                                + "with one child walking rather than three screaming. When he "
+                                + "ignores you, do not repeat it — walk to him, take his collar, "
+                                + "and make the next one easier. The children get a rule too: "
+                                + "nobody runs while he is loose."),
+                new Rule(p -> p.contains("hoover step for"),
+                        p -> "Hoover on, dog on a mat two metres away, someone paying him for "
+                                + "staying there. Say his name once, then the word, and pay him "
+                                + "the moment he turns away from it. Five goes, twice a day. It "
+                                + "is working when the hoover starts and he looks at you instead "
+                                + "of at it."),
 
                 // --- 11. The household argument. The floor rule is FIRST because its prompt
                 // quotes the other half's proposal.
@@ -237,9 +242,10 @@ public class MockChatModel implements ChatModel {
                                 3. Not enough exercise before he is left. Try forty minutes off \
                                 the lead before you go, not ten on it."""),
                 new Rule(p -> p.contains("exercise angle"),
-                        p -> "A four-year-old shepherd needs more than a lead walk round the "
-                                + "block, and a bored shepherd invents work. Next: forty minutes "
-                                + "of real exercise before he is left, and see what changes."),
+                        p -> "A four-year-old bouvier needs more than a lead walk round the "
+                                + "block, and a cattle dog with no cattle invents work — usually "
+                                + "herding. Next: forty minutes of real exercise before he is "
+                                + "left, and see what changes."),
                 new Rule(p -> p.contains("new working hours"),
                         p -> "The new shift is the change nobody has accounted for — he is left "
                                 + "at a different hour, for longer, with no warning cue. Next: "
@@ -310,7 +316,7 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("comes or stays"),
                         p -> "He stays, with the sitter. The fact that decided it: a house with "
                                 + "no shade in Tuscany in August is dangerous for a black "
-                                + "double-coated shepherd, and the twelve-hour drive is on top of "
+                                + "double-coated bouvier, and the twelve-hour drive is on top of "
                                 + "that. Condition: the sitter stays in our house, not hers, and "
                                 + "does two overnight trial stays before August."),
                 new Rule(p -> has(p, "argue"),
@@ -331,9 +337,9 @@ public class MockChatModel implements ChatModel {
                 // something to catch. Copy them here and that step becomes ceremony.
                 new Rule(p -> p.contains("from the record below"),
                         p -> """
-                                Zao is a four-year-old Belgian shepherd, 32 kg.
+                                Zao is a four-year-old Bouvier des Flandres, 38 kg.
 
-                                Feed him 300 g twice a day, morning and evening. He is used to \
+                                Feed him 400 g twice a day, morning and evening. He is used to \
                                 two walks, on the lead throughout.
 
                                 If anything worries you, ring Dr Cluysen on 061 22 33 44 — the \
@@ -426,10 +432,10 @@ public class MockChatModel implements ChatModel {
         }
         boolean changed = said.contains("but") || said.contains("also") || said.contains("add")
                 || said.contains("instead");
-        return "Ring the practice now, tell them his weight and how much he ate, and take the "
-                + "wrapper with you."
+        return "Ring the practice now, tell them what he swallowed and roughly when, and take "
+                + "him straight in."
                 + (changed ? " And do exactly what they added: " + said.trim() : "")
-                + " Do not wait to see whether he is sick.";
+                + " Do not try to make him sick yourself.";
     }
 
 
@@ -478,6 +484,18 @@ public class MockChatModel implements ChatModel {
                     + "telling you something hurts, and at four the usual suspects are teeth and "
                     + "ears. Book a full examination — mouth, ears, hips, spine — and keep the "
                     + "children away from his bed entirely until he has been seen.";
+        }
+        if (q.contains("sock") || q.contains("swallow")) {
+            return "Bring him in now and do not try to make him sick — a sock coming back up is "
+                    + "how it gets stuck somewhere worse. Nothing to eat or drink on the way. "
+                    + "Tell us roughly when he swallowed it, because under two hours we have "
+                    + "options we lose afterwards.";
+        }
+        if (q.contains("wasp") || q.contains("sting") || q.contains("stung")) {
+            return "Watch his breathing, not his nose — a swollen face is ugly and usually fine, "
+                    + "a swollen throat is not. If the swelling spreads past the muzzle, or he "
+                    + "starts retching or wheezing, come straight in. Cold compress meanwhile, "
+                    + "and nothing from the human medicine cupboard.";
         }
         if (q.contains("limp") || q.contains("sore")) {
             return "Keep him still and off stairs, and give him nothing from your own cupboard. "
@@ -555,7 +573,10 @@ public class MockChatModel implements ChatModel {
             "not eating", "won't eat", "lump", "sore", "hurt", "injur", "poison", "ate a",
             // "eaten a whole bar of dark chocolate" matches none of the above: "eaten a" is not
             // "ate a". The catalogue's most-used worry was classifying as BASICS.
-            "chocolate"
+            "chocolate",
+            // A swallowed sock and a stung face are medical for reasons no word above covers,
+            // and they exist so demos 7 and 19 stop being the chocolate a second and third time.
+            "swallow", "sting", "stung", "wasp"
     };
     private static final String[] BEHAVIOUR_WORDS = {
             "pull", "bark", "bite", "biting", "growl", "jump", "recall", "come back", "lead",
@@ -592,8 +613,23 @@ public class MockChatModel implements ChatModel {
         return Kind.BASICS;
     }
 
-    /** What the room already knows, in a table: the dangerous ones and the harmless ones. */
+    /**
+     * What the room already knows, in a table: the dangerous ones and the harmless ones. The
+     * first four are what the beard actually came back with; the rest are still here because
+     * the input box is live on stage and somebody always types "chocolate".
+     */
     private static final String[][] FOODS = {
+            {"bone,chicken bone,rib", "Dangerous — a cooked bone splinters, and the splinters "
+                    + "are the problem, not the bone. Ring the vet now and give him nothing "
+                    + "else to eat."},
+            {"conker,chestnut,acorn", "Dangerous — conkers are toxic AND exactly the right size "
+                    + "to block a gut. Ring the vet, and count how many trees he walked under."},
+            {"glove,sock,fabric,tea towel", "Dangerous — fabric does not pass, it wedges. Ring "
+                    + "the vet even though he looks delighted with himself."},
+            {"croissant,pastry,bread,crust,toast", "Fine — plain baked dough does nothing. "
+                    + "Nothing to do (raw dough would be a different answer)."},
+            {"puddle,water,pond,rain", "Fine — that is just beard. It is going on your leg, not "
+                    + "into the dog. Nothing to do."},
             {"grape,raisin,sultana", "Dangerous — grapes and raisins can shut a dog's kidneys "
                     + "down and there is no known safe amount. Ring the vet now."},
             {"chocolate,cocoa", "Dangerous — and dark is the worst kind. Ring the vet now with "
@@ -611,14 +647,14 @@ public class MockChatModel implements ChatModel {
     };
 
     /**
-     * One verdict for one thing off the blanket. Reads ONLY the item, never the instruction: the
-     * prompt itself uses the words "dangerous" and "ring the vet", so matching the whole text
+     * One verdict for one thing out of the beard. Reads ONLY the item, never the instruction:
+     * the prompt itself uses the words "problem" and "ring the vet", so matching the whole text
      * would give every item the same answer and hide the entire point of a scatter/gather.
      */
-    private static String foodVerdict(String prompt) {
+    private static String beardVerdict(String prompt) {
         String item = prompt.toLowerCase(Locale.ROOT);
-        int at = item.indexOf("he ate:");
-        item = at < 0 ? item : item.substring(at + "he ate:".length());
+        int at = item.lastIndexOf("out of the beard:");
+        item = at < 0 ? item : item.substring(at + "out of the beard:".length());
         for (String[] food : FOODS) {
             for (String name : food[0].split(",")) {
                 if (item.contains(name)) {

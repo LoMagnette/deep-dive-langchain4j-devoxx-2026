@@ -12,7 +12,7 @@ import java.util.function.Predicate;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -32,14 +32,14 @@ public final class LoopPattern {
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
         // its own previous answer, which is why its input key is 'notes' rather than 'card'.
-        var writer = AgenticServices.agentBuilder(FridgeChecklist.class)
+        var writer = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
-                .name("FridgeChecklist")
+                .name("FridgeMagnet")
                 .outputKey(Notes.class)
                 .build();
-        var check = AgenticServices.agentBuilder(FridgeRuleCheck.class)
+        var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
                 .chatModel(model)
-                .name("FridgeRuleCheck")
+                .name("RuffDraftCritic")
                 .outputKey(Score.class)
                 .build();
         Predicate<AgenticScope> good = s -> score(s.readState(Score.class)) >= 0.8;
@@ -61,8 +61,8 @@ public final class LoopPattern {
                 // Demo 2's agent unchanged, with a critic and a loop drawn round it. Both ways
                 // out of the critic: the arc back AND the exit, which is what ends a loop.
                 List.of(node("in", "notes", "input"),
-                        node("writer", "FridgeChecklist", "agent"),
-                        node("check", "FridgeRuleCheck", "agent").withSub("4 rules, scored"),
+                        node("writer", "FridgeMagnet", "agent"),
+                        node("check", "RuffDraftCritic", "agent").withSub("4 rules, scored"),
                         node("out", "the note", "join").withSub("or after 5 passes")),
                 List.of(edge("in", "writer"), edge("writer", "check", "notes"),
                         edge("check", "writer", "score < 0.8"),
@@ -70,7 +70,7 @@ public final class LoopPattern {
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
                 "This is the note you actually sent last time. You can see the four things "
                         + "wrong with it from there. So could they.",
-                "Demo 2's FridgeChecklist, unchanged. Nothing about the agent changed; a "
+                "Demo 2's FridgeMagnet, unchanged. Nothing about the agent changed; a "
                         + "critic and a loop were drawn around it.",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "
                         + "persuaded of — every meal with a time and an amount, where the lead "
@@ -84,7 +84,7 @@ public final class LoopPattern {
                 // Fails three of the four rules on sight, which is the point: the audience can
                 // count the failures before the first agent runs.
                 "just feed him twice like normal and take him out when you can, he knows the "
-                        + "routine. ring me if anything's up!",
+                        + "routine better than we do honestly. ring me if anything's up!! xx",
                 LoopPattern::run);
     }
 }

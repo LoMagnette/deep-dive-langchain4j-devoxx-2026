@@ -8,7 +8,7 @@ import dev.langchain4j.service.UserMessage;
 /**
  * <b>Sequential</b>
  */
-public interface FridgeChecklist {
+public interface FridgeMagnet {
     @Agent(description = "Writes the checklist that goes on the fridge door")
     @UserMessage("""
             Turn this into the checklist that goes on the fridge door: the times of day in

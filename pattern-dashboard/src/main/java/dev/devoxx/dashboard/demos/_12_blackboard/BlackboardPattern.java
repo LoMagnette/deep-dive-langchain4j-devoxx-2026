@@ -98,8 +98,9 @@ public final class BlackboardPattern {
                         + "be honest about whether your contributors really are order-independent.",
                 topo,
                 "he's started barking all day while we're at work and the neighbour has "
-                        + "complained twice. He never used to. Nothing has changed except my new "
-                        + "shift and we moved his bed under the front window.",
+                        + "complained twice. He never used to. Nothing has changed — except my "
+                        + "new shift, and we moved his bed under the front window, and he gets a "
+                        + "shorter walk now. But nothing has changed.",
                 BlackboardPattern::run);
     }
 }

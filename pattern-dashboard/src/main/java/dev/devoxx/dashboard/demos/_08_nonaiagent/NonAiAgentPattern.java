@@ -28,8 +28,8 @@ public final class NonAiAgentPattern {
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Two of these three "agents" are `new`: no builder, no model, no prompt. They go
         // straight into subAgents() and the sequence cannot tell the difference.
-        var file = new HouseholdFile();
-        var guard = new NoteGuard();
+        var file = new FlatFile();
+        var guard = new Watchdog();
 
         var writer = AgenticServices.agentBuilder(NoteFromFile.class)
                 .chatModel(model)
@@ -53,10 +53,10 @@ public final class NonAiAgentPattern {
         // thing this demo denies. They get the 'code' role and read as what they are.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "the stay", "input", 0),
-                        node("file", "HouseholdFile", "code", 1)
+                        node("file", "FlatFile", "code", 1)
                                 .withSub("no model · your records"),
                         node("write", "NoteFromFile", "agent", 2),
-                        node("guard", "NoteGuard", "code", 3)
+                        node("guard", "Watchdog", "code", 3)
                                 .withSub("no model · checks facts"),
                         node("out", "the note", "join", 4)),
                 List.of(edge("in", "file"),
@@ -92,8 +92,8 @@ public final class NonAiAgentPattern {
                         + "everywhere. The lambda form has no answer at all — `agentAction(...)` "
                         + "comes out named `run`.",
                 topo,
-                "my sister has Zao from Friday to Sunday and she has never looked after him "
-                        + "before",
+                "my sister has Zao from Friday to Sunday. She has met him twice and both times "
+                        + "he was asleep",
                 NonAiAgentPattern::run);
     }
 }

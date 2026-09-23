@@ -78,12 +78,12 @@ class ParsingTest {
         assertEquals(List.of("a", "b"), Parsing.items("a;\nb"));
         // Semicolons beat commas when both are present, or an item that contains a comma is
         // fanned out as two half-items with no error at all.
-        assertEquals(List.of("a bar of dark chocolate, most of it", "a slice of cheddar"),
-                Parsing.items("a bar of dark chocolate, most of it; a slice of cheddar"));
+        assertEquals(List.of("half a croissant, buttered", "one conker"),
+                Parsing.items("half a croissant, buttered; one conker"));
         // A single item is honoured as a single item. Substituting five canned things for the one
         // the speaker typed reads as the demo ignoring them, which is worse than a short fan-out.
         assertEquals(List.of("one thing only"), Parsing.items("one thing only"));
-        // Only a genuinely empty input falls back to the blanket — the mapper must always have
+        // Only a genuinely empty input falls back to the beard — the mapper must always have
         // something to fan out over.
         assertEquals(5, Parsing.items("").size());
         assertEquals(5, Parsing.items("   ").size());

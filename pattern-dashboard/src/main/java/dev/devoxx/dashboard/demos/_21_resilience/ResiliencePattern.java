@@ -14,8 +14,8 @@ import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Message;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._01_single.SitterCardClerk;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeChecklist;
+import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
+import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
 import dev.devoxx.dashboard.demos._21_resilience.Keys.MedNote;
 import dev.devoxx.dashboard.demos._21_resilience.Keys.Meds;
 import dev.devoxx.dashboard.run.StreamingListener;
@@ -43,9 +43,9 @@ public final class ResiliencePattern {
         // knows or cares — flakiness is a property of the call, and recovery is a property of
         // the system, which is why neither of them is in the interface.
         var flaky = new FlakyModel(model, 1);
-        var clerk = AgenticServices.agentBuilder(SitterCardClerk.class)
+        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
                 .chatModel(flaky)
-                .name("SitterCardClerk")
+                .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
         var meds = AgenticServices.agentBuilder(MedicationNote.class)
@@ -57,9 +57,9 @@ public final class ResiliencePattern {
                 // step that looks unrelated.
                 .optional(true)
                 .build();
-        var list = AgenticServices.agentBuilder(FridgeChecklist.class)
+        var list = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
-                .name("FridgeChecklist")
+                .name("FridgeMagnet")
                 .outputKey(Notes.class)
                 .build();
 
@@ -122,11 +122,11 @@ public final class ResiliencePattern {
         // Drawing either as an arrow would invent a path that no run ever takes.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "message", "input", 0),
-                        node("clerk", "SitterCardClerk", "agent", 1)
+                        node("clerk", "NoteRetriever", "agent", 1)
                                 .withSub("drops one · retried"),
                         node("meds", "MedicationNote", "agent", 2)
                                 .withSub("optional · may skip"),
-                        node("list", "FridgeChecklist", "agent", 3),
+                        node("list", "FridgeMagnet", "agent", 3),
                         node("out", "the note", "join", 4).withSub("always produced")),
                 List.of(edge("in", "clerk"),
                         edge("clerk", "meds", "notes"),
@@ -135,7 +135,7 @@ public final class ResiliencePattern {
         return new PatternDef("resilience", "Optional Agents & Error Handling", "production",
                 "Most dogs are not on tablets, and the practice's line drops. Neither is a "
                         + "reason for the sitter to end up with no note.",
-                "Demo 1's SitterCardClerk and demo 2's FridgeChecklist, unchanged — on a "
+                "Demo 1's NoteRetriever and demo 2's FridgeMagnet, unchanged — on a "
                         + "connection that fails.",
                 "Two different answers to \"this step produced nothing\", and they are not "
                         + "interchangeable. **`optional(true)`** is about a missing *input*: the "
@@ -154,8 +154,9 @@ public final class ResiliencePattern {
                 // Mentions tablets, so the optional step runs. Delete that sentence on stage and
                 // watch the same run skip it and still put a note on the door.
                 "we're away Friday to Sunday and my sister is having Zao. Two scoops morning and "
-                        + "evening, food in the tub by the back door. He has half a tablet with "
-                        + "his breakfast for his hip. Vet is 061 22 33 44.",
+                        + "evening, food in the tub by the back door. Half a tablet with his "
+                        + "breakfast for his hip — hide it in cheese; he is not fooled, but he "
+                        + "takes it anyway. Vet is 061 22 33 44.",
                 ResiliencePattern::run);
     }
 }

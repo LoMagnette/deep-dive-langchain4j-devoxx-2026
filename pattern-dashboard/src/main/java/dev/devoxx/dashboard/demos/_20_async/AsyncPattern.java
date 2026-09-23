@@ -13,8 +13,8 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
-import dev.devoxx.dashboard.demos._04_parallel.MealPlanner;
-import dev.devoxx.dashboard.demos._04_parallel.WalkPlanner;
+import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
+import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
 import dev.devoxx.dashboard.demos._20_async.Keys.VetLine;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -41,14 +41,14 @@ public final class AsyncPattern {
                 .outputKey(VetLine.class)
                 .async(true)
                 .build();
-        var meals = AgenticServices.agentBuilder(MealPlanner.class)
+        var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
-                .name("MealPlanner")
+                .name("ChowHound")
                 .outputKey(Meals.class)
                 .build();
-        var walks = AgenticServices.agentBuilder(WalkPlanner.class)
+        var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
-                .name("WalkPlanner")
+                .name("LeadDeveloper")
                 .outputKey(Walks.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
@@ -80,8 +80,8 @@ public final class AsyncPattern {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "the stay", "input", 0),
                         node("vet", "VetCallback", "agent", 1).withSub("async · starts here"),
-                        node("meals", "MealPlanner", "agent", 2),
-                        node("walks", "WalkPlanner", "agent", 3),
+                        node("meals", "ChowHound", "agent", 2),
+                        node("walks", "LeadDeveloper", "agent", 3),
                         node("join", "the note", "join", 4).withSub("reads vetline")),
                 List.of(edge("in", "vet"),
                         edge("vet", "meals", "does not wait"),
@@ -89,9 +89,9 @@ public final class AsyncPattern {
                         edge("walks", "join"),
                         edge("vet", "join", "the read that joins")));
         return new PatternDef("async", "Asynchronous Agents", "production",
-                "The vet's out-of-hours line takes a minute to answer. You do not stand there "
-                        + "holding the phone while the rest of the note writes itself.",
-                "Demo 4's MealPlanner and WalkPlanner, unchanged — only the vet step is new.",
+                "The vet's out-of-hours line takes a minute to answer. Nobody blocks the main "
+                        + "thread on hold music while the rest of the note writes itself.",
+                "Demo 4's ChowHound and LeadDeveloper, unchanged — only the vet step is new.",
                 "One step in an ordinary sequence marked `async(true)`. The agent is unchanged, "
                         + "the builder is unchanged, and the declaration order is unchanged — the "
                         + "slow step is still asked first. What changes is that it writes an "
@@ -105,7 +105,9 @@ public final class AsyncPattern {
                         + "between it and its reader needs its answer.",
                 topo,
                 "Friday to Sunday, my sister has him. Two scoops morning and evening, walks "
-                        + "morning and evening, and I want the out-of-hours cover on the note.",
+                        + "morning and evening, and I want the out-of-hours cover on the note — "
+                        + "the practice takes a minute to pick up and I am not standing here "
+                        + "holding the phone.",
                 AsyncPattern::run);
     }
 }

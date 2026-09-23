@@ -10,7 +10,7 @@ Two distinct halves:
 - **Root** (`README.md`) — talk planning: the through-line is "autonomy is a dial," told as "From Puppy
   to Pack." The `NN-*.md` planning docs referenced in the root README are the speaker's notes.
 - **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 19
-  LangChain4j agentic patterns, set in the life of **Zao**, a Belgian shepherd, and the household
+  LangChain4j agentic patterns, set in the life of **Zao**, a Bouvier des Flandres, and the household
   he runs. This is the code you will actually build and edit.
 
 ## Commands (run inside `pattern-dashboard/`)
@@ -129,7 +129,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     of the `buildsOn` renumbering that moving `nonAiAgent` already cost once. That is the standing
     price of this scheme; pay it deliberately or not at all.
 - **An agent lives in the demo that introduces it**, and later demos import it from there. That is
-  deliberate, and worth pointing at on stage: `sitternote` imports the loop's `FridgeRuleCheck`
+  deliberate, and worth pointing at on stage: `sitternote` imports the loop's `RuffDraftCritic`
   and the routing demo's `WorryRouter`; `seconddogcouncil` imports the three assessors `voting`
   introduced. A composite reuses the parts rather than re-implementing them, and its import list
   says so before a word of explanation. Two shared default inputs work the same way —
@@ -162,7 +162,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     `humanApproval` works: `StreamingListener.askHuman` emits `human-ask`/`human-answer` by hand,
     so that demo never depended on the inheritance that is missing here.)
   - **`name` goes on the annotation, not a builder.** There is no builder for a POJO, and the
-    default is the *method* name — `HouseholdFile` would be called `lookup` everywhere. Same trap
+    default is the *method* name — `FlatFile` would be called `lookup` everywhere. Same trap
     as `.name("X")` one layer down. `agentAction(scope -> …)` has no answer at all: it comes out
     named `run`, which is why anything you want on a diagram is better as a class.
   - **`typedOutputKey = Keys.Facts.class`** is the annotation's `outputKey(Facts.class)`, so a
@@ -296,14 +296,14 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 - **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
-  `story` (its beat: a weekend away, a picnic, the chocolate, a baby coming, the second dog) and a
+  `story` (its beat: a weekend away, the beard, the chocolate, a baby coming, the second dog) and a
   `buildsOn` naming what it inherits. Read in catalogue order the twenty-one beats are one passage;
   read down the `buildsOn` lines they are one system being assembled. The tester shows both above
   the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
   walk the catalogue in order.
   **Three spines carry the reuse:**
-  - **The sitter note** — `single` introduces `SitterCardClerk`; `sequential` reuses it and adds
-    `FridgeChecklist`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
+  - **The sitter note** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
+    `FridgeMagnet`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
     it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
     demos 2, 3 and 17 — only the control around it, which is the entire argument.
   - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
@@ -384,14 +384,28 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     perfectly and still failed on stage: bloat, 21-day rabies clearances, run sizes and discharge
     notes all have to be *taught* before the pattern can be discussed, and a sentence of setup
     per demo is fifteen sentences across the talk — during which the room is learning kennels,
-    not patterns. So every constraint a demo turns on is now one the room already holds: grapes
-    are dangerous and cheddar is not, a dog who suddenly starts snapping needs a vet and not a
+    not patterns. So every constraint a demo turns on is now one the room already holds: a cooked
+    bone is dangerous and a croissant is not, a dog who suddenly starts snapping needs a vet and not a
     training tip, a fridge note needs the vet's
-    number on it, a puppy goes to the garden before he gets a training session, recall works in
-    the garden before it works at the park, and neither half of a couple outranks the other about
+    number on it, a puppy goes to the garden before he gets a training session, you can call him
+    off a hoover before you can call him off a cyclist, and neither half of a couple outranks the other about
     the bed. **The test for a new scenario: would a dev in row 20 know the right answer before
     you finished reading the input aloud?** If not, it is the wrong scenario however good the
     pattern fit is.
+  - **3. Something in the input must be visibly wrong, dangerous or funny — and the run must be
+    seen dealing with it.** This is the newest rule and the one the catalogue was weakest on. The
+    demos that land are the ones with an "oh no" the room spots before the first agent runs: the
+    conker, the 85% chocolate, the 2-1 split, the nurse sending it to the vet, the ladder stopping
+    at the book. The ones that died on stage all produced *admin* — "plan the meals for the days
+    the owners are away" is a perfectly good pattern fit and a paragraph nobody watches. **This is
+    not fixed by better prose.** A pass that only made the sentences wittier was rejected in the
+    same words as the version before it ("pedestrian, not that fun to see"); what changed it was
+    putting the consequence into the default input. So: write the input so the room can grade the
+    run, and prefer a scenario that ends in a verdict, a split, a refusal or a route over one that
+    ends in a document. The note-writing spine (`sequential`, `parallel`, both composites) is the
+    standing offender, because the note is load-bearing for the reuse argument and a note is a
+    document — those four have to earn their interest from the *input* and the timings, since the
+    output is fixed.
   `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` asserts the rule-1 claims,
   so a prompt tweak that quietly turns a pattern back into decoration goes red. Extend it too.
 - **`humanApproval` is the brake on the dial**, and the only pattern where the run stops and
@@ -500,7 +514,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   LangChain4j; a toggle on the simplest demo shows the API difference and nothing else. Four
   things make it work, and three of them are one-way doors:
   - **The return type is what makes an agent streaming**, not the builder. Hence
-    `StreamingSitterCardClerk`, a second interface with the *same prompt word for word* and
+    `StreamingNoteRetriever`, a second interface with the *same prompt word for word* and
     `TokenStream card(...)` instead of `String card(...)`. `streamingChatModel(...)` on a method
     returning String changes nothing at all.
   - **Only the LAST agent of an `UntypedAgent` system can stream to a screen.**
@@ -543,7 +557,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   offline vote is a genuine 2-1 majority; a **catch-all** `argue` rule that hands both holiday
   advocates the same words so `ConvergenceStrategy.unanimous()` fires, against the council's two
   named rules that differ so it does not; a 2-step supervisor plan nurse→specialist→done; and an
-  item-aware food table so the mapper really does clear the cheddar and condemn the grapes. Its
+  item-aware table so the mapper really does clear the croissant and condemn the cooked bone. Its
   worry-routing rule must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan
   names `TriageNurse` literally and reads `NEEDS: vet`/`trainer`/`everyday` out of the nurse's
   answer to pick the second call — renaming her, or changing that marker, breaks the demo.
@@ -599,7 +613,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   table rather than a wall of strings. `StreamingListener.describe` names types the way a reader
   expects — `List(3)`, not `ImmutableCollections$ListN` — and skips `__`-prefixed planner
   bookkeeping. Worth noticing on stage: `Score` shows as `String`, which is exactly why
-  `demos._03_loop.FridgeRuleCheck` returns one.
+  `demos._03_loop.RuffDraftCritic` returns one.
 - **`src/main/resources/META-INF/resources/`** — the frontend, four files, no build step:
   `index.html` (90 lines of markup), `app.css`, `render.js` (pure rendering: HTML escaping, the
   markdown subset, topology layout/drawing — functions of their arguments, which is why the same
@@ -657,7 +671,9 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   wifi). It escapes the text **before** introducing any tag, so model output can never inject markup;
   keep that order if you extend it. Known simplification: nested bullets flatten to one level.
   **Theming rule: the dog is in the craft, not in the jokes.** This is shown on a Devoxx stage, so
-  the canine character lives in the palette (a Belgian shepherd's fawn/rust coat on warm paper), a
+  the canine character lives in the palette (fawn/rust on warm paper — **note this was picked for
+  a Malinois and Zao is a Bouvier des Flandres**, who is steel grey, brindle or black; the palette
+  has not been re-cut and that is a live decision, not an oversight), a
   drawn paw mark shared by the header and favicon, a near-subliminal paw texture on the empty
   canvas, and the pulse on a working agent. It must NOT live in emoji decoration, pun button labels
   ("Fetch"/"Heel") or twee empty states — those read as kitsch on a projector and undercut the
@@ -666,11 +682,25 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   **This rule is about the chrome, not about the writing.** The `story` beats are the one place
   the humour belongs — they are what the speaker says out loud, the talk is three hours long, and
   the room needs the laughs. The register is dry and observational (the sitter said yes *before*
-  reading the message; the dog is not sorry), never wordplay, and every punchline earns its place
-  twice: `goap`'s "He comes back indoors. Reliably. Indoors." **is** the precondition chain,
-  `p2p`'s names why it is not a supervisor, `customPlanner`'s is the cost ladder. A joke you have
-  to stop and explain costs more time than it buys, so it is the wrong joke. Beats are capped at
+  reading the message; the dog is not sorry), and every punchline earns its place twice: `goap`'s
+  "He comes back indoors. Reliably. Indoors." **is** the precondition chain, `p2p`'s names why it
+  is not a supervisor, `customPlanner`'s is the cost ladder. A joke you have to stop and explain
+  costs more time than it buys, so it is the wrong joke. Beats are capped at
   140 chars by `everyDemoHasItsBeatInTheNarration` — a beat is a sentence, not a paragraph.
+  **Wordplay is allowed in the writing and in the agent names, on one condition: the pun has to
+  be the accurate name too.** This used to read "never wordplay", which was the wrong rule for a
+  Java audience — `LeadDeveloper` plans the walks where the whole question is the lead, and a room
+  of developers gets both halves before the next sentence. The condition is what keeps it from
+  turning into kitsch, and it is doing real work: `BeardOverflow` judges snacks, `RuffDraftCritic`
+  critiques a draft, `Watchdog` is a plain-Java guard, `FlatFile` is a lookup in a flat, `GardenLeave`
+  takes the puppy to the garden, `HelloWorld` teaches him his name first, `FinalBoarding` rules on
+  whether he flies. Names appear on the diagram, so a pun that costs the reader the mechanism is
+  the wrong pun and the plain name wins — which is why `EmergencyVet`, `DogTrainer`, `EverydayCare`,
+  `TriageNurse` are still plain: they are the cast five demos share,
+  and the routing only reads because their names say exactly what they are. Same test as the beats,
+  applied to a noun. Beat puns that hold: `parallel`'s "two threads, nothing shared, no locks",
+  `parallelMapper`'s "he did the scatter, you do the gather", `async`'s "nobody blocks the main
+  thread on hold music", `bdi`'s "get the order wrong and you mop".
   Visually it is a light, card-based shell — floating rounded surfaces with soft elevation on a
   tinted page — rather than the bordered-box admin look it started as. The primary action is ink,
   not brand colour; the accent is reserved for identity and selection (a tinted chip, not a
@@ -737,7 +767,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - Only the **return** half of a two-way pair is labelled. Both halves bow through the same gap,
     so the supervisor's "invoke" and "names who it needs" landed on top of each other; of the two
     it is the answer that carries the mechanism. Same convention as the blackboard's write/read.
-  - `bdi` carried its priorities inside the agent names (`ToiletTrip (p30)`); they are a second
+  - `bdi` carried its priorities inside the agent names (`GardenLeave (p30)`); they are a second
     line now, which also stopped the names truncating.
   The sub-line sits *inside* the box with the name shifted up, so every box stays one size and
   the layout maths is untouched. `everyTopologyShowsWhatItsPatternActuallyDoes` asserts these

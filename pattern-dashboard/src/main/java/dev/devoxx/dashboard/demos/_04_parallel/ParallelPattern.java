@@ -32,14 +32,14 @@ public final class ParallelPattern {
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Two halves of the same note, and neither needs the other's answer — which is the
         // whole test for a fan-out. The capstone reuses both of these agents unchanged.
-        var meals = AgenticServices.agentBuilder(MealPlanner.class)
+        var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
-                .name("MealPlanner")
+                .name("ChowHound")
                 .outputKey(Meals.class)
                 .build();
-        var walks = AgenticServices.agentBuilder(WalkPlanner.class)
+        var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
-                .name("WalkPlanner")
+                .name("LeadDeveloper")
                 .outputKey(Walks.class)
                 .build();
         UntypedAgent app = AgenticServices.parallelBuilder()
@@ -60,8 +60,8 @@ public final class ParallelPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "the stay", "input"),
-                        node("meals", "MealPlanner", "agent"),
-                        node("walks", "WalkPlanner", "agent"),
+                        node("meals", "ChowHound", "agent"),
+                        node("walks", "LeadDeveloper", "agent"),
                         // The combiner is the whole second half of "fan out, then join": the
                         // note cannot be written until both halves are back, which is the only
                         // reason the two branches have to meet again at all.
@@ -70,7 +70,7 @@ public final class ParallelPattern {
                         edge("meals", "join", "meals"), edge("walks", "join", "walks")));
         return new PatternDef("parallel", "Parallel", "workflow",
                 "The note needs two halves with nothing to say to each other: what he eats, "
-                        + "and when he goes out. Neither has ever needed the other.",
+                        + "and when he goes out. Two threads, nothing shared, no locks.",
                 "Takes the card demo 1 produced. Both planners come back in the capstone.",
                 "Fan out independent work concurrently, then join. The meals do not depend on "
                         + "the walks and the walks do not depend on the meals, but the note needs "
@@ -85,7 +85,7 @@ public final class ParallelPattern {
                 // INPUTS, not at run time, so skipping a demo on stage never strands the next
                 // one and a deep link from a slide still works on its own.
                 """
-                        Dog: Zao, Belgian shepherd
+                        Dog: Zao, Bouvier des Flandres
                         Meals: two scoops morning and evening, food in the tub by the back door
                         Walks: not given
                         Watch out for: no dried liver treats; never off the lead in the park
