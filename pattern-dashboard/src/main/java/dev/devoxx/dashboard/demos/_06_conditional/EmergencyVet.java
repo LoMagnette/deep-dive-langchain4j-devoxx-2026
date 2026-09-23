@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface EmergencyVet {
     @Agent(description = "Answers when the dog may be in danger right now")
@@ -15,5 +15,5 @@ public interface EmergencyVet {
             own line: ANSWERED.
 
             Worry: {{Worry}}""")
-    String handle(@K(Keys.Worry.class) String worry);
+    String handle(@V("Worry") String worry);
 }

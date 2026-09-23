@@ -35,23 +35,23 @@ public final class LoopPattern {
         var writer = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
                 .name("FridgeMagnet")
-                .outputKey(Notes.class)
+                .outputKey("Notes")
                 .build();
         var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
                 .chatModel(model)
                 .name("RuffDraftCritic")
-                .outputKey(Score.class)
+                .outputKey("Score")
                 .build();
-        Predicate<AgenticScope> good = s -> score(s.readState(Score.class)) >= 0.8;
+        Predicate<AgenticScope> good = s -> score(s.readState("Score", "")) >= 0.8;
         UntypedAgent app = AgenticServices.loopBuilder()
                 .subAgents(writer, check)
                 .maxIterations(5)
                 .exitCondition(good)
                 .testExitAtLoopEnd(true)
-                .outputKey(Notes.class)
+                .outputKey("Notes")
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
+        var r = app.invokeWithAgenticScope(Map.of("Notes", input));
         return String.valueOf(r.result());
     }
 

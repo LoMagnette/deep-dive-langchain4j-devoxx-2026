@@ -33,29 +33,29 @@ public final class ConditionalPattern {
         var router = AgenticServices.agentBuilder(WorryRouter.class)
                 .chatModel(model)
                 .name("WorryRouter")
-                .outputKey(Category.class)
+                .outputKey("Category")
                 .build();
         var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                 .chatModel(model)
                 .name("EmergencyVet")
-                .outputKey(Answer.class)
+                .outputKey("Answer")
                 .build();
         var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                 .chatModel(model)
                 .name("DogTrainer")
-                .outputKey(Answer.class)
+                .outputKey("Answer")
                 .build();
         var care = AgenticServices.agentBuilder(EverydayCare.class)
                 .chatModel(model)
                 .name("EverydayCare")
-                .outputKey(Answer.class)
+                .outputKey("Answer")
                 .build();
         Predicate<AgenticScope> isEmergency =
-                s -> category(s.readState(Category.class)).equals("emergency");
+                s -> category(s.readState("Category", "")).equals("emergency");
         Predicate<AgenticScope> isTraining =
-                s -> category(s.readState(Category.class)).equals("training");
+                s -> category(s.readState("Category", "")).equals("training");
         Predicate<AgenticScope> isEveryday =
-                s -> category(s.readState(Category.class)).equals("everyday");
+                s -> category(s.readState("Category", "")).equals("everyday");
         UntypedAgent routed = AgenticServices.conditionalBuilder()
                 .subAgents(isEmergency, vet)
                 .subAgents(isTraining, trainer)
@@ -63,10 +63,10 @@ public final class ConditionalPattern {
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
                 .subAgents(router, routed)
-                .outputKey(Answer.class)
+                .outputKey("Answer")
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
+        var r = app.invokeWithAgenticScope(Map.of("Worry", input));
         // Each desk ends by saying whether it could answer. That word is what the custom
         // planner's ladder branches on nine demos later; here it is protocol, not prose.
         return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");

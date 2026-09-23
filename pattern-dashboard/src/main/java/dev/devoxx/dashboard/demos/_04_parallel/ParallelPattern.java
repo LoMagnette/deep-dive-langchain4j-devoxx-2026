@@ -35,24 +35,24 @@ public final class ParallelPattern {
         var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
                 .name("ChowHound")
-                .outputKey(Meals.class)
+                .outputKey("Meals")
                 .build();
         var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
                 .name("LeadDeveloper")
-                .outputKey(Walks.class)
+                .outputKey("Walks")
                 .build();
         UntypedAgent app = AgenticServices.parallelBuilder()
                 .subAgents(meals, walks)
                 // The join is plain Java over what the two agents wrote. Assembling two
                 // halves needs no model, and putting one there would be a demo lying about
                 // where the work happens.
-                .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
+                .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState("Meals", ""), "")
                         + "\n\n**Walks**\n\n"
-                                + requireNonNullElse(s.readState(Walks.class), ""))
+                                + requireNonNullElse(s.readState("Walks", ""), ""))
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
+        var r = app.invokeWithAgenticScope(Map.of("Stay", input));
         return String.valueOf(r.result());
     }
 

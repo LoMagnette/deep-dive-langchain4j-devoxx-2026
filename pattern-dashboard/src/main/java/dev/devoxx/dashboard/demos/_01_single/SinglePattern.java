@@ -48,11 +48,11 @@ public final class SinglePattern {
         var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
                 .chatModel(model)
                 .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .outputKey("Notes")
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
-        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
+                .subAgents(clerk).outputKey("Notes").listener(listener).build();
+        var r = app.invokeWithAgenticScope(Map.of("Message", input));
         return String.valueOf(r.result());
     }
 
@@ -65,11 +65,11 @@ public final class SinglePattern {
         var clerk = AgenticServices.agentBuilder(StreamingNoteRetriever.class)
                 .streamingChatModel(listener.streamingModel())
                 .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .outputKey("Notes")
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
-        Object result = app.invokeWithAgenticScope(Map.of(new Message().name(), input)).result();
+                .subAgents(clerk).outputKey("Notes").listener(listener).build();
+        Object result = app.invokeWithAgenticScope(Map.of("Message", input)).result();
         if (!(result instanceof TokenStream stream)) {
             return String.valueOf(result);   // right answer, just not streamed
         }

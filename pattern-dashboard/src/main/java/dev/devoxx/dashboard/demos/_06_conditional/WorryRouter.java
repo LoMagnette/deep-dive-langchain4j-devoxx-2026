@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface WorryRouter {
     @Agent(description = "Sends the owner's worry to the one who can actually answer it")
@@ -12,5 +12,5 @@ public interface WorryRouter {
             bleeding or collapse, is always emergency. Return one word only.
 
             Worry: {{Worry}}""")
-    String classify(@K(Keys.Worry.class) String worry);
+    String classify(@V("Worry") String worry);
 }

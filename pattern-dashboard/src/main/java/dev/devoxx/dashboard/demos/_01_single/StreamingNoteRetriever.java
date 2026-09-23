@@ -1,9 +1,9 @@
 package dev.devoxx.dashboard.demos._01_single;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 /**
  * {@link NoteRetriever} with one thing changed: it returns a {@link TokenStream} instead of a
@@ -22,5 +22,5 @@ public interface StreamingNoteRetriever {
             Vet:
 
             Message: {{Message}}""")
-    TokenStream card(@K(Keys.Message.class) String message);
+    TokenStream card(@V("Message") String message);
 }

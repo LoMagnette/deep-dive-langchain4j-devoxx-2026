@@ -32,16 +32,16 @@ public final class SequentialPattern {
         var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
                 .chatModel(model)
                 .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .outputKey("Notes")
                 .build();
         var list = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
                 .name("FridgeMagnet")
-                .outputKey(Checklist.class)
+                .outputKey("Checklist")
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk, list).outputKey(Checklist.class).listener(listener).build();
-        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
+                .subAgents(clerk, list).outputKey("Checklist").listener(listener).build();
+        var r = app.invokeWithAgenticScope(Map.of("Message", input));
         return String.valueOf(r.result());
     }
 

@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._01_single;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface NoteRetriever {
     @Agent(description = "Turns a rambling message about the dog into a structured sitter card")
@@ -16,5 +16,5 @@ public interface NoteRetriever {
             Vet:
 
             Message: {{Message}}""")
-    String card(@K(Keys.Message.class) String message);
+    String card(@V("Message") String message);
 }

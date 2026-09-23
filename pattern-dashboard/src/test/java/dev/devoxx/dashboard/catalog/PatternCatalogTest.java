@@ -847,7 +847,8 @@ class PatternCatalogTest {
         var stringKey = java.util.regex.Pattern.compile(
                 "\\.(outputKey|readState|hasState|itemsProvider)\\(\"");
         try (var paths = java.nio.file.Files.walk(demos)) {
-            for (var p : paths.filter(p -> p.toString().endsWith("Pattern.java")).toList()) {
+            for (var p : paths.filter(p -> p.toString().endsWith("Pattern.java"))
+                    .filter(p -> !isUntypedOnPurpose(p)).toList()) {
                 var src = java.nio.file.Files.readString(p);
                 var m = stringKey.matcher(src);
                 while (m.find()) {
@@ -866,7 +867,8 @@ class PatternCatalogTest {
             // package-info is prose about the rule, and quotes the form it is telling you not
             // to use.
             for (var p : paths.filter(p -> p.toString().endsWith(".java")
-                    && !p.getFileName().toString().equals("package-info.java")).toList()) {
+                    && !p.getFileName().toString().equals("package-info.java"))
+                    .filter(p -> !isUntypedOnPurpose(p)).toList()) {
                 var m = stringParam.matcher(java.nio.file.Files.readString(p));
                 while (m.find()) {
                     if (!itemNames.contains(m.group(1))) {
@@ -879,6 +881,69 @@ class PatternCatalogTest {
 
         assertTrue(offenders.isEmpty(), () -> "use a TypedKey from Keys instead:\n"
                 + String.join("\n", offenders));
+    }
+
+    /**
+     * Demos 1–6 address the scope with STRING LITERALS, deliberately and for the live demo: they
+     * are the "before" the typed-key section argues against, so the speaker can switch one of
+     * them over on stage and have the room see what it buys. Their {@code Keys} records are
+     * still there, unused, waiting for exactly that.
+     */
+    private static boolean isUntypedOnPurpose(java.nio.file.Path p) {
+        String dir = p.getParent().getFileName().toString();
+        return dir.matches("_0[1-6]_.*");
+    }
+
+    /**
+     * The catch in keeping demos 1–6 untyped: <b>they share keys with the typed demos.</b>
+     * {@code TypedKey.name()} defaults to the record's simple name, so {@code @V("Worry")} and
+     * {@code @K(Worry.class)} are the same key at run time and demos 7, 9, 16 and 19 read what
+     * demo 6's desks wrote. Spell one of those strings in lower case — which is the obvious
+     * thing to do when you are writing "the bad version" by hand — and nothing fails here: the
+     * agent simply receives nothing, and the demo that breaks is one of the later ones.
+     *
+     * <p>So the rule for demos 1–6 is not "no typed keys", it is "string keys that a typed key
+     * would produce". Every literal has to match a {@code Keys} record that actually exists.
+     */
+    @Test
+    void theUntypedDemosStillSpellTheirKeysTheWayATypedKeyWould() throws Exception {
+        var demos = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos");
+        var declared = new java.util.HashSet<String>();
+        var used = new java.util.TreeMap<String, String>();   // literal -> where
+        var record = java.util.regex.Pattern.compile("record (\\w+)\\(\\) implements TypedKey");
+        var literal = java.util.regex.Pattern.compile(
+                "@V\\(\"(\\w+)\"\\)|\\.(?:outputKey|readState|hasState|itemsProvider)\\(\"(\\w+)\"");
+
+        try (var paths = java.nio.file.Files.walk(demos)) {
+            for (var p : paths.filter(p -> p.toString().endsWith(".java")).toList()) {
+                var src = java.nio.file.Files.readString(p);
+                var r = record.matcher(src);
+                while (r.find()) {
+                    declared.add(r.group(1));
+                }
+                if (!isUntypedOnPurpose(p)) {
+                    continue;
+                }
+                var m = literal.matcher(src);
+                while (m.find()) {
+                    String key = m.group(1) != null ? m.group(1) : m.group(2);
+                    used.putIfAbsent(key, p.getFileName().toString());
+                }
+            }
+        }
+
+        // The mapper's item is bound positionally and names nothing in the scope — the one
+        // string in the demos with no key behind it, typed or otherwise.
+        used.remove("item");
+        assertTrue(!used.isEmpty(), "demos 1-6 are supposed to be the untyped ones");
+
+        var unknown = used.entrySet().stream()
+                .filter(e -> !declared.contains(e.getKey()))
+                .map(e -> e.getValue() + " addresses \"" + e.getKey() + "\", which is no Keys record")
+                .toList();
+        assertTrue(unknown.isEmpty(), () -> "a string key in demos 1-6 must be spelled exactly "
+                + "as the TypedKey it stands in for, or the typed demos downstream read nothing:\n"
+                + String.join("\n", unknown));
     }
 
     /**

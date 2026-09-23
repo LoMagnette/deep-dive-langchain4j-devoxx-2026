@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface EverydayCare {
     @Agent(description = "Answers the ordinary questions about living with a dog")
@@ -14,5 +14,5 @@ public interface EverydayCare {
             fully covered it, or ESCALATE if it is past you.
 
             Worry: {{Worry}}""")
-    String handle(@K(Keys.Worry.class) String worry);
+    String handle(@V("Worry") String worry);
 }

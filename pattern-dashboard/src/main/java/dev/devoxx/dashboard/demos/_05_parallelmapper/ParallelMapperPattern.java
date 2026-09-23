@@ -36,24 +36,29 @@ public final class ParallelMapperPattern {
         var check = AgenticServices.agentBuilder(BeardOverflow.class)
                 .chatModel(model)
                 .name("BeardOverflow")
-                .outputKey(Verdict.class)
+                .outputKey("Verdict")
                 .build();
         UntypedAgent app = AgenticServices.parallelMapperBuilder()
                 .subAgents(check)
-                .itemsProvider(new Beard().name())
-                .outputKey(Verdicts.class)
+                .itemsProvider("Beard")
+                .outputKey("Verdicts")
                 .listener(listener)
                 .build();
         // The items come from what the user typed (comma- or semicolon-separated), not a
         // hard-coded list — otherwise the input box on the page has no effect here.
         List<String> found = items(input);
-        var r = app.invokeWithAgenticScope(Map.of(new Beard().name(), found));
+        var r = app.invokeWithAgenticScope(Map.of("Beard", found));
         // Paired back with the item each verdict is about — the mapper preserves order, and
-        // five unlabelled verdicts would leave the room counting. Verdicts is a
-        // TypedKey<List<String>>, so this reads as a List with no cast.
+        // five unlabelled verdicts would leave the room counting.
+        //
+        // And here is the cost of the untyped form, in one line: the scope hands back whatever
+        // it holds, so the List<String> has to be asserted by the default value rather than by
+        // the key. Get that default wrong — "" instead of an empty list, which is exactly what
+        // a careless search-and-replace produces — and it does not fail here, it fails at the
+        // cast. The typed version of this line needed no default and no thought.
         var scope = r.agenticScope();
         List<String> said = scope == null ? List.of()
-                : requireNonNullElse(scope.readState(Verdicts.class), List.<String>of());
+                : scope.readState("Verdicts", List.<String>of());
         if (!said.isEmpty()) {
             return IntStream.range(0, said.size())
                     .mapToObj(i -> "- **" + (i < found.size() ? found.get(i) : "item " + i)

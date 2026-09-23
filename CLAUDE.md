@@ -253,7 +253,26 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   the **interfaces**, not from a run, and that is the general lesson: a run shows one order, and
   one order is exactly what a sequence shows too — so the claim "any of them could go first" has
   to be read off the declared `@K` keys, which is what actually makes it true.
-- **Every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
+- **Demos 1–6 address the scope with STRING LITERALS, on purpose, and demos 7–21 use
+  `TypedKey`.** That split is the live demo: §5 argues for typed keys, and the argument lands
+  better if the room has just spent four demos looking at `@V("Notes")` and
+  `.outputKey("Notes")`. **Their `Keys.java` records are still there and still compile** — unused,
+  waiting for the switch-over to be done on stage. Do not delete them, and do not "tidy" demos
+  1–6 back to `@K`.
+  The catch, and it is the whole reason this is safe: **demos 1–6 share keys with the typed
+  demos.** `TypedKey.name()` defaults to the record's simple name, so `@V("Worry")` and
+  `@K(Worry.class)` are the same key at run time — which is how demo 6's desks feed demos 7, 9,
+  16 and 19. Spell one of those literals in lower case (the obvious thing to do when hand-writing
+  "the bad version") and **nothing fails locally**: the agent receives nothing and a *later* demo
+  breaks. `theUntypedDemosStillSpellTheirKeysTheWayATypedKeyWould` fails the build on a literal
+  in demos 1–6 that matches no `Keys` record, which is the only thing standing between that
+  mistake and a broken run on stage. `noDemoAddressesTheScopeWithAStringLiteral` still enforces
+  the typed rule, but skips `_0[1-6]_*`.
+  One more thing the untyped form costs, visible in `parallelMapper`: the typed
+  `readState(Verdicts.class)` becomes `readState("Verdicts", List.<String>of())`, where the
+  `List<String>` is asserted by the *default value* instead of by the key. Give it `""` and it
+  compiles fine until the cast.
+- **From demo 7 on, every scope key is a `TypedKey`, never a string literal.** Each demo has a `Keys.java`
   holding the keys it introduces, and later demos import them the way they import agents —
   `demos/_03_loop/Keys.Score`, `demos/_01_single/Keys.Notes`. A key is the contract between two agents
   that never see each other, and nothing checks that the two spellings match: this repo lost a
