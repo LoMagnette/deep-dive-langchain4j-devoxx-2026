@@ -5,11 +5,17 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface TeamOnTheBed {
-    @Agent(description = "Argues the dog should be allowed on the bed, and will not just fold")
+    @Agent(description = "Argues for the dog on the bed, and signs when the rule is one it can keep")
     @UserMessage("""
-            You are the half of the household that wants the dog on the bed. Say why, in a
-            short paragraph, and say the one thing you will not give up.
+            You are the one who wants him on the bed. The other half of this household does
+            not, and neither of you can overrule the other — so the only thing that ends this
+            is a rule you will both actually keep.
 
-            Question: {{Question}}""")
-    String propose(@K(Keys.Question.class) String question);
+            Take one turn. Either move the rule closer to something you can live with, or, if
+            you can already live with it as it stands, restate it in one sentence and end with
+            the single word AGREED. Do not write AGREED for a rule you would quietly break.
+
+            The question: {{Question}}
+            Where the other half has got to: {{Counter}}""")
+    String turn(@K(Keys.Question.class) String question, @K(Keys.Counter.class) String counter);
 }

@@ -1,34 +1,48 @@
-/* Zao's coat on modern surfaces: warm neutrals, one vivid accent, elevation instead of
-   hairline boxes. The theme is resolved to an explicit data-theme by the script in <head>,
-   so the tokens are declared once each instead of duplicated across a media query. */
+/* Zao's coat on modern surfaces: cool salt-and-pepper neutrals, one steel accent and a wheaten
+   warm note, elevation instead of hairline boxes. The theme is resolved to an explicit
+   data-theme by the script in <head>, so the tokens are declared once each instead of
+   duplicated across a media query.
+
+   THE PALETTE IS THE DOG, so it has to be the right dog. This was fawn and rust on warm cream
+   — Malinois colouring, from back when the catalogue said Zao was a Belgian shepherd. He is a
+   Bouvier des Flandres: steel grey, brindle or black, with a rough salt-and-pepper coat and a
+   beard several shades lighter. So the structure went cool and achromatic (the coat) and the
+   accent went steel blue-grey (the "blue" a grey Bouvier is called), with wheaten kept as the
+   warm secondary — the brindle stripe and the beard.
+
+   Why the accent is not simply grey: an achromatic accent cannot do the job. --accent marks
+   identity and selection — the paw, the selected rail chip, focus rings, the human-in-the-loop
+   node — and grey-on-grey marks nothing. Steel reads as the coat and still separates from it.
+   Cool structure with one warm note is also why a working agent still pulses wheaten: on a cool
+   page the warm box is the one your eye goes to, which is exactly what that state is for. */
 :root{
   color-scheme:light;
-  --bg:#f7f4ef; --panel:#ffffff; --panel2:#f1ede6; --ink:#1c1917; --muted:#6b6058;
-  --line:#e8e1d6; --accent:#ad470b; --accent-soft:#fbe8db; --accent2:#0f766e;
-  --node:#ffffff; --node-line:#e2d8ca; --node-active:#fbd38d; --node-active-line:#ad470b;
-  --node-done:#d3e8c6; --node-done-line:#4d8040; --board:#f2e5d0; --board-line:#ad470b;
-  --btn:#211d1a; --btn-ink:#ffffff; --term:#1b1917; --edge-ink:#574f48; --edge-line:#9c8f7e;
-  --shadow:0 1px 2px rgba(28,25,23,.05), 0 10px 30px -14px rgba(28,25,23,.22);
+  --bg:#f2f3f2; --panel:#ffffff; --panel2:#e8eae7; --ink:#171a19; --muted:#5f6663;
+  --line:#dcdfdb; --accent:#3c5a68; --accent-soft:#e0e9ee; --accent2:#7a5a1e;
+  --node:#ffffff; --node-line:#d6dad6; --node-active:#f2ddb4; --node-active-line:#8a6414;
+  --node-done:#d3e8c6; --node-done-line:#4d8040; --board:#f0e7d2; --board-line:#8a6414;
+  --btn:#1e2220; --btn-ink:#ffffff; --term:#17191a; --edge-ink:#4a5250; --edge-line:#8b9490;
+  --shadow:0 1px 2px rgba(23,26,25,.05), 0 10px 30px -14px rgba(23,26,25,.22);
 }
 /* Deliberately not near-black: a heavy dark theme reads as murky on a projector. These are
-   lifted, warm greys with clear separation between page, card and inset. */
+   lifted, cool greys with clear separation between page, card and inset. */
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#191817; --panel:#242221; --panel2:#1f1e1c; --ink:#f4f0eb; --muted:#a89d92;
-  --line:#34302c; --accent:#f4813c; --accent-soft:#3b2618; --accent2:#5eead4;
-  --node:#2b2826; --node-line:#403a35; --node-active:#5c3f14; --node-active-line:#f4b45c;
-  --node-done:#26402a; --node-done-line:#6fbf5f; --board:#3a2c18; --board-line:#f4813c;
-  --btn:#f4f0eb; --btn-ink:#211d1a; --term:#141312; --edge-ink:#c3b8ac; --edge-line:#7a7066;
+  --bg:#17191a; --panel:#212426; --panel2:#1c1f20; --ink:#eef1f0; --muted:#9aa4a2;
+  --line:#2f3436; --accent:#7fb3cc; --accent-soft:#1d2e38; --accent2:#e0b968;
+  --node:#272b2c; --node-line:#3b4142; --node-active:#4a3c1c; --node-active-line:#e0b968;
+  --node-done:#26402a; --node-done-line:#6fbf5f; --board:#332d1d; --board-line:#e0b968;
+  --btn:#eef1f0; --btn-ink:#1e2220; --term:#121415; --edge-ink:#b9c2c0; --edge-line:#737c7a;
   --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 32px -16px rgba(0,0,0,.75);
 }
 /* The event/log panes are dark in BOTH themes, so their inks must not follow the theme. */
 :root{
-  --c-start:#ab9781; --c-before:#6fb6de; --c-after:#8ed07f; --c-error:#f08a80;
-  --c-result:#eaa96a; --c-done:#ab9781; --term-dim:#9d8a75;
+  --c-start:#9aa7a4; --c-before:#6fb6de; --c-after:#8ed07f; --c-error:#f08a80;
+  --c-result:#e0b968; --c-done:#9aa7a4; --term-dim:#8a9391;
   /* The message ink for those panes. It MUST be declared: inheriting body's --ink put
-     #1c1917 text on the #1b1917 terminal in light theme, so every log message was
+     #171a19 text on the #17191a terminal in light theme, so every log message was
      invisible and only the coloured time/level/logger spans survived. */
-  --term-ink:#cfc6ba; --term-ink-hi:#f4ece2; --term-rule:#c2703a; --c-agent:#5eead4;
+  --term-ink:#c8cecd; --term-ink-hi:#eef2f1; --term-rule:#c39a4e; --c-agent:#5eead4;
 }
 :root{ --display: ui-rounded,"SF Pro Rounded","Segoe UI Variable Display","Nunito",
                   "Trebuchet MS",system-ui,sans-serif; }
@@ -178,7 +192,13 @@ body:not(.on-grid) .gallery{display:none}
 /* The graph owns the whole stage: result and scope moved into the dock's tabs. The empty
    canvas is a paw trail rather than blank paper — kept faint so edges stay legible. */
 .graphwrap{flex:1 1 auto;min-width:0;min-height:0;position:relative;background-color:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%23ad470b' fill-opacity='0.032'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%233c5a68' fill-opacity='0.032'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+/* The trail has to be re-stated for dark, and this is the one place a data: URI costs us: the
+   paw is baked into the URL so it cannot read var(--accent). A dark paw at 3% on a dark panel
+   is not faint, it is absent — which is what the old rust one was in this theme, unnoticed
+   because nobody looks for a texture they cannot see. Light steel, and a touch more of it. */
+:root[data-theme="dark"] .graphwrap{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%237fb3cc' fill-opacity='0.055'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
 svg#graph{width:100%;height:100%;display:block;position:relative}
 /* Scope pane: a debugger's variables table — name, type, value, and what just changed. */
 #scope{padding:0}
@@ -305,6 +325,10 @@ body.resizing{cursor:ns-resize;user-select:none}
 /* A join is a step, not an agent — drawn plainer so it never reads as one. */
 .node.join rect{fill:var(--panel2);stroke:var(--node-line);stroke-dasharray:4 3}
 .node.join text{fill:var(--muted);font-style:italic}
+/* Framework machinery, not one of your agents: GOAP's search sits between the goal and the
+   agents and is the thing that decides their order, so it must not look like a fourth agent. */
+.node.planner rect{fill:var(--panel2);stroke:var(--node-line);stroke-width:2;stroke-dasharray:2 4}
+.node.planner text{font-style:italic}
 .node.active rect{fill:var(--node-active);stroke:var(--node-active-line);stroke-width:2.5}
 .node.done rect{fill:var(--node-done);stroke:var(--node-done-line)}
 .node text{fill:var(--ink);font-size:13px;font-weight:600;text-anchor:middle;dominant-baseline:middle}

@@ -99,6 +99,15 @@ public final class Parsing {
         return best;
     }
 
+    /**
+     * Whether a peer has signed off on the shared draft. Deliberately looks at the CONTENT: a
+     * predicate that asks whether a key exists, when the key is one of the peers' own output
+     * keys, is true the moment that peer has run and can never end anything.
+     */
+    public static boolean agreed(String draft) {
+        return draft != null && draft.toUpperCase(Locale.ROOT).contains("AGREED");
+    }
+
     /** What the beard held, for when there is genuinely nothing to fan out over. */
     private static final List<String> BEARD =
             List.of("a cooked chicken bone", "half a croissant", "one conker",

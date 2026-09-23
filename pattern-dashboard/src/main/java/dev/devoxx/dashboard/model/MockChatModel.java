@@ -217,18 +217,28 @@ public class MockChatModel implements ChatModel {
                                 + "is working when the hoover starts and he looks at you instead "
                                 + "of at it."),
 
-                // --- 11. The household argument. The floor rule is FIRST because its prompt
-                // quotes the other half's proposal.
-                new Rule(p -> p.contains("wants the dog in his own bed"),
-                        p -> "I can live with that, but not the whole bed and not every night. "
-                                + "House rule: his own bed in our room, and he is invited up in "
-                                + "the morning once we are awake — never during the night, and "
-                                + "never when he is wet. AGREED."),
-                new Rule(p -> p.contains("wants the dog on the bed"),
-                        p -> "He has slept up there since he was a puppy and he settles better "
-                                + "for it, and so do I. What I will not give up is the mornings — "
-                                + "if he has to be off it at night, fine, but he comes up when "
-                                + "the alarm goes."),
+                // --- 11. The household argument. Both peers now write the SAME key and take
+                // turns, so each prompt carries the draft the other one just wrote — which
+                // means a rule has to tell its OWN opening turn from its second one. The bed
+                // does that by looking for the floor's counter in the draft it was handed;
+                // without that branch it says the same thing twice, nobody ever writes AGREED,
+                // and the negotiation runs to the ten-round cap.
+                //
+                // Note the lowercase() inside the reply: the lambda is handed the RAW prompt,
+                // not the lowercased text the rule matched on.
+                new Rule(p -> p.contains("you are the one who wants him on the bed"),
+                        p -> p.toLowerCase(Locale.ROOT).contains("his own bed in our room")
+                                ? "Then let us write it down and both keep it: his own bed in "
+                                + "our room, and he is invited up once the alarm has gone — "
+                                + "never in the night, never when he is wet. AGREED."
+                                : "He has slept up there since he was eight weeks old, he "
+                                + "settles better for it and so do I. Proposal: he sleeps on "
+                                + "the bed, and we all get on with our lives."),
+                new Rule(p -> p.contains("you are the one who wants him off the bed"),
+                        p -> "Forty kilos of wet beard is not a duvet, and I have measured what "
+                                + "is left of my side. Counter-proposal: his own bed in our "
+                                + "room, and he comes up in the morning once we are both awake "
+                                + "— never during the night, and never when he is wet."),
 
                 // --- 12. The barking board. The trainer's rule is FIRST because its prompt
                 // quotes all three contributors' headings.

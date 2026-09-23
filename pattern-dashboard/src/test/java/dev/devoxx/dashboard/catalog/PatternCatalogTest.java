@@ -1,6 +1,7 @@
 package dev.devoxx.dashboard.catalog;
 
 import static java.util.stream.Collectors.toSet;
+import static dev.devoxx.dashboard.support.Parsing.agreed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -347,13 +348,17 @@ class PatternCatalogTest {
         // .name("X") rule is about, one layer up.
         var peers = r.invoked().stream()
                 .filter(a -> a.equals("TeamOnTheBed") || a.equals("TeamOnTheFloor")).toList();
-        assertEquals(List.of("TeamOnTheBed", "TeamOnTheFloor"), peers,
-                "one exchange settles it: the floor answers with an agreement, the predicate "
-                        + "sees it and the run stops. More invocations than this means the "
-                        + "predicate stopped firing and the peers are countering each other to "
-                        + "the ten-round cap: " + r.invoked());
-        assertTrue(r.result() != null && !r.result().isBlank() && !"null".equals(r.result()),
-                "the agreement is the result — the key the predicate waits for: " + r.result());
+        // Three turns: a proposal, a counter, and the first peer signing the counter. The
+        // count is the assertion. TWO would mean the predicate fired the moment the second
+        // peer had spoken — which is what the old hasState(Agreement) predicate did, on any
+        // model, making this a two-step sequence with a planner bolted on. TEN would mean it
+        // never fires at all and the cap is doing the stopping.
+        assertEquals(List.of("TeamOnTheBed", "TeamOnTheFloor", "TeamOnTheBed"), peers,
+                "the peers must actually negotiate: propose, counter, then sign — and stop on "
+                        + "the predicate, well short of the ten-round cap: " + r.invoked());
+        assertTrue(agreed(r.result()),
+                "the shared draft is the result, and it is only the result once somebody has "
+                        + "signed it: " + r.result());
     }
 
     /**
@@ -985,6 +990,73 @@ class PatternCatalogTest {
         assertEquals(3, goapSubs.stream().filter(x -> x != null && x.contains("needs")).count(),
                 "every GOAP agent must show what it needs, or this is just a sequence: "
                         + goapSubs);
+
+        // And the stronger claim, because the sub-lines alone lost the argument: NO ARROW may
+        // run from one GOAP agent to another. An arrow between two agents is a picture of a
+        // path somebody typed, and it beats any caption underneath it — which is exactly how
+        // this diagram came to say "predetermined" while its own text said "derived". The
+        // planner fans out instead, and the positions it worked out ride on those arrows.
+        var goapAgents = nodes(catalog, "goap").stream()
+                .filter(n -> n.role().equals("agent")).map(Topology.Node::id).collect(toSet());
+        assertTrue(edges(catalog, "goap").stream()
+                        .noneMatch(e -> goapAgents.contains(e.from())
+                                && goapAgents.contains(e.to())),
+                "GOAP must not wire its agents to each other: the order is an output of the "
+                        + "planner, and an arrow between two agents claims somebody typed it");
+        assertEquals(3, edges(catalog, "goap").stream()
+                        .filter(e -> e.label() != null && e.label().startsWith("runs")).count(),
+                "the positions the planner derived have to be on its arrows, or the fan-out "
+                        + "reads as 'all three at once'");
+
+        // Peers: the question must reach BOTH of them, and BOTH must reach the predicate. One
+        // arrow in makes the first peer the one in charge, and one arrow out makes the second
+        // peer the only one allowed to end the argument — which is the single claim this
+        // pattern exists to deny, drawn twice.
+        assertEquals(2, edges(catalog, "p2p").stream().filter(e -> e.from().equals("in")).count(),
+                "both peers read the question; one arrow in draws a hierarchy");
+        assertEquals(2, inDegree(catalog, "p2p", role(catalog, "p2p", "join")),
+                "either peer can satisfy the exit predicate, so both must reach it");
+
+        // BDI's whole claim is a DAG of preconditions rather than a chain, and the edge that
+        // says so — the first desire gating the third — SKIPS the second node. render.js arcs
+        // a skipping edge over the top; drawn flat it vanishes behind the opaque box between
+        // its ends, which is how this diagram spent a long time saying "chain".
+        var bdiOrder = nodes(catalog, "bdi").stream().map(Topology.Node::id).toList();
+        assertTrue(edges(catalog, "bdi").stream()
+                        .anyMatch(e -> Math.abs(bdiOrder.indexOf(e.to())
+                                - bdiOrder.indexOf(e.from())) > 1),
+                "a precondition that gates a later desire must skip a node, or BDI is drawn "
+                        + "as the chain it is not: " + bdiOrder);
+
+        // The judge rules when the rounds END, and convergence is one of the two ways they can
+        // end — so both advocates reach it. Its sub-line claimed "only if they never agree"
+        // for a long time, which the converging holiday debate disproves on every run.
+        assertEquals(2, inDegree(catalog, "debate", role(catalog, "debate", "judge")),
+                "both advocates reach the judge: it rules on convergence as well as on the cap");
+
+        // The blackboard's lead is not a fourth contributor: it can only act once all three
+        // notes exist, and it is what ends the run. On the old star it was a fourth identical
+        // satellite — and `star` put it at the far LEFT of the ring, which is where the eye
+        // starts, for the box that must go last.
+        // Set.copyOf, not Set.of: three peers SHOULD share a stage, and Set.of throws on the
+        // duplicate that proves it.
+        var boardPeers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "walks"),
+                stageOf(catalog, "blackboard", "routine"),
+                stageOf(catalog, "blackboard", "home")));
+        assertEquals(1, boardPeers.size(),
+                "the three contributors are peers, so they share a column: " + boardPeers);
+        assertTrue(stageOf(catalog, "blackboard", "lead") > boardPeers.iterator().next(),
+                "the lead needs all three notes, so it cannot be drawn beside the agents that "
+                        + "produce them");
+        // Way in and way out, the two things this diagram had neither of. Not an in-degree:
+        // the board is written by the three contributors too, so what matters is that the
+        // input node reaches it.
+        assertTrue(edges(catalog, "blackboard").stream()
+                        .anyMatch(e -> e.from().equals(role(catalog, "blackboard", "input"))
+                                && e.to().equals("board")),
+                "the problem has to reach the board from somewhere");
+        assertEquals(1, inDegree(catalog, "blackboard", role(catalog, "blackboard", "join")),
+                "only the lead produces the goal state, and it has to be drawn producing it");
 
         // A mapper is one agent invoked once per item. A single box says "one call".
         assertTrue(nodes(catalog, "parallelMapper").stream().anyMatch(Topology.Node::stacked),
