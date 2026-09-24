@@ -6,6 +6,7 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
 import static java.util.Objects.requireNonNullElse;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
@@ -20,6 +21,8 @@ import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Draft;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Instruction;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -33,7 +36,8 @@ public final class HumanApprovalPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // 1. Demo 6, unchanged: route the worry to whoever can answer it.
+        var monitor = new AgentMonitor();
+
         var router = AgenticServices.agentBuilder(WorryRouter.class)
                 .chatModel(model)
                 .name("WorryRouter")
@@ -85,8 +89,11 @@ public final class HumanApprovalPattern {
                 .subAgents(router, triage, owner, last)
                 .outputKey(Instruction.class)
                 .listener(listener)
+                .listener(monitor)
                 .build();
         var r = app.instruct(input);
+
+        HtmlReportGenerator.generateReport(monitor, Path.of("human-in-the-loop.html"));
 
         // Show what was drafted and what the person said, not only the outcome: the whole
         // point of the pattern is the gap between those two.
