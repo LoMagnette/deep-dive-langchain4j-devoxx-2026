@@ -461,8 +461,18 @@ document.getElementById('rail-toggle').onclick = () =>
     else return;
     e.preventDefault();
   });
-  // A shrinking window must never let the dock swallow the diagram.
-  window.addEventListener('resize', ()=> setDockHeight(dockHeight(), false));
+  // A shrinking window must never let the dock swallow the diagram. Rescaled by how much
+  // innerHeight actually changed, not just re-clamped: innerHeight itself shrinks when the
+  // page is zoomed in and grows when it is zoomed out (a CSS-pixel effect, not a real resize),
+  // and re-clamping a stale pixel height against that left the dock's share of the window
+  // growing on zoom-in and shrinking on zoom-out — so the diagram, which fills whatever the
+  // dock leaves it, visibly zoomed the opposite way from the rest of the page.
+  let lastInnerHeight = window.innerHeight;
+  window.addEventListener('resize', () => {
+    const ratio = window.innerHeight / lastInnerHeight;
+    lastInnerHeight = window.innerHeight;
+    setDockHeight(dockHeight() * ratio, false);
+  });
 })();
 
 (function applySavedLayout(){
