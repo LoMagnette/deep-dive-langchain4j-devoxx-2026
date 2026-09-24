@@ -26,23 +26,22 @@ public final class ParallelPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Two halves of the same note, and neither needs the other's answer — which is the
-        // whole test for a fan-out. The capstone reuses both of these agents unchanged.
+
         var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
                 .name("ChowHound")
-                .outputKey(Meals.class)
+                .outputKey("Meal")
                 .build();
         var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
                 .name("LeadDeveloper")
-                .outputKey(Walks.class)
+                .outputKey("Walks")
                 .build();
         UntypedAgent app = AgenticServices.parallelBuilder()
                 .subAgents(meals, walks)
                 .output(s ->
-                        "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
-                        + "\n\n**Walks**\n\n" + requireNonNullElse(s.readState(Walks.class), ""))
+                        "**Meals**\n\n" + requireNonNullElse(s.readState("Meals"), "")
+                        + "\n\n**Walks**\n\n" + requireNonNullElse(s.readState("Walks"), ""))
                 .listener(listener)
                 .build();
         var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));

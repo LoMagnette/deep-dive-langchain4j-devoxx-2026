@@ -3,6 +3,7 @@ package dev.devoxx.dashboard.demos._04_parallel;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 public interface LeadDeveloper {
     @Agent(description = "Plans the dog's walks for the days the owners are away")
@@ -11,5 +12,5 @@ public interface LeadDeveloper {
             the lead, and anywhere to avoid. Be brief.
 
             The stay: {{Stay}}""")
-    String plan(@K(Keys.Stay.class) String stay);
+    String plan(@V("Stay") String stay);
 }

@@ -4,6 +4,7 @@ import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
 /**
  * Returns the score as a {@code String}, not a {@code double}, on purpose: a real chat model
@@ -20,5 +21,5 @@ public interface RuffDraftCritic {
             1.0 — the number only, no words, no explanation, no markdown.
 
             What we know so far: {{Notes}}""")
-    String check(@K(Notes.class) String notes);
+    String check(@V("Notes") String notes);
 }
