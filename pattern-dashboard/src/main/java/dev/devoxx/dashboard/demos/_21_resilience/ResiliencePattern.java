@@ -4,23 +4,18 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Message;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
 import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
 import dev.devoxx.dashboard.demos._21_resilience.Keys.MedNote;
-import dev.devoxx.dashboard.demos._21_resilience.Keys.Meds;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
@@ -66,7 +61,8 @@ public final class ResiliencePattern {
         // The counter is not decoration. RETRY re-executes the agent and a second failure comes
         // straight back here, so a handler that always retries never terminates.
         AtomicInteger attempts = new AtomicInteger();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        FridgeNotePipeline app = AgenticServices.sequenceBuilder(FridgeNotePipeline.class)
+                .name("Sequential")
                 .subAgents(clerk, meds, list)
                 .errorHandler(ctx -> attempts.incrementAndGet() <= MAX_RETRIES
                         ? ErrorRecoveryResult.retry()
@@ -75,22 +71,10 @@ public final class ResiliencePattern {
                 .output(scope -> note(scope, flaky, attempts.get()))
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(seed(input));
-        return String.valueOf(r.result());
-    }
-
-    /**
-     * The scope a real app would have: the medication details are there only when the owner
-     * actually gave you some. This is plain Java on purpose — deciding whether you hold a value
-     * is not a job for a model, and making it one would hide the thing the demo is about.
-     */
-    private static Map<String, Object> seed(String input) {
-        Map<String, Object> state = new LinkedHashMap<>();
-        state.put(new Message().name(), input);
-        if (mentionsMedication(input)) {
-            state.put(new Meds().name(), input);
-        }
-        return state;
+        // The medication details are passed only when the owner actually gave you some — deciding
+        // whether you hold a value is not a job for a model, and making it one would hide the
+        // thing the demo is about.
+        return app.write(input, mentionsMedication(input) ? input : null);
     }
 
     private static boolean mentionsMedication(String input) {

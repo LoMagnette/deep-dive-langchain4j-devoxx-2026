@@ -6,17 +6,14 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._10_goap.Keys.Children;
 import dev.devoxx.dashboard.demos._10_goap.Keys.Cyclists;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Goal;
 import dev.devoxx.dashboard.demos._10_goap.Keys.Hoover;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -46,14 +43,14 @@ public final class GoapPattern {
                 .outputKey(Cyclists.class)
                 .build();
 
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
                 .subAgents(cyclists, children, hoover)
                 .planner(GoalOrientedPlanner::new)
                 .outputKey(Cyclists.class)
                 .listener(listener)
                 .build();
 
-        var r = app.invokeWithAgenticScope(Map.of(new Goal().name(), input));
+        var r = app.invoke(input);
         String hooverText = requireNonNullElse(r.agenticScope().readState(Hoover.class), "");
         String childrenText = requireNonNullElse(r.agenticScope().readState(Children.class), "");
         String cyclistText = requireNonNullElse(r.agenticScope().readState(Cyclists.class), "");

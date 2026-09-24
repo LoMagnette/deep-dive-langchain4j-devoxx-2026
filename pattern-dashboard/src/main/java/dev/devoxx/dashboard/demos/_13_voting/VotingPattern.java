@@ -6,18 +6,15 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Decision;
-import dev.devoxx.dashboard.demos._13_voting.Keys.Household;
 import dev.devoxx.dashboard.demos._13_voting.Keys.MoneyVote;
 import dev.devoxx.dashboard.demos._13_voting.Keys.SpaceVote;
 import dev.devoxx.dashboard.demos._13_voting.Keys.ZaoVote;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
 import dev.langchain4j.agentic.patterns.voting.VotingStrategy;
 import dev.langchain4j.model.chat.ChatModel;
@@ -59,13 +56,13 @@ public final class VotingPattern {
                 .name("AskZaoHimself")
                 .outputKey(ZaoVote.class)
                 .build();
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        Ballot app = AgenticServices.plannerBuilder(Ballot.class)
                 .subAgents(space, money, zao)
                 .planner(() -> new VotingPlanner(VotingStrategy.majority()))
                 .outputKey(Decision.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Household().name(), input));
+        var r = app.invoke(input);
         var scope = r.agenticScope();
         if (scope == null) {
             return String.valueOf(r.result());

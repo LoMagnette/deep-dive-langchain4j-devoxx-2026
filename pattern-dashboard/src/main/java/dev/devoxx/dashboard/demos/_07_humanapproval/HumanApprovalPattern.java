@@ -7,7 +7,6 @@ import static dev.devoxx.dashboard.support.Parsing.category;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
@@ -15,14 +14,12 @@ import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
 import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Decision;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Draft;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Instruction;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -57,7 +54,8 @@ public final class HumanApprovalPattern {
                 .name("EmergencyVet")
                 .outputKey(Draft.class)
                 .build();
-        UntypedAgent triage = AgenticServices.conditionalBuilder()
+        TriageDesk triage = AgenticServices.conditionalBuilder(TriageDesk.class)
+                .name("Conditional")
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
                 .subAgents(s -> category(s.readState(Category.class)).equals("training"), trainer)
                 .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), vet)
@@ -82,12 +80,13 @@ public final class HumanApprovalPattern {
                 .outputKey(Instruction.class)
                 .build();
 
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        ApprovalPipeline app = AgenticServices.sequenceBuilder(ApprovalPipeline.class)
+                .name("Sequential")
                 .subAgents(router, triage, owner, last)
                 .outputKey(Instruction.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
+        var r = app.instruct(input);
 
         // Show what was drafted and what the person said, not only the outcome: the whole
         // point of the pattern is the gap between those two.

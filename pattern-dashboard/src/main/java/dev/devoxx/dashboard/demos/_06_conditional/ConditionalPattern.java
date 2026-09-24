@@ -6,18 +6,13 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -51,20 +46,21 @@ public final class ConditionalPattern {
                 .outputKey(Answer.class)
                 .build();
 
-        UntypedAgent routed = AgenticServices.conditionalBuilder()
+        RoutedDesk routed = AgenticServices.conditionalBuilder(RoutedDesk.class)
+                .name("Conditional")
                 .subAgents(s -> "emergency".equals(category(s.readState(Category.class))), vet)
                 .subAgents(s -> "training".equals(category(s.readState(Category.class))), trainer)
                 .subAgents(s -> "everyday".equals(category(s.readState(Category.class))), care)
                 .build();
 
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        TriagePipeline app = AgenticServices.sequenceBuilder(TriagePipeline.class)
+                .name("Sequential")
                 .subAgents(router, routed)
                 .outputKey(Answer.class)
                 .listener(listener)
                 .build();
 
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
-        return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
+        return app.answer(input).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
     }
 
     /** How the page draws it, and what the catalogue shows. */

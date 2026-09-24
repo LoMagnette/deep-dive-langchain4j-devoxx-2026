@@ -6,7 +6,6 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
@@ -14,10 +13,8 @@ import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
 import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -52,7 +49,7 @@ public final class CustomPlannerPattern {
                 .name("EmergencyVet")
                 .outputKey(Answer.class)
                 .build();
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        EscalationLadder app = AgenticServices.plannerBuilder(EscalationLadder.class)
                 .subAgents(book, trainer, vet)
                 // Same builder as every pattern above it. The only difference is that this
                 // planner is forty lines in this repo instead of forty lines in the library.
@@ -60,7 +57,7 @@ public final class CustomPlannerPattern {
                 .outputKey(Answer.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
+        var r = app.invoke(input);
         // WHICH rung settled it, read from the scope's invocation history. Return just the
         // answer and the one thing separating this from a sequence becomes invisible.
         String answer = String.valueOf(r.result());

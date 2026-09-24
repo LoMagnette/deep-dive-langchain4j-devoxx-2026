@@ -6,17 +6,14 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Fed;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Hour;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Out;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Session;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.bdi.BDIPlanner;
 import dev.langchain4j.agentic.patterns.bdi.Desire;
 import dev.langchain4j.model.chat.ChatModel;
@@ -57,13 +54,13 @@ public final class BdiPattern {
                 Desire.of("then-teach", 5,
                         s -> s.hasState(Out.class) && s.hasState(Fed.class),
                         s -> s.hasState(Session.class), HelloWorld.class));
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        FirstHour app = AgenticServices.plannerBuilder(FirstHour.class)
                 .subAgents(out, fed, train)
                 .planner(() -> new BDIPlanner(desires))
                 .outputKey(Session.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Hour().name(), input));
+        var r = app.invoke(input);
         var scope = r.agenticScope();
         if (scope == null) {
             return String.valueOf(r.result());

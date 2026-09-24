@@ -5,7 +5,6 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
@@ -13,11 +12,9 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Causes;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Home;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Problem;
 import dev.devoxx.dashboard.demos._12_blackboard.Keys.Routine;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
 import dev.langchain4j.agentic.patterns.blackboard.ConflictResolutionStrategy;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -57,15 +54,14 @@ public final class BlackboardPattern {
                 .outputKey(Causes.class)
                 .build();
         Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        Investigation app = AgenticServices.plannerBuilder(Investigation.class)
                 .subAgents(walks, routine, home, lead)
                 .planner(() -> new BlackboardPlanner(goal,
                         ConflictResolutionStrategy.declarationOrder()))
                 .outputKey(Causes.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Problem().name(), input));
-        return String.valueOf(r.result());
+        return app.invoke(input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

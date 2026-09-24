@@ -7,16 +7,13 @@ import static dev.devoxx.dashboard.support.Parsing.agreed;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._11_p2p.Keys.Counter;
 import dev.devoxx.dashboard.demos._11_p2p.Keys.Proposal;
-import dev.devoxx.dashboard.demos._11_p2p.Keys.Question;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -40,7 +37,7 @@ public final class P2pPattern {
                 .name("TeamOnTheFloor")
                 .outputKey(Counter.class)
                 .build();
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        Negotiation app = AgenticServices.plannerBuilder(Negotiation.class)
                 .subAgents(bed, floor)
                 // The exit predicate is the only thing that ends this: neither side can
                 // overrule the other, so without it they counter each other to the cap. Note
@@ -62,9 +59,7 @@ public final class P2pPattern {
         // Seeding an empty Counter is load-bearing: P2PPlanner activates an agent only once
         // every input it declares is present, so with neither key set neither peer can take a
         // turn and the run ends "stable after 0 invocations" — no agents, no error, no result.
-        var r = app.invokeWithAgenticScope(Map.of(
-                new Question().name(), input,
-                new Counter().name(), "(nothing on the table yet)"));
+        var r = app.invoke(input, "(nothing on the table yet)");
         // Whichever half gave way is the answer, and which one that is is not fixed.
         var scope = r.agenticScope();
         if (scope == null) {

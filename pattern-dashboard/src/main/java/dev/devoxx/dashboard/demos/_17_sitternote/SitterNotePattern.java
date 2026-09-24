@@ -7,7 +7,6 @@ import static dev.devoxx.dashboard.support.Parsing.category;
 import static dev.devoxx.dashboard.support.Parsing.score;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
@@ -16,7 +15,6 @@ import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
 import dev.devoxx.dashboard.demos._03_loop.RuffDraftCritic;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
 import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
@@ -25,11 +23,9 @@ import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -63,7 +59,8 @@ public final class SitterNotePattern {
                 .name("EverydayCare")
                 .outputKey(Answer.class)
                 .build();
-        UntypedAgent triage = AgenticServices.conditionalBuilder()
+        TriageDesk triage = AgenticServices.conditionalBuilder(TriageDesk.class)
+                .name("Conditional")
                 .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), vet)
                 .subAgents(s -> category(s.readState(Category.class)).equals("training"), trainer)
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
@@ -80,7 +77,8 @@ public final class SitterNotePattern {
                 .name("LeadDeveloper")
                 .outputKey(Walks.class)
                 .build();
-        UntypedAgent plan = AgenticServices.parallelBuilder()
+        StayPlan plan = AgenticServices.parallelBuilder(StayPlan.class)
+                .name("Parallel")
                 .subAgents(meals, walks)
                 .build();
 
@@ -96,7 +94,8 @@ public final class SitterNotePattern {
                 .name("RuffDraftCritic")
                 .outputKey(Score.class)
                 .build();
-        UntypedAgent refine = AgenticServices.loopBuilder()
+        NoteRefinement refine = AgenticServices.loopBuilder(NoteRefinement.class)
+                .name("Loop")
                 .subAgents(tighten, check)
                 .maxIterations(3)
                 .exitCondition(s -> score(s.readState(Score.class)) >= 0.8)
@@ -109,7 +108,8 @@ public final class SitterNotePattern {
                 .name("SitterNoteMerger")
                 .outputKey(Notes.class)
                 .build();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        SitterNotePipeline app = AgenticServices.sequenceBuilder(SitterNotePipeline.class)
+                .name("Sequential")
                 .subAgents(router, triage, plan, merge, refine)
                 .outputKey(Notes.class)
                 .listener(listener)
@@ -117,9 +117,7 @@ public final class SitterNotePattern {
         // The same text under two keys: the router and specialists ask "what is the worry",
         // the planners ask "what is the stay". Reusing an agent means accepting the key it
         // already declared — get it wrong and MissingArgumentException blames another step.
-        var r = app.invokeWithAgenticScope(
-                Map.of(new Worry().name(), input, new Stay().name(), input));
-        return String.valueOf(r.result());
+        return app.write(input, input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

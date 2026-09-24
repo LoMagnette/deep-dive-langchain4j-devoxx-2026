@@ -6,19 +6,16 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static dev.devoxx.dashboard.support.Parsing.category;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Worry;
 import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
 import dev.devoxx.dashboard.run.ModelTiers;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -58,13 +55,13 @@ public final class ModelRoutingPattern {
                 .outputKey(Answer.class)
                 .build();
 
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        DutyDeskPipeline app = AgenticServices.sequenceBuilder(DutyDeskPipeline.class)
+                .name("Sequential")
                 .subAgents(router, desk)
                 .output(scope -> answerWithItsTier(scope, tiers, picked.get()))
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
-        return String.valueOf(r.result());
+        return app.answer(input);
     }
 
     /**

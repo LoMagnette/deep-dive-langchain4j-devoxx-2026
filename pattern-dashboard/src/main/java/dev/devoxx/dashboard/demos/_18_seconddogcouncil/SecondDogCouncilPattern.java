@@ -7,11 +7,9 @@ import static dev.devoxx.dashboard.demos._13_voting.VotingPattern.HOUSEHOLD;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._11_p2p.Keys.Question;
 import dev.devoxx.dashboard.demos._13_voting.AskZaoHimself;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Household;
 import dev.devoxx.dashboard.demos._13_voting.MoneyAndVet;
@@ -24,7 +22,6 @@ import dev.devoxx.dashboard.demos._18_seconddogcouncil.Keys.Findings;
 import dev.devoxx.dashboard.demos._18_seconddogcouncil.Keys.Ratified;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
 import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
@@ -47,7 +44,8 @@ public final class SecondDogCouncilPattern {
                 .name("AngleScout")
                 .outputKey(Finding.class)
                 .build();
-        UntypedAgent survey = AgenticServices.parallelMapperBuilder()
+        CouncilSurvey survey = AgenticServices.parallelMapperBuilder(CouncilSurvey.class)
+                .name("ParallelMapper")
                 .subAgents(scout)
                 .itemsProvider(new Angles().name())
                 .outputKey(Findings.class)
@@ -74,7 +72,7 @@ public final class SecondDogCouncilPattern {
                 .name("HouseholdVerdict")
                 .outputKey(Verdict.class)
                 .build();
-        UntypedAgent debate = AgenticServices.plannerBuilder()
+        CouncilDebate debate = AgenticServices.plannerBuilder(CouncilDebate.class)
                 .subAgents(forIt, against, chair)    // judge LAST
                 .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
                 .outputKey(Verdict.class)
@@ -102,24 +100,24 @@ public final class SecondDogCouncilPattern {
                 .chatModel(model)
                 .name("AskZaoHimself")
                 .build();
-        UntypedAgent ratify = AgenticServices.plannerBuilder()
+        CouncilRatification ratify = AgenticServices.plannerBuilder(CouncilRatification.class)
                 .subAgents(space, money, zao)
                 .planner(() -> new VotingPlanner(VotingStrategy.majority()))
                 .outputKey(Ratified.class)
                 .build();
 
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        CouncilPipeline app = AgenticServices.sequenceBuilder(CouncilPipeline.class)
+                .name("Sequential")
                 .subAgents(survey, briefer, debate, note, ratify)
                 .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
         // The angles are derived here rather than by an agent: the mapper needs a real
         // collection in scope before anything has run.
-        var r = app.invokeWithAgenticScope(Map.of(
-                new Question().name(), input,
-                new Angles().name(), List.of("the space and the hours alone — " + input,
+        var r = app.convene(input,
+                List.of("the space and the hours alone — " + input,
                         "the money over ten years — " + input,
-                        "what Zao would say about it — " + input)));
+                        "what Zao would say about it — " + input));
         // The last stage is the vote, so the result has to show it: returning only the
         // debate's verdict would leave the ratification invisible and the final third of the
         // diagram looking decorative.

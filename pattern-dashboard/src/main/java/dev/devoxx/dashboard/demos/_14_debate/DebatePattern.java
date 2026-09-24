@@ -5,15 +5,12 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Motion;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
 import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
 import dev.langchain4j.model.chat.ChatModel;
@@ -41,14 +38,13 @@ public final class DebatePattern {
                 .name("FinalBoarding")
                 .outputKey(Verdict.class)
                 .build();
-        UntypedAgent app = AgenticServices.plannerBuilder()
+        Debate app = AgenticServices.plannerBuilder(Debate.class)
                 .subAgents(take, leave, verdict) // last sub-agent is the judge
                 .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
                 .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Motion().name(), input));
-        return String.valueOf(r.result());
+        return app.invoke(input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

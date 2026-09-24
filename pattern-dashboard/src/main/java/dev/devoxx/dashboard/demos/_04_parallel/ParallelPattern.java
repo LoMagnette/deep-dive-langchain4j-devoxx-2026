@@ -3,15 +3,12 @@ package dev.devoxx.dashboard.demos._04_parallel;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 import java.util.List;
-import java.util.Map;
 
 import static dev.devoxx.dashboard.catalog.Topology.*;
 import static java.util.Objects.requireNonNullElse;
@@ -30,22 +27,22 @@ public final class ParallelPattern {
         var meals = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
                 .name("ChowHound")
-                .outputKey("Meal")
+                .outputKey(Meals.class)
                 .build();
         var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
                 .name("LeadDeveloper")
-                .outputKey("Walks")
+                .outputKey(Walks.class)
                 .build();
-        UntypedAgent app = AgenticServices.parallelBuilder()
+        FanOut app = AgenticServices.parallelBuilder(FanOut.class)
+                .name("Parallel")
                 .subAgents(meals, walks)
                 .output(s ->
-                        "**Meals**\n\n" + requireNonNullElse(s.readState("Meals"), "")
-                        + "\n\n**Walks**\n\n" + requireNonNullElse(s.readState("Walks"), ""))
+                        "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
+                        + "\n\n**Walks**\n\n" + requireNonNullElse(s.readState(Walks.class), ""))
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
-        return String.valueOf(r.result());
+        return app.plan(input);
     }
 
     /** How the page draws it, and what the catalogue shows. */

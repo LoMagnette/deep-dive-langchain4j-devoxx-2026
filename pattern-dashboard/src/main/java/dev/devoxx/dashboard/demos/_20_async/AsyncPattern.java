@@ -6,19 +6,16 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Stay;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
 import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
 import dev.devoxx.dashboard.demos._20_async.Keys.VetLine;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -51,15 +48,15 @@ public final class AsyncPattern {
                 .name("LeadDeveloper")
                 .outputKey(Walks.class)
                 .build();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
+        CoveragePipeline app = AgenticServices.sequenceBuilder(CoveragePipeline.class)
+                .name("Sequential")
                 // Declaration order is still a sequence: the vet is asked FIRST. It just does not
                 // hold the other two up, because its answer is not needed until the note.
                 .subAgents(vet, meals, walks)
                 .output(AsyncPattern::note)
                 .listener(listener)
                 .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));
-        return String.valueOf(r.result());
+        return app.write(input);
     }
 
     /**
