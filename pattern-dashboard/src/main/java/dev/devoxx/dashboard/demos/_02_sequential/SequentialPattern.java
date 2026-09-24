@@ -39,8 +39,10 @@ public final class SequentialPattern {
                 .name("FridgeMagnet")
                 .outputKey(Checklist.class)
                 .build();
+
         UntypedAgent app = AgenticServices.sequenceBuilder()
                 .subAgents(clerk, list).outputKey(Checklist.class).listener(listener).build();
+
         var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
         return String.valueOf(r.result());
     }

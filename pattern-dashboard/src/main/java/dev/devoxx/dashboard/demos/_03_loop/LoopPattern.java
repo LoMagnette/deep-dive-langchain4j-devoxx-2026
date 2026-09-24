@@ -30,8 +30,6 @@ public final class LoopPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Demo 2's agent, unchanged. The only difference is what surrounds it: it now reads
-        // its own previous answer, which is why its input key is 'notes' rather than 'card'.
         var writer = AgenticServices.agentBuilder(FridgeMagnet.class)
                 .chatModel(model)
                 .name("FridgeMagnet")
@@ -42,15 +40,16 @@ public final class LoopPattern {
                 .name("RuffDraftCritic")
                 .outputKey(Score.class)
                 .build();
-        Predicate<AgenticScope> good = s -> score(s.readState(Score.class)) >= 0.8;
+
         UntypedAgent app = AgenticServices.loopBuilder()
                 .subAgents(writer, check)
                 .maxIterations(5)
-                .exitCondition(good)
+                .exitCondition(s -> score(s.readState(Score.class)) >= 0.8)
                 .testExitAtLoopEnd(true)
                 .outputKey(Notes.class)
                 .listener(listener)
                 .build();
+
         var r = app.invokeWithAgenticScope(Map.of(new Notes().name(), input));
         return String.valueOf(r.result());
     }

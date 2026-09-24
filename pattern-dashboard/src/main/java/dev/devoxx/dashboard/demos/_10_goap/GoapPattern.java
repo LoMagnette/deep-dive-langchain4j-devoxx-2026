@@ -45,14 +45,14 @@ public final class GoapPattern {
                 .name("NotTheCyclists")
                 .outputKey(Cyclists.class)
                 .build();
+
         UntypedAgent app = AgenticServices.plannerBuilder()
-                // Registered BACKWARDS on purpose, and it still runs hoover → children →
-                // cyclists: the order comes from the I/O keys, not from the order you typed.
                 .subAgents(cyclists, children, hoover)
                 .planner(GoalOrientedPlanner::new)
                 .outputKey(Cyclists.class)
                 .listener(listener)
                 .build();
+
         var r = app.invokeWithAgenticScope(Map.of(new Goal().name(), input));
         String hooverText = requireNonNullElse(r.agenticScope().readState(Hoover.class), "");
         String childrenText = requireNonNullElse(r.agenticScope().readState(Children.class), "");

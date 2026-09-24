@@ -63,14 +63,9 @@ public final class HumanApprovalPattern {
                 .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), vet)
                 .build();
 
-        // 2. The new step, and the only new thing on this page. A HumanInTheLoop is a non-AI
-        //    agent: it reads a key from the scope and writes one back, exactly like the three
-        //    above it, except that the thing producing the answer is a person.
+
         var owner = AgenticServices.humanInTheLoopBuilder()
                 .description("The owner, who decides what the sitter is actually told to do")
-                // HumanInTheLoopBuilder has no TypedKey overload — unlike AgentBuilder and
-                // the workflow builders — so the key is asked for its own name here. Worth
-                // noticing on stage: the typing is as good as the narrowest API you touch.
                 .inputKey(String.class, new Draft().name())
                 .outputKey(new Decision().name())
                 .responseProvider(scope -> listener.askHuman("You", """

@@ -40,7 +40,6 @@ public final class SinglePattern {
                     + "scream the first night like you are taking him apart — ignore it, he's "
                     + "fine, he does it to us too. thank you!!! x";
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
             return streamed(listener, input);
@@ -50,9 +49,14 @@ public final class SinglePattern {
                 .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
+
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
+                                          .subAgents(clerk)
+                                          .outputKey(Notes.class)
+                                          .listener(listener)
+                                          .build();
         var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
+
         return String.valueOf(r.result());
     }
 

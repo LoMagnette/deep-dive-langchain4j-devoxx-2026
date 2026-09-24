@@ -50,25 +50,20 @@ public final class ConditionalPattern {
                 .name("EverydayCare")
                 .outputKey(Answer.class)
                 .build();
-        Predicate<AgenticScope> isEmergency =
-                s -> category(s.readState(Category.class)).equals("emergency");
-        Predicate<AgenticScope> isTraining =
-                s -> category(s.readState(Category.class)).equals("training");
-        Predicate<AgenticScope> isEveryday =
-                s -> category(s.readState(Category.class)).equals("everyday");
+
         UntypedAgent routed = AgenticServices.conditionalBuilder()
-                .subAgents(isEmergency, vet)
-                .subAgents(isTraining, trainer)
-                .subAgents(isEveryday, care)
+                .subAgents(s -> "emergency".equals(category(s.readState(Category.class))), vet)
+                .subAgents(s -> "training".equals(category(s.readState(Category.class))), trainer)
+                .subAgents(s -> "everyday".equals(category(s.readState(Category.class))), care)
                 .build();
+
         UntypedAgent app = AgenticServices.sequenceBuilder()
                 .subAgents(router, routed)
                 .outputKey(Answer.class)
                 .listener(listener)
                 .build();
+
         var r = app.invokeWithAgenticScope(Map.of(new Worry().name(), input));
-        // Each desk ends by saying whether it could answer. That word is what the custom
-        // planner's ladder branches on nine demos later; here it is protocol, not prose.
         return String.valueOf(r.result()).replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
     }
 

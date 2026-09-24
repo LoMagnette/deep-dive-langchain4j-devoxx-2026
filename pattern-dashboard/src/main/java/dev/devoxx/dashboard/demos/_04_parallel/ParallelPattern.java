@@ -40,12 +40,9 @@ public final class ParallelPattern {
                 .build();
         UntypedAgent app = AgenticServices.parallelBuilder()
                 .subAgents(meals, walks)
-                // The join is plain Java over what the two agents wrote. Assembling two
-                // halves needs no model, and putting one there would be a demo lying about
-                // where the work happens.
-                .output(s -> "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
-                        + "\n\n**Walks**\n\n"
-                                + requireNonNullElse(s.readState(Walks.class), ""))
+                .output(s ->
+                        "**Meals**\n\n" + requireNonNullElse(s.readState(Meals.class), "")
+                        + "\n\n**Walks**\n\n" + requireNonNullElse(s.readState(Walks.class), ""))
                 .listener(listener)
                 .build();
         var r = app.invokeWithAgenticScope(Map.of(new Stay().name(), input));

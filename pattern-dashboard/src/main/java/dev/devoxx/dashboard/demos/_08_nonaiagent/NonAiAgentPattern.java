@@ -24,10 +24,7 @@ public final class NonAiAgentPattern {
     private NonAiAgentPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Two of these three "agents" are `new`: no builder, no model, no prompt. They go
-        // straight into subAgents() and the sequence cannot tell the difference.
         var file = new FlatFile();
         var guard = new Watchdog();
 

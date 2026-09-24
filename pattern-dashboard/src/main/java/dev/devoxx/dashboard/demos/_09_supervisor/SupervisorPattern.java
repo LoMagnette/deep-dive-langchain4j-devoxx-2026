@@ -35,29 +35,29 @@ public final class SupervisorPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The one new agent, and the first one called. Everything else here the room has
-        // already watched run in the routing demo.
         var nurse = AgenticServices.agentBuilder(TriageNurse.class)
                 .chatModel(model)
                 .name("TriageNurse")
                 .build();
+
         var care = AgenticServices.agentBuilder(EverydayCare.class)
                 .chatModel(model)
                 .name("EverydayCare")
                 .build();
+
         var trainer = AgenticServices.agentBuilder(DogTrainer.class)
                 .chatModel(model)
                 .name("DogTrainer")
                 .build();
+
         var vet = AgenticServices.agentBuilder(EmergencyVet.class)
                 .chatModel(model)
                 .name("EmergencyVet")
                 .build();
+
         SupervisorAgent sup = AgenticServices.supervisorBuilder()
                 .subAgents(nurse, care, trainer, vet)
-                .chatModel(model)                 // planner LLM lives on the supervisor
-                // This text IS the configuration, and it has to describe the scenario the
-                // demo actually runs — the planner will follow it and stop early otherwise.
+                .chatModel(model)
                 .supervisorContext("""
                         Always call the nurse first: she takes the call, works out what is \
                         going on, and ends by naming who it needs. She never treats and \
@@ -67,7 +67,6 @@ public final class SupervisorPattern {
                         everyday care, call everyday care. Only when she says NEEDS: nobody \
                         is her own answer enough. You are finished once the specialist she \
                         named has answered.""")
-                // Explicit, because the planner reading the previous answer IS the mechanism.
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .maxAgentsInvocations(4)
                 .output(SupervisorPattern::answerWithItsRoute)
@@ -90,9 +89,6 @@ public final class SupervisorPattern {
             return "The supervisor called nobody.";
         }
 
-        // Only the LAST answer is the answer. Everything before it was the supervisor working
-        // out who to ask — and printing those as peer blocks is what made this read as a
-        // fan-out: three answers of equal weight is exactly what a parallel workflow produces.
         var settled = calls.get(calls.size() - 1);
         String answer = strip(settled.output());
         if (calls.size() == 1) {
@@ -102,8 +98,8 @@ public final class SupervisorPattern {
         String path = calls.stream().map(AgentInvocation::agentName)
                 .collect(java.util.stream.Collectors.joining(" → "));
         StringBuilder out = new StringBuilder("**" + path + "**\n\n" + answer + "\n\n---\n");
-        // The earlier calls appear once, small, as the REASON the next one happened — never as
-        // an answer in their own right, because they were not one.
+
+
         for (int i = 0; i < calls.size() - 1; i++) {
             out.append("\n*").append(calls.get(i).agentName()).append(" did not answer it — \"")
                     .append(firstSentence(strip(calls.get(i).output())))
