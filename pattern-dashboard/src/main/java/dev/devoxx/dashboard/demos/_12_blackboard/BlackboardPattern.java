@@ -9,10 +9,10 @@ import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Causes;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Home;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Routine;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Alibis;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Ruling;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Scene;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Trail;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
@@ -21,7 +21,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>blackboard</b> demo — three kinds of knowledge, contributed in any order.
+ * Wiring for the <b>blackboard</b> demo — three kinds of evidence, contributed in any order.
  */
 public final class BlackboardPattern {
 
@@ -30,35 +30,35 @@ public final class BlackboardPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The three note-takers read ONLY 'problem', so any of them can go first and the
-        // board accumulates three different KINDS of knowledge. Chain them — each reading the
+        // The three investigators read ONLY 'crime', so any of them can go first and the
+        // board accumulates three different KINDS of evidence. Chain them — each reading the
         // last one's output — and you have a sequence wearing a blackboard's coat.
-        var walks = AgenticServices.agentBuilder(WalkNotes.class)
+        var bloodhound = AgenticServices.agentBuilder(ScentTrail.class)
                 .chatModel(model)
-                .name("WalkNotes")
-                .outputKey(Walks.class)
+                .name("ScentTrail")
+                .outputKey(Trail.class)
                 .build();
-        var routine = AgenticServices.agentBuilder(RoutineNotes.class)
+        var collie = AgenticServices.agentBuilder(AlibiCheck.class)
                 .chatModel(model)
-                .name("RoutineNotes")
-                .outputKey(Routine.class)
+                .name("AlibiCheck")
+                .outputKey(Alibis.class)
                 .build();
-        var home = AgenticServices.agentBuilder(HomeNotes.class)
+        var shepherd = AgenticServices.agentBuilder(CrimeScene.class)
                 .chatModel(model)
-                .name("HomeNotes")
-                .outputKey(Home.class)
+                .name("CrimeScene")
+                .outputKey(Scene.class)
                 .build();
-        var lead = AgenticServices.agentBuilder(TrainerLead.class)
+        var zao = AgenticServices.agentBuilder(PackLeader.class)
                 .chatModel(model)
-                .name("TrainerLead")
-                .outputKey(Causes.class)
+                .name("PackLeader")
+                .outputKey(Ruling.class)
                 .build();
-        Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
+        Predicate<AgenticScope> goal = s -> s.hasState(Ruling.class);
         Investigation app = AgenticServices.plannerBuilder(Investigation.class)
-                .subAgents(walks, routine, home, lead)
+                .subAgents(bloodhound, collie, shepherd, zao)
                 .planner(() -> new BlackboardPlanner(goal,
                         ConflictResolutionStrategy.declarationOrder()))
-                .outputKey(Causes.class)
+                .outputKey(Ruling.class)
                 .listener(listener)
                 .build();
         return app.invoke(input);
@@ -69,7 +69,7 @@ public final class BlackboardPattern {
         // This was a `star`: the board in the middle with all four agents evenly round it. The
         // circle got one thing right — the three note-takers genuinely have no order — and
         // three things wrong, each of which this diagram had already been fixed for elsewhere.
-        // The problem arrived from nowhere; the run ended nowhere; and TrainerLead, which can
+        // The problem arrived from nowhere; the run ended nowhere; and the lead, which can
         // only act once all three notes exist and is the thing that ENDS the run, was drawn as
         // a fourth identical satellite. Worse, `star` places satellites at top/right/bottom/
         // left in declaration order, so the one box that must go last sat at the far LEFT,
@@ -80,51 +80,54 @@ public final class BlackboardPattern {
         // The three peers share a column, which is how a picture says "no order"; the lead has
         // its own, after them; and the way in and the way out are both drawn.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "the problem", "input", 0),
+                List.of(node("in", "the crime", "input", 0),
                         node("board", "The board", "board", 1)
-                                .withSub("problem + every note"),
-                        node("walks", "WalkNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        node("routine", "RoutineNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        node("home", "HomeNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        // Three identical sub-lines are the point: three boxes that say the
-                        // same thing are three agents with nothing to tell them apart, which
-                        // is exactly why any of them can go first. The fourth reads
-                        // differently because it IS different.
-                        node("lead", "TrainerLead", "agent", 3)
-                                .withSub("needs all three · last"),
-                        node("out", "ranked causes", "join", 4)
+                                .withSub("crime + every note"),
+                        node("trail", "ScentTrail", "agent", 2)
+                                .withSub("Bloodhound · crime only"),
+                        node("alibis", "AlibiCheck", "agent", 2)
+                                .withSub("Collie · crime only"),
+                        node("scene", "CrimeScene", "agent", 2)
+                                .withSub("Shepherd · crime only"),
+                        // Three sub-lines that end the same way are the point: apart from
+                        // which dog it is, nothing tells the three apart, which is exactly
+                        // why any of them can go first. The fourth reads differently because
+                        // it IS different.
+                        node("lead", "PackLeader", "agent", 3)
+                                .withSub("Zao · needs all three"),
+                        node("out", "the culprit", "join", 4)
                                 .withSub("the goal state")),
                 // Contributors read the board as well as write to it — that mutual dependency
                 // is why the pattern needs a conflict-resolution strategy at all. Only the
                 // write half is labelled, as with the supervisor's pair: of the two it is the
                 // contribution that carries the mechanism.
                 List.of(edge("in", "board"),
-                        edge("board", "walks"), edge("walks", "board", "exercise"),
-                        edge("board", "routine"), edge("routine", "board", "the shift"),
-                        edge("board", "home"), edge("home", "board", "the window"),
+                        edge("board", "trail"), edge("trail", "board", "the crumbs"),
+                        edge("board", "alibis"), edge("alibis", "board", "who fits"),
+                        edge("board", "scene"), edge("scene", "board", "the plate"),
                         // Skips the contributors' column, so it arcs over them — which is what
                         // "reads the whole board" looks like when it is drawn rather than said.
                         edge("board", "lead", "all three notes"),
-                        edge("lead", "out", "ranked causes")));
+                        edge("lead", "out", "most guilty first")));
         return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
-                "Meanwhile the neighbour has complained twice. He barks all day now. Nothing "
-                        + "has changed, except everything that has changed.",
+                "The birthday cake is gone. The Labrador has cream on his nose. The Labrador "
+                        + "does not fit through the dog flap.",
                 null,
                 "Contributors read and write a shared board until a goal state exists. This is "
-                        + "debugging, which is what a blackboard is for: barking while you are "
-                        + "out is an exercise question, a what-changed question and a "
-                        + "what-can-he-see question until the board says which one it is.",
+                        + "an investigation, which is what a blackboard is for: the trail, the "
+                        + "alibis and the scene are three kinds of evidence that can arrive in "
+                        + "any order, and nobody can name the culprit until all three are on the "
+                        + "board. The obvious suspect is the one with cream on his nose; the "
+                        + "board is what gets past him.",
                 // caveat: concurrent writers need a conflict-resolution strategy.
                 "Shared mutable state invites conflicts; pick a conflict-resolution strategy. And "
                         + "be honest about whether your contributors really are order-independent.",
                 topo,
-                "he's started barking all day while we're at work and the neighbour has "
-                        + "complained twice. He never used to. Nothing has changed — except my "
-                        + "new shift, and we moved his bed under the front window, and he gets a "
-                        + "shorter walk now. But nothing has changed.",
+                "the birthday cake has gone from the coffee table. The Labrador has cream on "
+                        + "his nose and is looking at the floor. There is a trail of crumbs out "
+                        + "through the dog flap. The Labrador does not fit through the dog flap. "
+                        + "The crumbs stop at the Dachshund, who is asleep on the lawn, and is "
+                        + "noticeably rounder than he was this morning.",
                 BlackboardPattern::run);
     }
 }

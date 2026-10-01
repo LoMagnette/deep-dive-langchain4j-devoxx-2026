@@ -27,24 +27,24 @@ public final class P2pPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var bed = AgenticServices.agentBuilder(TeamOnTheBed.class)
+        var greyhound = AgenticServices.agentBuilder(WholeSofa.class)
                 .chatModel(model)
-                .name("TeamOnTheBed")
+                .name("WholeSofa")
                 .outputKey(Proposal.class)
                 .build();
-        var floor = AgenticServices.agentBuilder(TeamOnTheFloor.class)
+        var labrador = AgenticServices.agentBuilder(CornerSeat.class)
                 .chatModel(model)
-                .name("TeamOnTheFloor")
+                .name("CornerSeat")
                 .outputKey(Counter.class)
                 .build();
         Negotiation app = AgenticServices.plannerBuilder(Negotiation.class)
-                .subAgents(bed, floor)
+                .subAgents(greyhound, labrador)
                 // The exit predicate is the only thing that ends this: neither side can
                 // overrule the other, so without it they counter each other to the cap. Note
                 // that it reads the CONTENT, and that EITHER key satisfies it — whichever peer
                 // is the one to give way ends the argument.
                 //
-                // It used to be hasState(Agreement.class) against the floor peer's own output
+                // It used to be hasState(Agreement.class) against the second peer's own output
                 // key, which is true the moment that peer has run, on any model. The run always
                 // stopped after exactly one exchange, and this was a two-step sequence with a
                 // planner bolted on top. A predicate that cannot be false is not an exit
@@ -60,7 +60,7 @@ public final class P2pPattern {
         // every input it declares is present, so with neither key set neither peer can take a
         // turn and the run ends "stable after 0 invocations" — no agents, no error, no result.
         var r = app.invoke(input, "(nothing on the table yet)");
-        // Whichever half gave way is the answer, and which one that is is not fixed.
+        // Whichever dog gave way is the answer, and which one that is is not fixed.
         var scope = r.agenticScope();
         if (scope == null) {
             return String.valueOf(r.result());
@@ -69,8 +69,8 @@ public final class P2pPattern {
         String counter = requireNonNullElse(scope.readState(Counter.class), "");
         String signed = agreed(proposal) ? proposal : agreed(counter) ? counter : "";
         return signed.isBlank()
-                ? "Ten rounds and no rule either of them would keep:\n\n" + proposal
-                : "**" + (agreed(proposal) ? "The bed half" : "The floor half")
+                ? "Ten rounds and no deal either of them would keep:\n\n" + proposal
+                : "**" + (agreed(proposal) ? "The Greyhound" : "The Labrador")
                         + " gave way**\n\n" + signed;
     }
 
@@ -83,27 +83,29 @@ public final class P2pPattern {
         // that peer is the one who gets to end the argument.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "question", "input", 0).withSub("nobody chairs this"),
-                        node("bed", "TeamOnTheBed", "agent", 1)
-                                .withSub("may sign, may counter"),
-                        node("floor", "TeamOnTheFloor", "agent", 1)
-                                .withSub("may sign, may counter"),
+                        // The same second line on both, apart from the dog: neither box may
+                        // read as the senior one.
+                        node("greyhound", "WholeSofa", "agent", 1)
+                                .withSub("Greyhound · equal say"),
+                        node("labrador", "CornerSeat", "agent", 1)
+                                .withSub("Labrador · equal say"),
                         node("out", "exitCondition", "join", 2)
                                 .withSub("'AGREED' from either")),
-                List.of(edge("in", "bed"), edge("in", "floor"),
-                        edge("bed", "floor", "proposal"),
-                        edge("floor", "bed", "counter · ≤10 rounds"),
-                        edge("bed", "out"),
-                        edge("floor", "out", "checked every turn")));
+                List.of(edge("in", "greyhound"), edge("in", "labrador"),
+                        edge("greyhound", "labrador", "proposal"),
+                        edge("labrador", "greyhound", "counter · ≤10 rounds"),
+                        edge("greyhound", "out"),
+                        edge("labrador", "out", "checked every turn")));
         return new PatternDef("p2p", "Peer-to-Peer", "pattern-zoo",
-                "And the argument you have been avoiding for a year. The bed. Neither of you "
-                        + "outranks the other, which is why this is not a supervisor.",
+                "One sofa, two dogs. Zao is pack leader and has declined to rule on it, which "
+                        + "is why this is not a supervisor.",
                 null,
                 "Peers refine a shared state until an exit condition holds. Each one reads what "
                         + "the other wrote and answers it — no coordinator, no order laid down "
                         + "in advance, and either of them can be the one to give way. The case "
-                        + "for it: every household has had this argument, and the reason it is "
-                        + "not a supervisor is that neither half can overrule the other, so the "
-                        + "only way out is a rule both will actually keep. Watch the roll-call: "
+                        + "for it: the reason this is not a supervisor is that nobody here can "
+                        + "overrule anybody — the one dog who could has refused — so the only "
+                        + "way out is a deal both will actually keep. Watch the roll-call: "
                         + "propose, counter, and then somebody signs.",
                 // caveat: without a firm exit predicate peers can ping-pong indefinitely.
                 "No hierarchy — needs a solid exit predicate or it never terminates, and "
@@ -117,7 +119,7 @@ public final class P2pPattern {
                         + "re-fires when an input changes, so two peers writing one shared key "
                         + "trigger each other and themselves, and race.",
                 topo,
-                "should Zao be allowed to sleep on the bed? He is asleep on the bed.",
+                "who gets the sofa? There is one sofa. The Greyhound is lying on all of it.",
                 P2pPattern::run);
     }
 }

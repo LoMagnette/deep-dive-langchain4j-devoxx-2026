@@ -1,6 +1,6 @@
 package dev.devoxx.dashboard.demos._12_blackboard;
 
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Problem;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Crime;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 
@@ -12,5 +12,5 @@ import dev.langchain4j.agentic.declarative.K;
  */
 public interface Investigation {
     @Agent
-    String invoke(@K(Problem.class) String problem);
+    String invoke(@K(Crime.class) String crime);
 }

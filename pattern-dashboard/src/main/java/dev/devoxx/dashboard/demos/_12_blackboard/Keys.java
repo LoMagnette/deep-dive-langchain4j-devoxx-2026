@@ -8,14 +8,18 @@ public final class Keys {
     private Keys() {
     }
 
-    /**
-     * The ranked differential. Writing this is the goal state.
-     */
-    public record Causes() implements TypedKey<String> {}
+    /** Who could physically have done it. The Collie's note on the board. */
+    public record Alibis() implements TypedKey<String> {}
 
-    public record Home() implements TypedKey<String> {}
+    /** What happened, as reported. The only thing the three investigators read. */
+    public record Crime() implements TypedKey<String> {}
 
-    public record Problem() implements TypedKey<String> {}
+    /** Who did it, ranked. Writing this is the goal state. */
+    public record Ruling() implements TypedKey<String> {}
 
-    public record Routine() implements TypedKey<String> {}
+    /** What the evidence left behind says. The Shepherd's note on the board. */
+    public record Scene() implements TypedKey<String> {}
+
+    /** Where the crumbs go. The Bloodhound's note on the board. */
+    public record Trail() implements TypedKey<String> {}
 }

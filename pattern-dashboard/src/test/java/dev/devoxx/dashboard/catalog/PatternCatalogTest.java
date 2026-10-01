@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import dev.devoxx.dashboard.demos._12_blackboard.HomeNotes;
-import dev.devoxx.dashboard.demos._12_blackboard.RoutineNotes;
-import dev.devoxx.dashboard.demos._12_blackboard.TrainerLead;
-import dev.devoxx.dashboard.demos._12_blackboard.WalkNotes;
+import dev.devoxx.dashboard.demos._12_blackboard.AlibiCheck;
+import dev.devoxx.dashboard.demos._12_blackboard.CrimeScene;
+import dev.devoxx.dashboard.demos._12_blackboard.PackLeader;
+import dev.devoxx.dashboard.demos._12_blackboard.ScentTrail;
 import dev.devoxx.dashboard.model.MockChatModel;
 import dev.devoxx.dashboard.model.MockStreamingChatModel;
 import dev.devoxx.dashboard.run.AskHuman;
@@ -225,11 +225,11 @@ class PatternCatalogTest {
 
         // GOAP's agents are registered backwards on purpose, so the only way to get this order
         // is for the planner to have derived it from the declared I/O keys.
-        List<String> recall = run(catalog.byId("goap").orElseThrow()).invoked();
-        assertTrue(recall.indexOf("NotTheHoover") < recall.indexOf("NotTheChildren"),
-                "the children cannot come before the hoover: " + recall);
-        assertTrue(recall.indexOf("NotTheChildren") < recall.indexOf("NotTheCyclists"),
-                "the cyclists come last: " + recall);
+        List<String> heist = run(catalog.byId("goap").orElseThrow()).invoked();
+        assertTrue(heist.indexOf("DoorbellDecoy") < heist.indexOf("ChairPusher"),
+                "the chair cannot move while the human is in the kitchen: " + heist);
+        assertTrue(heist.indexOf("ChairPusher") < heist.indexOf("CounterSurfer"),
+                "the Corgi cannot reach the counter without the chair: " + heist);
 
         // Five things out of the beard, five verdicts, and they must NOT all be the same — the
         // room knows the croissant is fine and the cooked bone is not.
@@ -344,13 +344,13 @@ class PatternCatalogTest {
         // ("invoke"), because plannerBuilder() takes no .name(). That is the same default the
         // .name("X") rule is about, one layer up.
         var peers = r.invoked().stream()
-                .filter(a -> a.equals("TeamOnTheBed") || a.equals("TeamOnTheFloor")).toList();
+                .filter(a -> a.equals("WholeSofa") || a.equals("CornerSeat")).toList();
         // Three turns: a proposal, a counter, and the first peer signing the counter. The
         // count is the assertion. TWO would mean the predicate fired the moment the second
         // peer had spoken — which is what the old hasState(Agreement) predicate did, on any
         // model, making this a two-step sequence with a planner bolted on. TEN would mean it
         // never fires at all and the cap is doing the stopping.
-        assertEquals(List.of("TeamOnTheBed", "TeamOnTheFloor", "TeamOnTheBed"), peers,
+        assertEquals(List.of("WholeSofa", "CornerSeat", "WholeSofa"), peers,
                 "the peers must actually negotiate: propose, counter, then sign — and stop on "
                         + "the predicate, well short of the ten-round cap: " + r.invoked());
         assertTrue(agreed(r.result()),
@@ -367,20 +367,20 @@ class PatternCatalogTest {
      */
     @Test
     void anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast() {
-        for (Class<?> notes : List.of(WalkNotes.class, RoutineNotes.class, HomeNotes.class)) {
-            assertEquals(List.of("Problem"), inputKeys(notes),
-                    notes.getSimpleName() + " must read ONLY the Problem. Give it a key another "
+        for (Class<?> notes : List.of(ScentTrail.class, AlibiCheck.class, CrimeScene.class)) {
+            assertEquals(List.of("Crime"), inputKeys(notes),
+                    notes.getSimpleName() + " must read ONLY the Crime. Give it a key another "
                             + "contributor writes and the board has an order again, which is the "
                             + "sequence this demo was rewritten to stop being.");
         }
-        assertEquals(List.of("Walks", "Routine", "Home"), inputKeys(TrainerLead.class),
+        assertEquals(List.of("Trail", "Alibis", "Scene"), inputKeys(PackLeader.class),
                 "the lead reads the whole board, which is what makes it the step that ends the run");
 
         Run r = run(new PatternCatalog().byId("blackboard").orElseThrow());
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
-        assertTrue(r.invoked().containsAll(List.of("WalkNotes", "RoutineNotes", "HomeNotes")),
-                "every angle must reach the board: " + r.invoked());
-        assertEquals("TrainerLead", r.invoked().getLast(),
+        assertTrue(r.invoked().containsAll(List.of("ScentTrail", "AlibiCheck", "CrimeScene")),
+                "every kind of evidence must reach the board: " + r.invoked());
+        assertEquals("PackLeader", r.invoked().getLast(),
                 "the lead needs all three, so it can only run once they have: " + r.invoked());
     }
 
@@ -421,8 +421,8 @@ class PatternCatalogTest {
      * only honest way to assert that is from the outside: the two Java steps must appear in the
      * run exactly like the model step does — invoked, timed, and writing to the scope.
      *
-     * <p>The second half is the reason the demo exists at all. The canned note deliberately
-     * drops two of the record's numbers, so the guard has something to catch; if a future prompt
+     * <p>The second half is the reason the demo exists at all. The canned plan deliberately
+     * drops two of the diary's locations, so the cat has something to catch; if a future prompt
      * change made the model copy everything, this demo would silently become ceremony and the
      * assertion below is what would say so.
      */
@@ -442,7 +442,7 @@ class PatternCatalogTest {
         // because it is exactly the kind of thing a version bump fixes quietly. If this line
         // goes red on an upgrade, the library fixed it: delete the assertion, and rewrite the
         // caveat in NonAiAgentPattern.define() — it will have become wrong.
-        assertEquals(List.of("NoteFromFile"),
+        assertEquals(List.of("DigPlanner"),
                 r.invoked().stream().filter(a -> !a.equals("Sequential")).toList(),
                 "only the LLM step is observable in 1.20.0-beta30 — if the Java steps now "
                         + "appear here the library has been fixed: " + r.invoked());
@@ -453,12 +453,12 @@ class PatternCatalogTest {
                         && e.scope().containsKey("Facts")),
                 "the non-AI agent must write its output key into the scope");
 
-        // ...and the guard earned its place: the model's note left two numbers out, and the run
+        // ...and the cat earned its place: the model's plan left two locations out, and the run
         // still ends with them on the page.
-        assertTrue(r.result().contains("981098106123456")
-                        && r.result().contains("AG-4471209"),
-                "the guard must put back what the note left out: " + r.result());
-        assertTrue(r.result().contains("left out of the note above"),
+        assertTrue(r.result().contains("3 paces from the shed")
+                        && r.result().contains("north-east corner"),
+                "the cat must put back what the plan left out: " + r.result());
+        assertTrue(r.result().contains("left out of the plan above"),
                 "a guard that never fires proves nothing: " + r.result());
     }
 
@@ -1036,9 +1036,9 @@ class PatternCatalogTest {
         // starts, for the box that must go last.
         // Set.copyOf, not Set.of: three peers SHOULD share a stage, and Set.of throws on the
         // duplicate that proves it.
-        var boardPeers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "walks"),
-                stageOf(catalog, "blackboard", "routine"),
-                stageOf(catalog, "blackboard", "home")));
+        var boardPeers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "trail"),
+                stageOf(catalog, "blackboard", "alibis"),
+                stageOf(catalog, "blackboard", "scene")));
         assertEquals(1, boardPeers.size(),
                 "the three contributors are peers, so they share a column: " + boardPeers);
         assertTrue(stageOf(catalog, "blackboard", "lead") > boardPeers.iterator().next(),
@@ -1130,7 +1130,7 @@ class PatternCatalogTest {
         // which is the edge the whole demo turns on. One-way arrows would draw a fan-out.
         assertTrue(mutual(catalog, "supervisor", "supervisor", "nurse"),
                 "the supervisor must be shown reading the nurse's answer, not just calling her");
-        assertTrue(mutual(catalog, "blackboard", "walks", "board"),
+        assertTrue(mutual(catalog, "blackboard", "trail", "board"),
                 "blackboard contributors read as well as write");
 
         // The ladder's rungs must be in SEPARATE columns. Stacked in one column — which is how

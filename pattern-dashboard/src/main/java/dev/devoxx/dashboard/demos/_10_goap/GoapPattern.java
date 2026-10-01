@@ -9,9 +9,9 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Children;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Cyclists;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Hoover;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Chair;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Decoy;
+import dev.devoxx.dashboard.demos._10_goap.Keys.Sausage;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
@@ -27,44 +27,44 @@ public final class GoapPattern {
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var hoover = AgenticServices.agentBuilder(NotTheHoover.class)
+        var decoy = AgenticServices.agentBuilder(DoorbellDecoy.class)
                 .chatModel(model)
-                .name("NotTheHoover")
-                .outputKey(Hoover.class)
+                .name("DoorbellDecoy")
+                .outputKey(Decoy.class)
                 .build();
-        var children = AgenticServices.agentBuilder(NotTheChildren.class)
+        var pusher = AgenticServices.agentBuilder(ChairPusher.class)
                 .chatModel(model)
-                .name("NotTheChildren")
-                .outputKey(Children.class)
+                .name("ChairPusher")
+                .outputKey(Chair.class)
                 .build();
-        var cyclists = AgenticServices.agentBuilder(NotTheCyclists.class)
+        var surfer = AgenticServices.agentBuilder(CounterSurfer.class)
                 .chatModel(model)
-                .name("NotTheCyclists")
-                .outputKey(Cyclists.class)
+                .name("CounterSurfer")
+                .outputKey(Sausage.class)
                 .build();
 
         GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
-                .subAgents(cyclists, children, hoover)
+                .subAgents(surfer, pusher, decoy)
                 .planner(GoalOrientedPlanner::new)
-                .outputKey(Cyclists.class)
+                .outputKey(Sausage.class)
                 .listener(listener)
                 .build();
 
         var r = app.invoke(input);
-        String hooverText = requireNonNullElse(r.agenticScope().readState(Hoover.class), "");
-        String childrenText = requireNonNullElse(r.agenticScope().readState(Children.class), "");
-        String cyclistText = requireNonNullElse(r.agenticScope().readState(Cyclists.class), "");
-        return "**The hoover** — " + hooverText
-                + "\n\n**The children** — " + childrenText
-                + "\n\n**The cyclists** — " + cyclistText;
+        String decoyText = requireNonNullElse(r.agenticScope().readState(Decoy.class), "");
+        String chairText = requireNonNullElse(r.agenticScope().readState(Chair.class), "");
+        String sausageText = requireNonNullElse(r.agenticScope().readState(Sausage.class), "");
+        return "**The decoy** — " + decoyText
+                + "\n\n**The chair** — " + chairText
+                + "\n\n**The sausage** — " + sausageText;
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         // NO ARROWS BETWEEN THE AGENTS, and that is the entire design of this diagram. Drawn
-        // as goal → hoover → children → cyclists it was pixel-for-pixel the sequential demo:
+        // as goal → decoy → chair → sausage it was pixel-for-pixel the sequential demo:
         // three boxes wired nose to tail, which is a picture of a path somebody typed. The
-        // sub-lines said "needs 'Hoover'" underneath arrows that had already claimed the order,
+        // sub-lines said "needs 'Decoy'" underneath arrows that had already claimed the order,
         // so the caption was arguing with the drawing and the drawing wins.
         //
         // What actually happens: you hand the planner a BAG of agents — here in registration
@@ -78,33 +78,37 @@ public final class GoapPattern {
                 List.of(node("in", "goal", "input", 0),
                         node("plan", "GoalOrientedPlanner", "planner", 1)
                                 .withSub("the order is an OUTPUT"),
-                        node("cyclists", "NotTheCyclists", "agent", 2)
-                                .withSub("needs 'Children'"),
-                        node("children", "NotTheChildren", "agent", 2)
-                                .withSub("needs 'Hoover'"),
-                        node("hoover", "NotTheHoover", "agent", 2)
-                                .withSub("needs nothing")),
+                        // The role name on top, the dog and what it needs underneath: the
+                        // breed is who, the key is why it cannot go first.
+                        node("surfer", "CounterSurfer", "agent", 2)
+                                .withSub("Corgi · needs 'Chair'"),
+                        node("pusher", "ChairPusher", "agent", 2)
+                                .withSub("Bulldog · needs 'Decoy'"),
+                        node("decoy", "DoorbellDecoy", "agent", 2)
+                                .withSub("Beagle · needs nothing")),
                 List.of(edge("in", "plan", "3 agents, unordered"),
-                        edge("plan", "cyclists", "runs 3rd"),
-                        edge("plan", "children", "runs 2nd"),
-                        edge("plan", "hoover", "runs 1st")));
+                        edge("plan", "surfer", "runs 3rd"),
+                        edge("plan", "pusher", "runs 2nd"),
+                        edge("plan", "decoy", "runs 1st")));
 
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
-                "He is a cattle dog with no cattle, so he has improvised. The hoover has "
-                        + "been gathered. The children have been gathered.",
+                "A sausage on the counter. The Corgi can't reach it, the chair is loud, and "
+                        + "the human is still in the kitchen.",
                 null,
                 "The planner orders agents automatically by matching each output to the next "
-                        + "input. Nobody has to be told this order: you can call him off a hoover "
-                        + "long before you can call him off a child, and off a child long before "
-                        + "you can call him off a cyclist — loud but stationary, then fast but "
-                        + "biddable, then fast and silent and gone. So there is genuinely an "
-                        + "order to discover, and you can see it was discovered rather than typed.",
+                        + "input. Nobody has to be told this order: the chair scrapes on the "
+                        + "tiles, so it cannot move while the human is in the room, and the Corgi "
+                        + "cannot reach the counter without it. Decoy, then chair, then Corgi — "
+                        + "and the agents are handed to the planner the other way round, so you "
+                        + "can see the order was discovered rather than typed.",
                 // caveat: planning is only as good as the declared pre/post-conditions (I/O keys).
                 "Needs well-declared I/O keys; a missing link means the goal is unreachable — and "
-                        + "the failure is silence, not an error.",
+                        + "the failure is silence, not an error. Drop the Bulldog from "
+                        + "`subAgents(...)` and the sausage is unreachable: no exception, just "
+                        + "a pack sitting by the counter, looking at it.",
                 topo,
-                "Zao has decided the hoover is livestock. So are the children. So, increasingly, "
-                        + "are cyclists. Teach him that none of them are.",
+                "Zao's orders: the sausage on the kitchen counter, in his bowl, before the human "
+                        + "notices. The pack has three talents and no plan.",
                 GoapPattern::run);
     }
 }

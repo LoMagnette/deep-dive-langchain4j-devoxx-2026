@@ -162,7 +162,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     `humanApproval` works: `StreamingListener.askHuman` emits `human-ask`/`human-answer` by hand,
     so that demo never depended on the inheritance that is missing here.)
   - **`name` goes on the annotation, not a builder.** There is no builder for a POJO, and the
-    default is the *method* name — `FlatFile` would be called `lookup` everywhere. Same trap
+    default is the *method* name — `CatsDiary` would be called `lookup` everywhere. Same trap
     as `.name("X")` one layer down. `agentAction(scope -> …)` has no answer at all: it comes out
     named `run`, which is why anything you want on a diagram is better as a class.
   - **`typedOutputKey = Keys.Facts.class`** is the annotation's `outputKey(Facts.class)`, so a
@@ -382,6 +382,28 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   `everyDemoHasItsBeatInTheNarration` fails the build on a demo with no beat. The first of those
   already caught the capstone quietly using its own `NoteTightener` while claiming to reuse demo
   3's checklist — the wiring was changed to match the claim, not the claim to match the wiring.
+- **The pack: every agent is a dog, and the breed's reputation is its job.** This is "From
+  Puppy to Pack" taken literally, and it is being rolled out demo by demo — so far `nonAiAgent`,
+  `goap`, `p2p` and `blackboard`. The rest still have the earlier human cast (vet, trainer,
+  nurse, sitter). Rules for recasting the rest:
+  - **Zao (a Bouvier, a herding breed) is the pack leader.** He gives the orders (`goap`'s goal)
+    and reads the board and gives the verdict (`blackboard`'s `PackLeader`), and he is meant to
+    become the supervisor. When he declines to rule, that is the reason a demo is *not* a
+    supervisor (`p2p`).
+  - **The only human is the owner**, and only where the pattern needs a person: human-in-the-loop.
+  - **The non-AI agent is the cat.** It is not a dog, it does exactly what it does, and it is
+    invisible to the listener — the `1.20.0-beta30` gap, told as a joke that is also true.
+  - **The box name is the role, and the breed goes on the sub-line** (`CounterSurfer` /
+    `Corgi · needs 'Chair'`). The role name keeps the mechanism readable; the breed is the
+    flavour. Where a sub-line already carries mechanism, the breed goes first and the
+    mechanism after it, still within the 24-char cap.
+  - **Pick a breed whose stereotype the room already knows** (Beagle = nose and noise, Corgi =
+    short legs, Greyhound = sofa, Labrador = food, Bloodhound = the trail). That is rule 2 below
+    applied to the cast.
+  - **A live model takes a clue less literally than you mean it.** gemma4 read "the Dachshund is
+    very round" as an *alibi* ("too rotund to be operating") and adjourned the trial. Make the
+    damning detail explicit in the input, and tell a verdict-giving agent that "not proven" is
+    not an option.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
   inventing a new scenario.
@@ -426,9 +448,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     not patterns. So every constraint a demo turns on is now one the room already holds: a cooked
     bone is dangerous and a croissant is not, a dog who suddenly starts snapping needs a vet and not a
     training tip, a fridge note needs the vet's
-    number on it, a puppy goes to the garden before he gets a training session, you can call him
-    off a hoover before you can call him off a cyclist, and neither half of a couple outranks the other about
-    the bed. **The test for a new scenario: would a dev in row 20 know the right answer before
+    number on it, a puppy goes to the garden before he gets a training session, the chair cannot
+    be pushed while the human is in the kitchen, the dog who does not fit through the dog flap did
+    not carry the cake out through it, and with the pack leader declining to rule, neither of two
+    dogs outranks the other about the sofa. **The test for a new scenario: would a dev in row 20 know the right answer before
     you finished reading the input aloud?** If not, it is the wrong scenario however good the
     pattern fit is.
   - **3. Something in the input must be visibly wrong, dangerous or funny — and the run must be
@@ -739,7 +762,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Java audience — `LeadDeveloper` plans the walks where the whole question is the lead, and a room
   of developers gets both halves before the next sentence. The condition is what keeps it from
   turning into kitsch, and it is doing real work: `BeardOverflow` judges snacks, `RuffDraftCritic`
-  critiques a draft, `Watchdog` is a plain-Java guard, `FlatFile` is a lookup in a flat, `GardenLeave`
+  critiques a draft, `CounterSurfer` takes the sausage off the counter, `CatsDiary` is a lookup kept by the cat, `GardenLeave`
   takes the puppy to the garden, `HelloWorld` teaches him his name first, `FinalBoarding` rules on
   whether he flies. Names appear on the diagram, so a pun that costs the reader the mechanism is
   the wrong pun and the plain name wins — which is why `EmergencyVet`, `DogTrainer`, `EverydayCare`,

@@ -19,9 +19,9 @@ public final class Keys {
 
     public record Question() implements TypedKey<String> {}
 
-    /** Where the bed half has got to. Read by the floor half, never written by it. */
+    /** Where the Greyhound has got to. Read by the Labrador, never written by it. */
     public record Proposal() implements TypedKey<String> {}
 
-    /** Where the floor half has got to. Read by the bed half, never written by it. */
+    /** Where the Labrador has got to. Read by the Greyhound, never written by it. */
     public record Counter() implements TypedKey<String> {}
 }

@@ -195,76 +195,67 @@ public class MockChatModel implements ChatModel {
                                 + "furniture on a word. Three months is enough for all three if "
                                 + "you start with the mat."),
 
-                // --- 10. Un-herding, in three steps. The cyclist rule is FIRST because the
-                // cyclist prompt quotes "children step already done", and the children prompt
-                // quotes the hoover step.
-                new Rule(p -> p.contains("cyclist step"),
-                        p -> "Park, fifteen-metre line, sitting well back from the cycle path — "
-                                + "close enough that he can see them, far enough that he can "
-                                + "still hear you. The line exists so he never once gets to find "
-                                + "out that chasing works. Drop it when ten bikes have gone past "
-                                + "and he has looked at you instead of at them."),
-                new Rule(p -> p.contains("children step"),
-                        p -> "Same word, now with the children running in the garden, and start "
-                                + "with one child walking rather than three screaming. When he "
-                                + "ignores you, do not repeat it — walk to him, take his collar, "
-                                + "and make the next one easier. The children get a rule too: "
-                                + "nobody runs while he is loose."),
-                new Rule(p -> p.contains("hoover step for"),
-                        p -> "Hoover on, dog on a mat two metres away, someone paying him for "
-                                + "staying there. Say his name once, then the word, and pay him "
-                                + "the moment he turns away from it. Five goes, twice a day. It "
-                                + "is working when the hoover starts and he looks at you instead "
-                                + "of at it."),
+                // --- 10. The sausage heist, in three steps. The Corgi's rule is FIRST because
+                // its prompt quotes the chair step's answer, and the chair prompt quotes the
+                // decoy's. Each is keyed on its own step's name, which no answer repeats.
+                new Rule(p -> p.contains("final step of the heist"),
+                        p -> "Chair, seat, counter — three hops, and the third one is a stretch. "
+                                + "Sausage in the mouth, down in one, and it is in Zao's bowl "
+                                + "before the howling stops. The human comes back to a chair "
+                                + "against the counter, an empty plate and four dogs asleep."),
+                new Rule(p -> p.contains("the chair step of the heist"),
+                        p -> "Head down, shoulder against the leg, push. It is louder than I "
+                                + "would like, but the Beagle is louder. The chair ends up flush "
+                                + "against the counter, right under the plate."),
+                new Rule(p -> p.contains("the decoy step of the heist"),
+                        p -> "I go to the front door and howl like there is a parcel outside "
+                                + "and a stranger holding it. The human goes to look. The kitchen "
+                                + "is empty the moment I hear the front door open."),
 
-                // --- 11. The household argument. Both peers now write the SAME key and take
-                // turns, so each prompt carries the draft the other one just wrote — which
-                // means a rule has to tell its OWN opening turn from its second one. The bed
-                // does that by looking for the floor's counter in the draft it was handed;
-                // without that branch it says the same thing twice, nobody ever writes AGREED,
-                // and the negotiation runs to the ten-round cap.
+                // --- 11. The sofa. Each peer reads only the OTHER's key, so a rule has to tell
+                // its OWN opening turn from its second one. The Greyhound does that by looking
+                // for the Labrador's counter in the draft it was handed; without that branch it
+                // says the same thing twice, nobody ever writes AGREED, and the negotiation runs
+                // to the ten-round cap.
                 //
                 // Note the lowercase() inside the reply: the lambda is handed the RAW prompt,
-                // not the lowercased text the rule matched on.
-                new Rule(p -> p.contains("you are the one who wants him on the bed"),
-                        p -> p.toLowerCase(Locale.ROOT).contains("his own bed in our room")
-                                ? "Then let us write it down and both keep it: his own bed in "
-                                + "our room, and he is invited up once the alarm has gone — "
-                                + "never in the night, never when he is wet. AGREED."
-                                : "He has slept up there since he was eight weeks old, he "
-                                + "settles better for it and so do I. Proposal: he sleeps on "
-                                + "the bed, and we all get on with our lives."),
-                new Rule(p -> p.contains("you are the one who wants him off the bed"),
-                        p -> "Forty kilos of wet beard is not a duvet, and I have measured what "
-                                + "is left of my side. Counter-proposal: his own bed in our "
-                                + "room, and he comes up in the morning once we are both awake "
-                                + "— never during the night, and never when he is wet."),
+                // not the lowercased text the rule matched on. And "corner cushion" is in the
+                // Labrador's own prompt, never the Greyhound's, so only the counter can carry it.
+                new Rule(p -> p.contains("you are the greyhound"),
+                        p -> p.toLowerCase(Locale.ROOT).contains("i get the corner cushion")
+                                ? "Fine. I keep the long end and stretch out as far as I like, "
+                                + "the corner cushion is yours, and the middle cushion is "
+                                + "neutral ground — no legs across it. AGREED."
+                                : "I sleep twenty hours a day and I am mostly legs. Proposal: "
+                                + "the sofa is mine, all of it, and the Labrador has the rug, "
+                                + "which is a very nice rug."),
+                new Rule(p -> p.contains("you are the labrador"),
+                        p -> "The rug is where crumbs go to die. Counter-proposal: you keep the "
+                                + "long end; I get the corner cushion, the one with the crisps "
+                                + "down the back — and nobody's legs cross the middle cushion."),
 
-                // --- 12. The barking board. The trainer's rule is FIRST because its prompt
-                // quotes all three contributors' headings.
-                new Rule(p -> p.contains("most likely first"),
+                // --- 12. The cake. Zao's rule is FIRST because his prompt quotes all three
+                // investigators' notes.
+                new Rule(p -> p.contains("most guilty first"),
                         p -> """
-                                1. The bed under the front window — most likely. He now has a \
-                                job: watching the street all day. Try moving the bed to the back \
-                                room and see if it stops within a week.
-                                2. The new shift. His day changed shape and nobody told him. Try \
-                                a fixed 07:00 walk whatever time you leave.
-                                3. Not enough exercise before he is left. Try forty minutes off \
-                                the lead before you go, not ten on it."""),
-                new Rule(p -> p.contains("exercise angle"),
-                        p -> "A four-year-old bouvier needs more than a lead walk round the "
-                                + "block, and a cattle dog with no cattle invents work — usually "
-                                + "herding. Next: forty minutes of real exercise before he is "
-                                + "left, and see what changes."),
-                new Rule(p -> p.contains("new working hours"),
-                        p -> "The new shift is the change nobody has accounted for — he is left "
-                                + "at a different hour, for longer, with no warning cue. Next: "
-                                + "keep one thing fixed, the morning walk, whatever your shift."),
-                new Rule(p -> p.contains("see and hear from indoors")
-                                || p.contains("what he can see and hear"),
-                        p -> "His bed was moved under the front window, so he now watches the "
-                                + "street, the post and next door's cat all day. Next: move the "
-                                + "bed out of sight of the window before you try anything else."),
+                                1. The Dachshund — guilty. The crumbs go out through a flap only \
+                                he fits through, and stop at a very round dog asleep on the lawn.
+                                2. The Labrador — accessory after the fact. The cream is from \
+                                the plate, which he licked clean once the cake had already gone.
+                                Sentence: no birthday cake for either of them, ever. Neither of \
+                                them is sorry."""),
+                new Rule(p -> p.contains("add the trail"),
+                        p -> "Crumbs from the coffee table to the dog flap, out across the lawn, "
+                                + "and they stop at the Dachshund. The trail goes nowhere near the "
+                                + "Labrador's bed."),
+                new Rule(p -> p.contains("add the alibis"),
+                        p -> "Whoever took the cake took it out through the dog flap, and the "
+                                + "Labrador does not fit through the dog flap — he has tried, "
+                                + "and it took two humans to get him out. The Dachshund fits."),
+                new Rule(p -> p.contains("add the scene"),
+                        p -> "Cream on the Labrador's nose, and the plate licked perfectly "
+                                + "clean — not a crumb on it. That is somebody finishing a job, "
+                                + "not starting one."),
 
                 // --- 13. The puppy's first hour, three desires.
                 new Rule(p -> p.contains("first tiny training session"),
@@ -343,19 +334,18 @@ public class MockChatModel implements ChatModel {
                                 + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
                                 + "surgery is in Marche, twenty minutes by car — ring before you "
                                 + "set off, they do not always have someone on site."),
-                // Deliberately DROPS the microchip and the policy number, so the guard has
+                // Deliberately DROPS the sausage and the remote's exact spots, so the cat has
                 // something to catch. Copy them here and that step becomes ceremony.
-                new Rule(p -> p.contains("from the record below"),
+                new Rule(p -> p.contains("from the cat's diary below"),
                         p -> """
-                                Zao is a four-year-old Bouvier des Flandres, 38 kg.
+                                The TV remote first — the humans asked for it. Dachshund: the \
+                                sandpit, and dig gently.
 
-                                Feed him 400 g twice a day, morning and evening. He is used to \
-                                two walks, on the lead throughout.
+                                Then the sausage, Beagle: somewhere in the left flowerbed.
 
-                                If anything worries you, ring Dr Cluysen on 061 22 33 44 — the \
-                                same number works out of hours.
+                                Then the sock, Zao: under the rosemary, 30 cm down.
 
-                                Thank you for having him!"""),
+                                Labrador: no digging for you. You know what you did."""),
                 new Rule(p -> p.contains("medication paragraph"),
                         p -> "Half a tablet with his breakfast, every morning, for his hip.\n"
                                 + "Push it into a folded slice of cheese and he takes it without "
