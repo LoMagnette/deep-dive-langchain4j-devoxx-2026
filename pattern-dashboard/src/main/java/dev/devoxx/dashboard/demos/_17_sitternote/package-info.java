@@ -1,7 +1,7 @@
 /**
- * <b>Fridge note — composite</b>
+ * <b>Operation Squirrel — composite</b>
  *
- * <p>The capstone's own agents. The artefact is the one a pack left alone really needs: one note
- * on the fridge door that four dogs can follow without anyone ringing the human.
+ * <p>The capstone's own agents. The artefact is the one the whole thread has been building:
+ * one battle plan for the back door that six dogs can follow without a word of explanation.
  */
 package dev.devoxx.dashboard.demos._17_sitternote;

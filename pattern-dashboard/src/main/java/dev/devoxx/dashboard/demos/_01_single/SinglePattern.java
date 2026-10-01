@@ -30,16 +30,14 @@ public final class SinglePattern {
     }
 
     /** Shared with the sequential demo, which runs the same text through a second agent. */
-    public static final String HUMAN_MESSAGE =
-            "ok pack, listen. I'm away till Sunday and nobody is coming, so Zao is in charge, "
-                    + "god help us all. the feeder in the kitchen does breakfast and dinner, two "
-                    + "scoops each. Labrador, you get ONE scoop, we have talked about this. NOBODY "
-                    + "touches the dried liver treats, they go straight through Zao and you will "
-                    + "all know about it. the dog flap is open to the garden. Dachshund: NO "
-                    + "digging under the fence, we have talked about that too. vet's 061 22 33 44 "
-                    + "if anything happens — I know none of you can use a phone. Zao, put it "
-                    + "down. the Greyhound will howl the first night like he's being taken apart, "
-                    + "ignore him, he does it to me too. love you all x";
+    public static final String BEAGLE_REPORT =
+            "OK OK OK so it was THERE, the squirrel, the grey one, the one with the bit missing "
+                    + "off its tail, it came DOWN the big oak by the back fence and went ALONG the "
+                    + "top of the fence and STOPPED and LOOKED at me, Zao, it LOOKED at me, and then "
+                    + "it went to the bird feeder and ate ALL of it and went back UP the oak. it does "
+                    + "this every single day. the cat was on the shed roof the whole time watching "
+                    + "and did NOTHING, as usual. I barked. it did not care. it does not care about "
+                    + "anything. ANYTHING.";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
@@ -105,25 +103,25 @@ public final class SinglePattern {
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
-                List.of(node("in", "message", "input"),
+                List.of(node("in", "Beagle's report", "input"),
                         node("clerk", "NoteRetriever", "agent")
-                                .withSub("Border Collie · reads")),
+                                .withSub("Golden · fetches facts")),
                 List.of(edge("in", "clerk")));
         return new PatternDef("single", "Single Agent", "workflow",
-                "The human is away this weekend and nobody is coming. Zao is in charge. The "
-                        + "human has just sent the pack a voice note.",
+                "Operation Squirrel. It has eaten the bird feeder every day for a month. The "
+                        + "Beagle has just come in from the garden, shouting.",
                 null,
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
-                        + "LLM is genuinely best at: turning what a human actually typed into a "
-                        + "shape a system can use.",
+                        + "LLM is genuinely best at: turning what somebody actually said — here, "
+                        + "a Beagle in full cry — into a shape a system can use.",
                 "No decomposition: one agent struggles with multi-step or long tasks — and watch "
-                        + "the Walks line, because a model would rather invent a walk time than "
-                        + "admit the message never gave one.",
+                        + "the Time line, because a model would rather invent \"07:00\" than admit "
+                        + "the Beagle only ever said \"every single day\".",
                 topo,
-                // A real message: no punctuation, out of order, and one field genuinely absent
-                // (nobody said when to walk him), so the room can check whether the agent obeys
-                // "write not given" or quietly makes something up.
-                HUMAN_MESSAGE,
+                // A real report: all caps, out of order, and one field genuinely absent (the
+                // Beagle says "every single day" and never a time), so the room can check
+                // whether the agent obeys "write not given" or quietly makes something up.
+                BEAGLE_REPORT,
                 SinglePattern::run,
                 // The only demo that honours the token toggle, so the only one the page offers
                 // it on. Streaming is a property of the LAST agent, and every other entry in the

@@ -62,7 +62,7 @@ public final class DebatePattern {
                         // changes is how many rounds happen, which belongs on the edge between
                         // the advocates, not on the judge.
                         node("verdict", "FinalBoarding", "judge", 2)
-                                .withSub("always rules, at the end")),
+                                .withSub("Golden · rules, last")),
                 List.of(edge("in", "take"), edge("in", "leave"),
                         edge("take", "leave", "rebut"),
                         edge("leave", "take", "≤2 rounds · unless unanimous"),

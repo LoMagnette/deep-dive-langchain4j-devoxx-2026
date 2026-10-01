@@ -137,9 +137,9 @@ public final class SupervisorPattern {
                         node("supervisor", "Supervisor", "supervisor", 1)
                                 .withSub("Zao · reads, asks again"),
                         node("nurse", "FirstSniff", "agent", 2).withSub("1 · Beagle · first"),
-                        node("care", "EverydayCare", "agent", 2).withSub("2 · if she says so"),
-                        node("trainer", "DogTrainer", "agent", 2).withSub("2 · if she says so"),
-                        node("vet", "RescueDog", "agent", 2).withSub("2 · if she says so")),
+                        node("care", "EverydayCare", "agent", 2).withSub("2 · Golden · named"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("2 · Collie · named"),
+                        node("vet", "RescueDog", "agent", 2).withSub("2 · St Bernard · named")),
                 // Two-way on the Beagle only — the supervisor reads her answer, and that is the
                 // edge the demo turns on. Only the return half is labelled: both halves bow
                 // through the same gap, and the answer is the one carrying the mechanism.

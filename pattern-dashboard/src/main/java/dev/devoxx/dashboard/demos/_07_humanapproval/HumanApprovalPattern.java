@@ -122,7 +122,7 @@ public final class HumanApprovalPattern {
                         node("trainer", "DogTrainer", "agent", 2).withSub("Border Collie · trains"),
                         node("vet", "RescueDog", "agent", 2).withSub("St Bernard · rescue"),
                         node("owner", "You", "human", 3).withSub("the only human"),
-                        node("final", "FinalNote", "agent", 4)),
+                        node("final", "FinalNote", "agent", 4).withSub("Zao · tells the pack")),
                 List.of(edge("in", "router"),
                         edge("router", "care", "everyday"),
                         edge("router", "trainer", "training"),

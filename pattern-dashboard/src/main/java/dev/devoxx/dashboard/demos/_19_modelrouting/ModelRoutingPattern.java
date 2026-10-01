@@ -86,7 +86,7 @@ public final class ModelRoutingPattern {
                         node("router", "WorryRouter", "router", 1)
                                 .withSub("Corgi · always cheap"),
                         node("desk", "DutyDesk", "agent", 2)
-                                .withSub("cheap · or strong"),
+                                .withSub("Zao · cheap or strong"),
                         node("out", "the answer", "join", 3).withSub("names the tier")),
                 List.of(edge("in", "router"),
                         edge("router", "desk", "category picks the model"),

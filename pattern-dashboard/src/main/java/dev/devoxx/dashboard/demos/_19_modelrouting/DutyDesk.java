@@ -11,7 +11,7 @@ import dev.langchain4j.service.UserMessage;
  * variable, so anything that changes between the two runs came from the tier and nowhere else.
  */
 public interface DutyDesk {
-    @Agent(description = "The dog on duty: answers the pack's worry, whatever kind it is")
+    @Agent(description = "Zao, on duty: answers the pack's worry, whatever kind it is")
     @UserMessage("""
             You are the dog on duty tonight, the one the pack comes to with a worry. Answer the
             worry below directly and practically: what to do now, and whether the human needs

@@ -66,7 +66,7 @@ public final class ParallelMapperPattern {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "the beard", "input").withSub("5 items"),
                         node("check", "BeardOverflow", "agent")
-                                .withSub("once per item").asStack(),
+                                .withSub("St Bernard · per item").asStack(),
                         node("gather", "gather", "join").withSub("one verdict each")),
                 List.of(edge("in", "check", "scatter"),
                         edge("check", "gather", "verdicts")));

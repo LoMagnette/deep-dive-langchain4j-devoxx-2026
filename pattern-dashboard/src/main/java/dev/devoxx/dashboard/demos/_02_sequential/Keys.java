@@ -8,5 +8,5 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Checklist() implements TypedKey<String> {}
+    public record Orders() implements TypedKey<String> {}
 }

@@ -9,12 +9,12 @@ public final class Keys {
     }
 
     /**
-     * The medication details, and often not there at all — which is the entire point of the
-     * optional step that reads it. Most dogs are not on anything, so most runs never write this
+     * Who got hurt, and often nobody — which is the entire point of the optional step that
+     * reads it. Most operations end with every dog in one piece, so most runs never write this
      * key, and an agent that declares it must be prepared to be skipped.
      */
-    public record Meds() implements TypedKey<String> {}
+    public record Injuries() implements TypedKey<String> {}
 
-    /** The medication paragraph, when there was one to write. */
-    public record MedNote() implements TypedKey<String> {}
+    /** The first-aid paragraph, when there was one to write. */
+    public record FirstAid() implements TypedKey<String> {}
 }

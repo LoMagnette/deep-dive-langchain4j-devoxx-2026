@@ -142,7 +142,7 @@ public final class SecondDogCouncilPattern {
                         node("for", "PuppyFor", "agent", 3).withSub("Corgi · for"),
                         node("against", "PuppyAgainst", "agent", 3).withSub("Greyhound · against"),
                         node("chair", "PackVerdict", "judge", 4).withSub("Golden · rules"),
-                        node("note", "CouncilNote", "join", 5),
+                        node("note", "CouncilNote", "join", 5).withSub("Collie · restates it"),
                         node("space", "SofaSpace", "agent", 6).withSub("Greyhound · space"),
                         node("money", "FoodBudget", "agent", 6).withSub("Labrador · food"),
                         node("zao", "AskZaoHimself", "agent", 6).withSub("Zao · himself"),

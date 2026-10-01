@@ -11,16 +11,15 @@ import dev.langchain4j.service.UserMessage;
  * honest if the two runs differ in nothing but how the answer arrives.
  */
 public interface StreamingNoteRetriever {
-    @Agent(description = "The Border Collie: turns the human's rambling message into a structured pack card")
+    @Agent(description = "The Golden Retriever: retrieves the facts from the Beagle's breathless report")
     @UserMessage("""
-            You are the Border Collie, the one in the pack who actually reads things. Turn the
-            human's message into a pack card with exactly these five lines. Invent nothing — if
-            the message does not say, write "not given":
-            Pack:
-            Meals:
-            Walks:
+            Turn this sighting report into a target card with exactly these five lines.
+            Invent nothing — if the report does not say, write "not given":
+            Target:
+            Where:
+            Time:
+            Route:
             Watch out for:
-            Vet:
 
             Message: {{Message}}""")
     TokenStream card(@K(Keys.Message.class) String message);

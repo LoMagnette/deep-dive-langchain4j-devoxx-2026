@@ -76,19 +76,20 @@ public final class ConditionalPattern {
                         edge("router", "trainer", "training"),
                         edge("router", "care", "everyday")));
         return new PatternDef("conditional", "Conditional Routing", "workflow",
-                "Meanwhile the Labrador found a whole bar of dark chocolate. This is not a "
-                        + "training question, and he is not sorry.",
+                "Meanwhile the Dachshund went under the fence after it. Only his back half came "
+                        + "back. The back half is wagging.",
                 "Introduces the three desks that demos 7, 9, 16 and 17 all reuse.",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
-                        + "when mis-routing is expensive: everyone in this room knows a dog that "
-                        + "has eaten chocolate needs the rescue dog and not a training tip, so everyone "
+                        + "when mis-routing is expensive: everyone in this room knows a dog stuck "
+                        + "under a fence needs the rescue dog and not a training tip, so everyone "
                         + "can see whether the classifier got it right.",
                 "Only as good as the classifier, and unseen inputs fall through the cracks — so "
                         + "choose which way it falls. The fallback here is the rescue dog, because that "
                         + "is the mistake you can live with.",
                 topo,
-                "the Labrador has eaten a whole bar of dark chocolate off the coffee table — "
-                        + "85%, the good stuff. The wrapper is on the floor and he is wagging",
+                "the Dachshund went under the fence after the squirrel and is stuck halfway — his "
+                        + "front half is in next door's garden, his back half is in ours, and the "
+                        + "back half is wagging",
                 ConditionalPattern::run);
     }
 }

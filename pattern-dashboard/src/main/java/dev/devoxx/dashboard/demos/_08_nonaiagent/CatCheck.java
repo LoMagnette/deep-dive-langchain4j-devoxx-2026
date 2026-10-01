@@ -19,7 +19,7 @@ public class CatCheck {
             new String[] {"the TV remote", "north-east corner"});
 
     @Agent(name = "CatCheck",
-           description = "Checks the diary's locations survived into the dig plan",
+           description = "The cat: checks the diary's locations survived into the dig plan",
            typedOutputKey = Plan.class)
     public String check(@K(Plan.class) String plan) {
         List<String> missing = new ArrayList<>();

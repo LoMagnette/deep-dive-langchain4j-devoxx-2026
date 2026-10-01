@@ -8,9 +8,9 @@ public final class Keys {
     private Keys() {
     }
 
-    public record Meals() implements TypedKey<String> {}
+    public record Bait() implements TypedKey<String> {}
 
-    public record Stay() implements TypedKey<String> {}
+    public record Mission() implements TypedKey<String> {}
 
-    public record Walks() implements TypedKey<String> {}
+    public record Lookout() implements TypedKey<String> {}
 }

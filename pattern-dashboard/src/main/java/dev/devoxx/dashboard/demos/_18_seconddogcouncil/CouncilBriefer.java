@@ -13,7 +13,7 @@ public interface CouncilBriefer {
      * mapper writes into the scope — declare it as a String and the invocation dies with a
      * bare "argument type mismatch". Scope values are passed through as-is, never coerced.
      */
-    @Agent(description = "Turns what the scouts found into the motion the council will weigh")
+    @Agent(description = "The Border Collie: turns what the scouts found into the motion the council will weigh")
     @UserMessage("""
             You are the Border Collie. Write the motion this pack should decide on, as one
             sentence: a puppy or not, and if so what kind and when.

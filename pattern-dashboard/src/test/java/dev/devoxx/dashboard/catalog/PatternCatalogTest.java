@@ -214,7 +214,7 @@ class PatternCatalogTest {
         Run halves = run(catalog.byId("parallel").orElseThrow());
         assertTrue(halves.invoked().containsAll(List.of("ChowHound", "LeadDeveloper")),
                 "both halves must be planned: " + halves.invoked());
-        assertTrue(halves.result().contains("Meals") && halves.result().contains("Walks"),
+        assertTrue(halves.result().contains("The bait") && halves.result().contains("The chase"),
                 "the join must bring both halves back together: " + halves.result());
 
         // A dog that has eaten chocolate must reach the rescue dog. Routing that to the trainer is
@@ -249,11 +249,11 @@ class PatternCatalogTest {
         assertTrue(hour.indexOf("FirstBytes") < hour.indexOf("HelloWorld"),
                 "fed before taught: " + hour);
 
-        // The refinement loop has to actually fix the note it was given, and keep the facts while
-        // it does: rule 3 is the vet's number, buried mid-ramble in the input.
+        // The refinement loop has to actually fix the plan it was given: the input sends the
+        // Labrador over the fence and the Dachshund after the cat, and the room can see both.
         String note = run(catalog.byId("loop").orElseThrow()).result();
-        assertTrue(note.contains("061 22 33 44"),
-                "the loop did not bring the note up to the rules: " + note);
+        assertTrue(note.contains("Nobody goes over the fence") && note.contains("not a target"),
+                "the loop did not bring the plan up to the rules: " + note);
 
         // Every assessor votes, the result shows each vote separately, and they SPLIT. Three
         // agents that always agree make the tally decoration.
@@ -273,16 +273,15 @@ class PatternCatalogTest {
         // still come out. A run that quietly answers anyway has not demonstrated optional at
         // all — it has demonstrated an agent that ignores its own arguments.
         Run noMeds = run(catalog.byId("resilience").orElseThrow(),
-                "away Friday to Sunday, nobody is coming, two scoops each morning and evening, "
-                        + "vet 061 22 33 44");
-        assertTrue(noMeds.errors().stream().noneMatch(e -> e.contains("MedicationNote")),
+                "it got away again: down the oak, along the fence, up the oak. the cat watched.");
+        assertTrue(noMeds.errors().stream().noneMatch(e -> e.contains("FirstAidNote")),
                 "a skipped optional step is not an error: " + noMeds.errors());
-        assertTrue(!noMeds.invoked().contains("MedicationNote"),
-                "with no medication in the message that step must be skipped: "
+        assertTrue(!noMeds.invoked().contains("FirstAidNote"),
+                "with nobody hurt in the report that step must be skipped: "
                         + noMeds.invoked());
         assertTrue(noMeds.result().contains("skipped"),
-                "the result must say the step was skipped, or a skip looks like a dog on "
-                        + "nothing: " + noMeds.result());
+                "the result must say the step was skipped, or a skip looks like an operation "
+                        + "where nobody happened to write anything: " + noMeds.result());
     }
 
     /** How many times an agent was invoked in this run. Loops and debate rounds repeat names. */
@@ -506,8 +505,8 @@ class PatternCatalogTest {
         Run r = run(def);
 
         assertTrue(r.result() != null && !r.result().isBlank(), "the note must survive");
-        assertTrue(r.result().contains("061 22 33 44"),
-                "the recovered note still has to satisfy the fridge rules: " + r.result());
+        assertTrue(r.result().contains("Nobody goes over the fence"),
+                "the recovered plan still has to satisfy the battle-plan rules: " + r.result());
 
         // The clerk's model is called twice for one answer: once to fail, once to succeed.
         assertTrue(r.result().contains("called 2 times"),
@@ -516,10 +515,10 @@ class PatternCatalogTest {
         assertTrue(r.result().contains("recovered by retry"),
                 "the result must name the recovery: " + r.result());
 
-        // The default input DOES mention a tablet, so the optional step runs here — the mirror
+        // The default input DOES mention an injury, so the optional step runs here — the mirror
         // of the skip asserted above. Both paths, or the step is only ever tested one way.
-        assertTrue(r.invoked().contains("MedicationNote"),
-                "with a tablet in the message the optional step must run: " + r.invoked());
+        assertTrue(r.invoked().contains("FirstAidNote"),
+                "with the Corgi's nose in the report the optional step must run: " + r.invoked());
     }
 
     /**
@@ -900,7 +899,7 @@ class PatternCatalogTest {
         // The fridge-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
         // used a third time by the capstone.
         for (String id : List.of("sequential", "loop", "sitterNote")) {
-            assertTrue(labels(catalog, id).contains("FridgeMagnet"),
+            assertTrue(labels(catalog, id).contains("BattlePlanner"),
                     id + " should reuse the checklist agent: " + labels(catalog, id));
         }
 

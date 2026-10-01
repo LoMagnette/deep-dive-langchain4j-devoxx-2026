@@ -11,11 +11,11 @@ import java.util.List;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
+import dev.devoxx.dashboard.demos._02_sequential.BattlePlanner;
 import dev.devoxx.dashboard.demos._03_loop.RuffDraftCritic;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
+import dev.devoxx.dashboard.demos._04_parallel.Keys.Bait;
+import dev.devoxx.dashboard.demos._04_parallel.Keys.Lookout;
 import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
 import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
@@ -29,7 +29,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>fridge note (composite)</b> demo — the capstone: four patterns composed into the note on the fridge door.
+ * Wiring for the <b>Operation Squirrel (composite)</b> demo — the capstone: four patterns composed into the note on the fridge door.
  */
 public final class SitterNotePattern {
 
@@ -66,27 +66,27 @@ public final class SitterNotePattern {
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
                 .build();
 
-        // 2. Parallel — meals and walks do not need each other, so fan them out.
-        var meals = AgenticServices.agentBuilder(ChowHound.class)
+        // 2. Parallel — the bait and the chase do not need each other, so fan them out.
+        var bait = AgenticServices.agentBuilder(ChowHound.class)
                 .chatModel(model)
                 .name("ChowHound")
-                .outputKey(Meals.class)
+                .outputKey(Bait.class)
                 .build();
-        var walks = AgenticServices.agentBuilder(LeadDeveloper.class)
+        var chase = AgenticServices.agentBuilder(LeadDeveloper.class)
                 .chatModel(model)
                 .name("LeadDeveloper")
-                .outputKey(Walks.class)
+                .outputKey(Lookout.class)
                 .build();
         StayPlan plan = AgenticServices.parallelBuilder(StayPlan.class)
                 .name("Parallel")
-                .subAgents(meals, walks)
+                .subAgents(bait, chase)
                 .build();
 
-        // 3. Loop — refine until the four fridge-door rules hold, never forever. This IS
-        //    demo 3's loop, both agents unchanged, with the merged note fed in.
-        var tighten = AgenticServices.agentBuilder(FridgeMagnet.class)
+        // 3. Loop — refine until the four battle-plan rules hold, never forever. This IS
+        //    demo 3's loop, both agents unchanged, with the merged order fed in.
+        var tighten = AgenticServices.agentBuilder(BattlePlanner.class)
                 .chatModel(model)
-                .name("FridgeMagnet")
+                .name("BattlePlanner")
                 .outputKey(Notes.class)
                 .build();
         var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
@@ -115,7 +115,7 @@ public final class SitterNotePattern {
                 .listener(listener)
                 .build();
         // The same text under two keys: the router and specialists ask "what is the worry",
-        // the planners ask "what is the stay". Reusing an agent means accepting the key it
+        // the planners ask "what is the mission". Reusing an agent means accepting the key it
         // already declared — get it wrong and MissingArgumentException blames another step.
         return app.write(input, input);
     }
@@ -123,16 +123,17 @@ public final class SitterNotePattern {
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "the weekend", "input", 0),
+                List.of(node("in", "the operation", "input", 0),
                         node("router", "WorryRouter", "router", 1).withSub("Corgi · herds worries"),
-                        node("vet", "RescueDog", "agent", 2),
-                        node("trainer", "DogTrainer", "agent", 2),
-                        node("care", "EverydayCare", "agent", 2),
-                        node("meals", "ChowHound", "agent", 2),
-                        node("walks", "LeadDeveloper", "agent", 2),
+                        node("vet", "RescueDog", "agent", 2).withSub("St Bernard · rescue"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("Border Collie · trains"),
+                        node("care", "EverydayCare", "agent", 2).withSub("Golden · the everyday"),
+                        node("meals", "ChowHound", "agent", 2).withSub("Labrador · the bait"),
+                        node("walks", "LeadDeveloper", "agent", 2).withSub("Greyhound · the chase"),
                         node("merge", "PackNoteMerger", "join", 3).withSub("Zao · one note"),
-                        node("tighten", "FridgeMagnet", "agent", 4),
-                        node("check", "RuffDraftCritic", "agent", 4)),
+                        node("tighten", "BattlePlanner", "agent", 4).withSub("Collie · rewrites"),
+                        node("check", "RuffDraftCritic", "agent", 4)
+                                .withSub("Poodle · 4 rules, scored")),
                 List.of(edge("in", "router"),
                         edge("router", "vet", "emergency"),
                         edge("router", "trainer", "training"),
@@ -142,28 +143,27 @@ public final class SitterNotePattern {
                         edge("vet", "merge"), edge("trainer", "merge"),
                         edge("care", "merge", "answer"),
                         edge("meals", "merge"), edge("walks", "merge"),
-                        edge("merge", "tighten", "notes"),
+                        edge("merge", "tighten", "the order"),
                         edge("tighten", "check"),
                         edge("check", "tighten", "score < 0.8")));
 
-        return new PatternDef("sitterNote", "Fridge Note (composite)", "composite",
-                "Back to that weekend alone, the whole thing end to end. Seventeen demos later, "
-                        + "somebody finally writes down when the pack goes out.",
-                "Almost everything: demo 6's router and desks, demo 4's meal and walk "
-                        + "planners, and demo 3's checklist and critic in the refining loop.",
-                "A real system, not a pattern: the human's worry is routed to the right dog, a "
-                        + "parallel step plans the meals and the walks, a sequence merges all "
-                        + "three into one note for the fridge door, and a loop tightens it until "
-                        + "it passes the same four rules as the loop demo. Deterministic "
+        return new PatternDef("sitterNote", "Operation Squirrel (composite)", "composite",
+                "Operation Squirrel, end to end. Seventeen demos later, somebody finally writes "
+                        + "down where everyone stands.",
+                "Almost everything: demo 6's router and desks, demo 4's bait and chase "
+                        + "planners, and demo 3's battle plan and critic in the refining loop.",
+                "A real system, not a pattern: the pack's worry is routed to the right dog, a "
+                        + "parallel step plans the bait and the chase, a sequence merges all "
+                        + "three into one operation order, and a loop tightens it until it "
+                        + "passes the same four rules as the loop demo. Deterministic "
                         + "scaffolding with LLM judgement at exactly three points.",
                 // caveat: the interesting failures in composites are at the seams, not inside them.
                 "Composites fail at the seams: every step depends on a key an earlier one wrote, "
                         + "so one agent answering off-format breaks a step that looks unrelated.",
                 topo,
-                "I'm away Friday to Sunday and nobody is coming. Two scoops each morning and "
-                        + "evening, the Greyhound pulls everyone along like a train, and it's New "
-                        + "Year, so there will be fireworks both nights and he will be under the table. "
-                        + "Vet is 061 22 33 44.",
+                "Operation Squirrel, Saturday at dawn. It comes down the big oak by the back "
+                        + "fence and runs along the top of the fence to the bird feeder. And the "
+                        + "Dachshund says he is digging under the fence again, whatever anyone says.",
                 SitterNotePattern::run);
     }
 }

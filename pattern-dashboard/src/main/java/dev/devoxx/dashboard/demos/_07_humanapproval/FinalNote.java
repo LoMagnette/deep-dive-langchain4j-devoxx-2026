@@ -5,7 +5,7 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface FinalNote {
-    @Agent(description = "Writes what the pack is told, once the human has had their say")
+    @Agent(description = "Zao: writes what the pack is told, once the human has had their say")
     @UserMessage("""
             Write what the pack is actually told to do, honouring the human's decision
             exactly. If they approved it, restate it as the thing to do. If they changed it,

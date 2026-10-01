@@ -13,11 +13,12 @@ import dev.langchain4j.service.V;
  * defensively — see {@link dev.devoxx.dashboard.support.Parsing#score}.
  */
 public interface RuffDraftCritic {
-    @Agent(description = "The Poodle: checks the pack's note against the four fridge-door rules")
+    @Agent(description = "The Poodle: checks the battle plan against the four rules")
     @UserMessage("""
-            You are the Poodle, and nothing is ever quite good enough. Check this note against
-            four rules: every meal has a time and an amount, it says what nobody may touch, it
-            gives the vet's telephone number, and it is under 100 words. Give the fraction of rules that hold as a number from 0.0 to
+            You are the Poodle, and nothing is ever quite good enough. Check this battle plan
+            against four rules: every dog in the pack (Zao, the Beagle, the Labrador, the
+            Dachshund, the Greyhound, the Corgi) has a position, nobody goes over the fence, the
+            cat is not a target, and it is under 100 words. Give the fraction of rules that hold as a number from 0.0 to
             1.0 — the number only, no words, no explanation, no markdown.
 
             What we know so far: {{Notes}}""")

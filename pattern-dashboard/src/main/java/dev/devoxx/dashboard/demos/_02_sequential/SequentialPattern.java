@@ -3,7 +3,7 @@ package dev.devoxx.dashboard.demos._02_sequential;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.demos._01_single.SinglePattern.HUMAN_MESSAGE;
+import static dev.devoxx.dashboard.demos._01_single.SinglePattern.BEAGLE_REPORT;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +13,7 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Message;
 import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
 import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.Checklist;
+import dev.devoxx.dashboard.demos._02_sequential.Keys.Orders;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -34,15 +34,15 @@ public final class SequentialPattern {
                 .name("NoteRetriever")
                 .outputKey(Notes.class)
                 .build();
-        var list = AgenticServices.agentBuilder(FridgeMagnet.class)
+        var list = AgenticServices.agentBuilder(BattlePlanner.class)
                 .chatModel(model)
-                .name("FridgeMagnet")
-                .outputKey(Checklist.class)
+                .name("BattlePlanner")
+                .outputKey(Orders.class)
                 .build();
 
         UntypedAgent app = AgenticServices.sequenceBuilder()
                                           .subAgents(clerk, list)
-                                          .outputKey(Checklist.class)
+                                          .outputKey(Orders.class)
                                           .listener(listener)
                                           .build();
 
@@ -53,20 +53,20 @@ public final class SequentialPattern {
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
-                List.of(node("in", "message", "input"),
-                        node("clerk", "NoteRetriever", "agent").withSub("Border Collie · reads"),
-                        node("list", "FridgeMagnet", "agent").withSub("Golden · for the door")),
+                List.of(node("in", "Beagle's report", "input"),
+                        node("clerk", "NoteRetriever", "agent").withSub("Golden · fetches facts"),
+                        node("list", "BattlePlanner", "agent").withSub("Collie · the plan")),
                 List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
         return new PatternDef("sequential", "Sequential", "workflow",
-                "Nobody in the pack reads paragraphs. At 06:59 four dogs will be standing at "
-                        + "the fridge, having decided the day starts now.",
+                "Nobody in the pack reads a card. At 06:59 six dogs will be at the back door, "
+                        + "and every one of them needs to know where to stand.",
                 "Demo 1's NoteRetriever, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "
-                        + "a different reader, four dogs standing at the fridge at 06:59. That is "
+                        + "a different reader, six dogs at the back door at 06:59. That is "
                         + "why it is a second agent and not a longer prompt.",
                 "Rigid order; a bad hand-off midway derails the whole chain. Watch the Scope tab: "
                         + "'card' is the seam, and the second agent trusts it completely.",
-                topo, HUMAN_MESSAGE, SequentialPattern::run);
+                topo, BEAGLE_REPORT, SequentialPattern::run);
     }
 }

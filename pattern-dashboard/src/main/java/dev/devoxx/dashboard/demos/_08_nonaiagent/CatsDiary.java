@@ -27,7 +27,7 @@ public class CatsDiary {
             Sat 09:30 — Labrador: nothing buried. Ate a tennis ball. Seemed fine.""";
 
     @Agent(name = "CatsDiary",
-           description = "Looks up where everything was buried, in the cat's own records",
+           description = "The cat: looks up where everything was buried, in its own records",
            typedOutputKey = Keys.Facts.class)
     public String lookup(@K(Mission.class) String mission) {
         // The parameter is here because the scope binding is the thing worth seeing — a real

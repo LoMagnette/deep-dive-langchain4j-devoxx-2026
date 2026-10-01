@@ -185,10 +185,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Four things these three demos pinned down, each of which is easy to get backwards:
   - **`optional(true)` is about a missing INPUT, not a failing agent.** In `AgentExecutor` the
     `optional()` check sits inside `catch (MissingArgumentException e)` — a step that *throws* is
-    not optional's problem however optional it is. So `resilience` skips `MedicationNote` because
-    most dogs are on nothing and nothing writes `meds`, and the seeding of that key is **plain
-    Java in `run`**: deciding whether you hold a value is not a job for a model. Delete the
-    tablets from the input on stage and the step vanishes with no error.
+    not optional's problem however optional it is. So `resilience` skips `FirstAidNote` because
+    most operations end with nobody hurt and nothing writes `Injuries`, and the seeding of that
+    key is **plain Java in `run`**: deciding whether you hold a value is not a job for a model.
+    Delete the Corgi's scraped nose from the input on stage and the step vanishes with no error.
   - **`errorHandler(...)` lives on `AgenticService`, so it is set on the *workflow* builder, not
     on `AgentBuilder`** — it rides on the scope (`DefaultAgenticScope.withErrorHandler`) and sees
     every `AgentInvocationException` in the run. **`RETRY` re-executes and a second failure comes
@@ -316,14 +316,14 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 - **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
-  `story` (its beat: a weekend alone, the beard, the chocolate, the sausage, the puppy question) and a
+  `story` (its beat: Operation Squirrel, the beard, the stuck Dachshund, the sausage, the puppy question) and a
   `buildsOn` naming what it inherits. Read in catalogue order the twenty-one beats are one passage;
   read down the `buildsOn` lines they are one system being assembled. The tester shows both above
   the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
   walk the catalogue in order.
   **Three spines carry the reuse:**
-  - **The fridge note** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
-    `FridgeMagnet`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
+  - **Operation Squirrel** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
+    `BattlePlanner`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
     it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
     demos 2, 3 and 17 — only the control around it, which is the entire argument.
   - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`RescueDog`, and
@@ -383,29 +383,43 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   already caught the capstone quietly using its own `NoteTightener` while claiming to reuse demo
   3's checklist — the wiring was changed to match the claim, not the claim to match the wiring.
 - **The pack: every agent is a dog, and the breed's reputation is its job.** This is "From
-  Puppy to Pack" taken literally, across all twenty-one demos. The premise that carries the note
-  spine: **the human is away for the weekend, nobody is coming, and Zao is in charge** — so the
-  "sitter note" is now a note on the fridge for the pack itself. The cast, and what each dog
-  always is:
+  Puppy to Pack" taken literally, across all twenty-one demos. The thread that carries the
+  reuse spine is **Operation Squirrel**: a squirrel has eaten the bird feeder every day for a
+  month. The Beagle's breathless sighting report (1) becomes a target card, the card becomes a
+  battle plan for the back door (2), the Poodle grades last time's plan — the Labrador over the
+  fence, the Dachshund after the cat — against four rules (3), the bait and the chase are
+  planned in parallel (4), the Dachshund gets stuck under the fence (6), the Basset checks the
+  fence before anyone moves (20), the after-action report may or may not need first aid (21),
+  and the composite runs the whole operation (17). It replaced a "fridge note for the weekend
+  alone" thread that had the dogs' names on it and the shape of admin: a card, a checklist, a
+  meal plan. **A recast that only renames the cast leaves the demo exactly as dull as it was**
+  — the opening five were flagged as "still the same" for precisely that. The cast:
   | Dog | Is always | Where |
   |---|---|---|
   | **Zao** (Bouvier) | the pack leader | supervisor, `PackLeader`, `PackNoteMerger`, the goal in `goap`, a voter on himself |
-  | Border Collie | the one who reads and trains | `NoteRetriever`, `DogTrainer`, `HelloWorld`, `MedicationNote`, `AlibiCheck`, `CouncilBriefer` |
-  | Golden Retriever | the sensible elder | `FridgeMagnet`, `EverydayCare`, `GardenLeave`, both judges |
-  | St Bernard | the rescue dog | `RescueDog`, `BeardOverflow` |
+  | Border Collie | the one who plans and trains | `BattlePlanner`, `DogTrainer`, `HelloWorld`, `AlibiCheck`, `CouncilBriefer`, `CouncilNote` |
+  | Golden Retriever | the sensible elder | `NoteRetriever` (it retrieves), `EverydayCare`, `GardenLeave`, both judges |
+  | St Bernard | the rescue dog | `RescueDog`, `BeardOverflow`, `FirstAidNote` |
+  | Poodle | nothing is ever good enough | `RuffDraftCritic` |
   | Beagle | the nose | `FirstSniff`, `AngleScout`, `DoorbellDecoy`, `DigPlanner` |
-  | Labrador | food | `ChowHound`, `FoodBudget`, `FirstBytes`, `TeamTuscany`, `CornerSeat`, the chocolate and the sock |
-  | Greyhound | the sofa, and running | `LeadDeveloper`, `SofaSpace`, `WholeSofa`, `PuppyAgainst` |
+  | Labrador | food | `ChowHound` (the bait he must not eat), `FoodBudget`, `FirstBytes`, `TeamTuscany`, `CornerSeat`, the sock |
+  | Greyhound | the sofa, and running | `LeadDeveloper` (leads the chase), `SofaSpace`, `WholeSofa`, `PuppyAgainst` |
   | Corgi | short legs, herds | `WorryRouter`, `CounterSurfer`, `PuppyFor` |
   | Bulldog / Basset / Bloodhound / Shepherd / Dachshund | heat / slow / trail / police / holes | `TeamKennels`, `FenceCheck`, `ScentTrail`, `CrimeScene`, the cake |
   Ids and packages kept their old names (`sitterNote`, `secondDogCouncil`, `_17_sitternote`) so
-  deep links from the slides still work; only the display names changed (Fridge Note, Puppy
-  Council). The agents whose names were a *person* were renamed (`EmergencyVet` → `RescueDog`,
+  deep links from the slides still work; only the display names changed (Operation Squirrel,
+  Puppy Council). The squirrel thread's keys were renamed because the Scope tab shows them:
+  `Stay`/`Meals`/`Walks`/`Checklist` → `Mission`/`Bait`/`Lookout`/`Orders`. The agents whose names were a *person* were renamed (`EmergencyVet` → `RescueDog`,
   `TriageNurse` → `FirstSniff`, `VetCallback` → `FenceCheck`); the ones whose names were already
-  a job a dog could do (`DogTrainer`, `EverydayCare`, `FridgeMagnet`) kept them. Rules:
+  a job a dog could do (`DogTrainer`, `EverydayCare`) kept them, and `FridgeMagnet` became
+  `BattlePlanner` when the fridge note went. Rules:
   - **Zao (a Bouvier, a herding breed) is the pack leader.** He gives the orders (`goap`'s goal),
     reads the board and gives the verdict (`blackboard`), and is the supervisor. When he declines
     to rule, that is the reason a demo is *not* a supervisor (`p2p`).
+  - **"Who guards it" lets a human in; "which dog guards it" does not.** Live, the bait planner
+    wrote "a person will guard the trap" until both planners were told there are no humans in
+    the plan, and first aid read like a human's (saline, a cloth) until it was told the pack has
+    paws, not hands. It now ends "wake the Tall One".
   - **The only human actor is the owner**, and only where the pattern needs a person:
     human-in-the-loop. People may be *mentioned* (the vet the rescue dog sends you to, the
     kennels), but no agent is one. The rescue dog cannot treat anybody — its whole answer is how
@@ -430,6 +444,12 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     prompts now open with the check ("First decide: is this one of those?"), give the marker for
     the "no" branch with *nothing after it*, and only then the positive instruction. Same lesson
     as the supervisor's refusal note above, one level down: the positive instruction wins.
+  - **Peers need bottom lines that overlap, or they negotiate for ever.** Live, the sofa ran
+    ten rounds and finished on belly rubs. Each peer now states what it can give up (the
+    Greyhound: the corner, never the long end; the Labrador: only the corner matters) and is told
+    to talk about the sofa and nothing else, and to make `AGREED` the last word — one run ended
+    "That deal is satisfactory", which the exit predicate cannot see. Three live runs out of three
+    now settle in two or three turns.
   - **Mock triggers must not key on a dog's name.** "you are the labrador" was the sofa peer's
     trigger, and the Labrador's debate prompt said it too — the holiday debate silently stopped
     converging. Key on the instruction ("you want a place on the sofa"), never on who is speaking:
@@ -490,8 +510,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     per demo is fifteen sentences across the talk — during which the room is learning kennels,
     not patterns. So every constraint a demo turns on is now one the room already holds: a cooked
     bone is dangerous and a croissant is not, a dog who suddenly starts snapping needs a vet and not a
-    training tip, a fridge note needs the vet's
-    number on it, a puppy goes to the garden before he gets a training session, the chair cannot
+    training tip, a Dachshund stuck under a fence needs rescuing and not a training tip, a puppy goes to the garden before he gets a training session, the chair cannot
     be pushed while the human is in the kitchen, the dog who does not fit through the dog flap did
     not carry the cake out through it, and with the pack leader declining to rule, neither of two
     dogs outranks the other about the sofa. **The test for a new scenario: would a dev in row 20 know the right answer before
@@ -570,8 +589,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   it stops at the book, or "he pulls like a train on the lead" and it stops at the trainer. That
   works offline too — the mock has three canned ladders.
 - **`sitterNote` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
-  pattern: conditional routing sends the owner's worry to the right person, a parallel step plans
-  the meals and the walks, a sequence merges all three into one note for the fridge door, and a
+  pattern: conditional routing sends the pack's worry to the right dog, a parallel step plans
+  the bait and the chase, a sequence merges all three into one operation order, and a
   loop tightens it until it passes the **same four rules** the standalone loop demo uses — a
   composite reuses the parts, it does not re-implement them. It exists to show that the builders
   *nest* — each composite is itself an `UntypedAgent` that another builder takes as a sub-agent —
@@ -803,7 +822,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   140 chars by `everyDemoHasItsBeatInTheNarration` — a beat is a sentence, not a paragraph.
   **Wordplay is allowed in the writing and in the agent names, on one condition: the pun has to
   be the accurate name too.** This used to read "never wordplay", which was the wrong rule for a
-  Java audience — `LeadDeveloper` plans the walks where the whole question is the lead, and a room
+  Java audience — `LeadDeveloper` is the dog who leads the chase, and a room
   of developers gets both halves before the next sentence. The condition is what keeps it from
   turning into kitsch, and it is doing real work: `BeardOverflow` judges snacks, `RuffDraftCritic`
   critiques a draft, `CounterSurfer` takes the sausage off the counter, `CatsDiary` is a lookup kept by the cat, `GardenLeave`

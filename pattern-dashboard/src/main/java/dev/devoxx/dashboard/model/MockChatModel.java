@@ -119,42 +119,44 @@ public class MockChatModel implements ChatModel {
                 // demonstrate nothing.
                 new Rule(p -> p.contains("out of the beard"), MockChatModel::beardVerdict),
 
-                // --- 5. The pack's note, narrowest first. Both prompts talk about notes and
-                // cards, and the checklist's prompt may quote the card it was handed.
-                new Rule(p -> p.contains("times of day in order"),
+                // --- 5. Operation Squirrel, narrowest first. Both prompts talk about what we
+                // know, and the battle plan's prompt quotes the card it was handed.
+                new Rule(p -> p.contains("battle plan for the back door"),
                         p -> """
-                                07:00  feeder: two scoops each (Labrador: one)
-                                07:15  garden, through the dog flap
-                                13:00  garden again
-                                18:00  feeder: two scoops each (Labrador: one)
-                                19:00  last garden of the day
-                                Nobody touches: the dried liver treats. Nobody digs under the fence.
-                                Vet: 061 22 33 44. The Greyhound howls the first night: ignore."""),
-                new Rule(p -> p.contains("pack card with exactly"),
+                                Beagle: under the bird feeder, silent until it lands. Then bark.
+                                Labrador: guards the bait from two metres. Does not eat the bait.
+                                Greyhound: under the oak, leads the chase when it comes down.
+                                Corgi: the fence line, on our side of it.
+                                Dachshund: by the shed, above ground. No digging.
+                                Zao: at the back door. Calls it.
+                                Nobody goes over the fence. The cat is not a target."""),
+                new Rule(p -> p.contains("target card with exactly"),
                         p -> """
-                                Pack: Zao (in charge), the Labrador, the Dachshund, the Greyhound
-                                Meals: two scoops each from the feeder, morning and evening; the Labrador gets one
-                                Walks: not given
-                                Watch out for: nobody touches the dried liver treats; the garden, not under the fence
-                                Vet: 061 22 33 44"""),
+                                Target: the grey squirrel with a bit missing off its tail
+                                Where: the big oak by the back fence, and the bird feeder
+                                Time: not given
+                                Route: down the oak, along the top of the fence, to the bird feeder, back up the oak
+                                Watch out for: the cat on the shed roof"""),
 
-                // --- 7. The weekend-alone composite, narrowest first. Its refining loop reuses
-                // demo 3's FridgeMagnet rather than an agent of its own, so it is claimed by
-                // the checklist rule above — there is deliberately no rule of its own here.
-                new Rule(p -> p.contains("goes on the fridge for the pack"),
+                // --- 7. The operation end to end, narrowest first. Its refining loop reuses
+                // demo 3's BattlePlanner rather than an agent of its own, so it is claimed by
+                // the battle-plan rule above — there is deliberately no rule of its own here.
+                new Rule(p -> p.contains("write the operation order"),
                         p -> """
-                                Fireworks are the thing to plan for: everyone indoors after dark \
-                                both nights, and the Greyhound gets the table to hide under.
-                                Meals 07:00 and 18:00, two scoops each. Garden 07:15 and 19:00, \
-                                and nobody pulls anybody. Vet 061 22 33 44."""),
-                new Rule(p -> p.contains("meals for the days"),
-                        p -> "Two scoops each at 07:00 and 18:00 from the feeder — the Labrador "
-                                + "gets one, and he knows why. Nothing off the counter, and nobody "
-                                + "touches the dried liver treats."),
-                new Rule(p -> p.contains("walks for the days"),
-                        p -> "07:15 and 19:00, twenty minutes of garden each, plus one zoomies "
-                                + "session at noon. Stay away from the back fence — the Dachshund "
-                                + "knows why. Indoors after dark while the fireworks are going."),
+                                The Dachshund stays above ground: he gets his own digging spot by \
+                                the shed, and he leaves the fence alone.
+                                Bait: peanut butter on the bird feeder, guarded by the Labrador.
+                                Chase: the Greyhound under the oak, the Beagle on lookout by the \
+                                feeder. Nobody goes over the fence."""),
+                new Rule(p -> p.contains("plan the bait for the squirrel trap"),
+                        p -> "A smear of peanut butter on the bird feeder, and half a croissant "
+                                + "at the foot of the oak. The Labrador guards it from two metres "
+                                + "back. He does not eat it. He has been told twice."),
+                new Rule(p -> p.contains("plan the lookout and the chase"),
+                        p -> "The Beagle watches the oak from under the bird feeder. The Corgi "
+                                + "takes the fence line, on our side of it. The Greyhound leads "
+                                + "the chase the moment it touches the ground. Nobody goes over "
+                                + "the fence, and the cat is not a target."),
 
                 // --- 8. The three desks, AFTER the composite's rules because the merger's
                 // prompt quotes whichever of them answered. Each ends with the word the
@@ -323,12 +325,12 @@ public class MockChatModel implements ChatModel {
                                 Then the sock, Zao: under the rosemary, 30 cm down.
 
                                 Labrador: no digging for you. You know what you did."""),
-                new Rule(p -> p.contains("medication paragraph"),
-                        p -> "Greyhound: half a tablet with breakfast, every morning, for his hip.\n"
-                                + "The Labrador folds it into a slice of cheese, and he takes it "
-                                + "without noticing.\nIf he spits it out, wait ten minutes and "
-                                + "try again — the Labrador does not eat it.\nNever two to catch "
-                                + "up on a missed one."),
+                new Rule(p -> p.contains("first-aid paragraph"),
+                        p -> "Corgi: a scraped nose bleeds more than it hurts.\nLick nothing, rub "
+                                + "nothing — lie still with your nose on the cool kitchen tiles.\n"
+                                + "Still bleeding when the human gets home, or he will not let "
+                                + "anyone near it: wake the human for the vet.\nNobody goes back "
+                                + "to that fence today."),
                 // One agent, three kinds of question — because the point of the demo is that the
                 // ANSWER is not what changes between tiers, so it had better be a real answer
                 // whichever question is typed in.
@@ -475,6 +477,12 @@ public class MockChatModel implements ChatModel {
                     + "starts retching or wheezing, wake the human: vet, now. Meanwhile, a cold "
                     + "floor tile to lie on, and nobody goes looking for the wasp.";
         }
+        if (q.contains("stuck") || q.contains("trapped")) {
+            return "Do not pull him out by the back legs — that is how a stuck dog gets hurt. "
+                    + "Dig the earth away from his chest from our side, keep him calm, and wake "
+                    + "the human now: if he will not come free in ten minutes, the fence panel "
+                    + "comes off.";
+        }
         if (q.contains("limp") || q.contains("sore")) {
             return "Keep him still and off the stairs, and nobody brings him anything from the "
                     + "human's cupboard. A dog that will not put weight on a leg needs the vet "
@@ -508,6 +516,12 @@ public class MockChatModel implements ChatModel {
             return "Sit down dead every time he pulls ahead, and only move off when he comes "
                     + "back to your shoulder. Stop chasing him to catch up, which teaches him "
                     + "that pulling is how the pack moves.\n"
+                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
+        }
+        if (q.contains("dig")) {
+            return "Give him a digging spot of his own by the shed and make a fuss of him every "
+                    + "time he uses it. Stop shouting at him at the fence, which only tells him the "
+                    + "fence is where the fun is.\n"
                 + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
         }
         if (q.contains("bark")) {
@@ -554,13 +568,16 @@ public class MockChatModel implements ChatModel {
             // "eaten a whole bar of dark chocolate" matches none of the above: "eaten a" is not
             // "ate a". The catalogue's most-used worry was classifying as BASICS.
             "chocolate",
+            // A dog stuck under a fence is a rescue, and no word above says so.
+            "stuck", "trapped",
             // A swallowed sock and a stung face are medical for reasons no word above covers,
             // and they exist so demos 7 and 19 stop being the chocolate a second and third time.
             "swallow", "sting", "stung", "wasp"
     };
     private static final String[] BEHAVIOUR_WORDS = {
             "pull", "bark", "bite", "biting", "growl", "jump", "recall", "come back", "lead",
-            "aggress", "scared", "afraid", "anxious", "chew", "destroy", "toilet", "training"
+            "aggress", "scared", "afraid", "anxious", "chew", "destroy", "toilet", "training",
+            "dig"
     };
 
     /**
