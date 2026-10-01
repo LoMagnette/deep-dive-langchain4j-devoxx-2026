@@ -79,9 +79,9 @@ public final class BdiPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("dag",
                 List.of(node("in", "first hour", "input"),
-                        node("out", "GardenLeave", "agent").withSub("desire · priority 30"),
-                        node("fed", "FirstBytes", "agent").withSub("desire · priority 20"),
-                        node("train", "HelloWorld", "agent").withSub("desire · priority 5")),
+                        node("out", "GardenLeave", "agent").withSub("Golden · priority 30"),
+                        node("fed", "FirstBytes", "agent").withSub("Labrador · priority 20"),
+                        node("train", "HelloWorld", "agent").withSub("Collie · priority 5")),
                 // The training session is gated on BOTH of the others, which is what makes this a
                 // DAG of desires rather than a chain: 'needs' labels are preconditions, not
                 // hand-offs.
@@ -90,8 +90,8 @@ public final class BdiPattern {
                         edge("out", "train", "needs been out"),
                         edge("fed", "train", "needs fed")));
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "pattern-zoo",
-                "Think back to his first hour here. Eight weeks old, forty minutes in the "
-                        + "car, three needs at once. Get the order wrong and you mop.",
+                "Think back to Zao's own first hour: eight weeks old, forty minutes in the car, "
+                        + "and the pack waiting. Get the order wrong and you mop.",
                 null,
                 "The agent pursues prioritised desires, always acting on the highest-priority one "
                         + "that is achievable and not yet met. The puppy's first hour: out ranks "

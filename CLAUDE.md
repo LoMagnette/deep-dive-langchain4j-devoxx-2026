@@ -99,7 +99,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **`.name("X")` is load-bearing, not decoration.** An agent's default name is its *method*
     name (`check`, `rewrite`, `plan`), not its interface name — so without it the topology labels
     stop matching, `markNode` never lights a node, and the supervisor's canned plan cannot find
-    `TriageNurse`. Nine tests go red at once if you drop it, which is how this was established.
+    `FirstSniff`. Nine tests go red at once if you drop it, which is how this was established.
     Visible in the wild at `p2p`: `plannerBuilder()` takes no `.name(...)`, so the wrapper itself
     reports as `invoke` — which is why that demo's test filters the roll-call to its two peers.
   - **`support/Parsing` takes plain strings, not an `AgenticScope`.** Reading the scope is
@@ -133,7 +133,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   and the routing demo's `WorryRouter`; `seconddogcouncil` imports the three assessors `voting`
   introduced. A composite reuses the parts rather than re-implementing them, and its import list
   says so before a word of explanation. Two shared default inputs work the same way —
-  `SinglePattern.SITTER_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
+  `SinglePattern.HUMAN_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
   used by the council).
 - **`PatternCatalog` is the registry and nothing else**: twenty-one `XxxPattern.define()` calls in
   the talk's running order, grouped by comments for the five rail categories. Adding a demo is a
@@ -316,24 +316,24 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
 - **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
-  `story` (its beat: a weekend away, the beard, the chocolate, a baby coming, the second dog) and a
+  `story` (its beat: a weekend alone, the beard, the chocolate, the sausage, the puppy question) and a
   `buildsOn` naming what it inherits. Read in catalogue order the twenty-one beats are one passage;
   read down the `buildsOn` lines they are one system being assembled. The tester shows both above
   the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
   walk the catalogue in order.
   **Three spines carry the reuse:**
-  - **The sitter note** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
+  - **The fridge note** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
     `FridgeMagnet`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
     it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
     demos 2, 3 and 17 — only the control around it, which is the entire argument.
-  - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
+  - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`RescueDog`, and
     then four demos put a different control flow around the same cast: routing picks one,
     `humanApproval` adds a person before the answer is acted on, `supervisor` picks several and
     decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` adds exactly
-    one agent of its own** — the `TriageNurse`, and nothing else — so the §6 pivot is a change of
+    one agent of its own** — the `FirstSniff`, and nothing else — so the §6 pivot is a change of
     *decider* over a cast the room already knows, not a new cast. `theDemosReuseWhatTheEarlierOnesBuilt`
     asserts that count exactly: one, and it must be her. (It said "no agent of its own" for a
-    while, which was true of the version before the nurse and of nothing since; the demo's own
+    while, which was true of the version before the Beagle and of nothing since; the demo's own
     `buildsOn` line said it too, on screen, while the diagram beside it drew her.)
     The supervisor's claim is not "it calls more than one" — a fan-out does that. It is that
     **the second call exists because of what the first one said**, which neither routing nor a
@@ -344,7 +344,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
       refusal is a *conditional exception* sitting under a positive instruction ("give the owner
       one thing to change this week"), and a model — a small local one especially — takes the
       positive instruction every time.
-    - **So the first call is a `TriageNurse`, whose job IS to hand on.** She never treats and
+    - **So the first call is a `FirstSniff`, whose job IS to hand on.** She never treats and
       never trains; she assesses and ends by naming who is needed (`NEEDS: vet`). She always
       succeeds at what she was asked, so the supervisor's next decision rests on a fact it was
       given rather than a judgement the model had to volunteer. This is the one agent the demo
@@ -354,19 +354,19 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
       scenario — and a live planner did exactly as told: one problem, one answer, stop.
     - **The result is one answer with its route, not a set of opinions.**
       `output(SupervisorPattern::answerWithItsRoute)` leads with the path
-      (`TriageNurse → EmergencyVet`), then the **last** answer in full, then the earlier call in
+      (`FirstSniff → RescueDog`), then the **last** answer in full, then the earlier call in
       italics as the *reason* the next one happened. Printing every call as a peer block is what
       a parallel workflow produces, and it made this demo read as one. Only the final answer is
       output; an assessment is work.
-    Same wiring, three routes, decided by what the nurse names: a sudden behaviour change reaches
-    the vet, pulling and barking reach the trainer, and grass-eating settles with the nurse and
+    Same wiring, three routes, decided by what the Beagle names: a sudden behaviour change reaches
+    the rescue dog, pulling and barking reach the trainer, and grass-eating settles with the Beagle and
     stops there. `theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid` asserts all three,
     plus that no protocol marker (`NEEDS:`, `ESCALATE`) leaks into the answer.
     **A warning about the mock**: it had the hand-off special-cased, so every test passed while
     the live demo called one agent and stopped. A deterministic stand-in proves the wiring, never
     that a real model will follow a prompt — check this demo against Ollama after touching any of
     these prompts.
-  - **The second dog** — `voting` introduces the three assessors; `secondDogCouncil` has them
+  - **The puppy question** — `voting` introduces the three assessors; `secondDogCouncil` has them
     ratify a debated motion instead of voting cold.
   `parallelMapper`, `goap`, `p2p`, `blackboard`, `debate` and `bdi` stand alone, honestly: they
   are about different subjects and forcing a link would damage them.
@@ -383,14 +383,57 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   already caught the capstone quietly using its own `NoteTightener` while claiming to reuse demo
   3's checklist — the wiring was changed to match the claim, not the claim to match the wiring.
 - **The pack: every agent is a dog, and the breed's reputation is its job.** This is "From
-  Puppy to Pack" taken literally, and it is being rolled out demo by demo — so far `nonAiAgent`,
-  `goap`, `p2p` and `blackboard`. The rest still have the earlier human cast (vet, trainer,
-  nurse, sitter). Rules for recasting the rest:
-  - **Zao (a Bouvier, a herding breed) is the pack leader.** He gives the orders (`goap`'s goal)
-    and reads the board and gives the verdict (`blackboard`'s `PackLeader`), and he is meant to
-    become the supervisor. When he declines to rule, that is the reason a demo is *not* a
-    supervisor (`p2p`).
-  - **The only human is the owner**, and only where the pattern needs a person: human-in-the-loop.
+  Puppy to Pack" taken literally, across all twenty-one demos. The premise that carries the note
+  spine: **the human is away for the weekend, nobody is coming, and Zao is in charge** — so the
+  "sitter note" is now a note on the fridge for the pack itself. The cast, and what each dog
+  always is:
+  | Dog | Is always | Where |
+  |---|---|---|
+  | **Zao** (Bouvier) | the pack leader | supervisor, `PackLeader`, `PackNoteMerger`, the goal in `goap`, a voter on himself |
+  | Border Collie | the one who reads and trains | `NoteRetriever`, `DogTrainer`, `HelloWorld`, `MedicationNote`, `AlibiCheck`, `CouncilBriefer` |
+  | Golden Retriever | the sensible elder | `FridgeMagnet`, `EverydayCare`, `GardenLeave`, both judges |
+  | St Bernard | the rescue dog | `RescueDog`, `BeardOverflow` |
+  | Beagle | the nose | `FirstSniff`, `AngleScout`, `DoorbellDecoy`, `DigPlanner` |
+  | Labrador | food | `ChowHound`, `FoodBudget`, `FirstBytes`, `TeamTuscany`, `CornerSeat`, the chocolate and the sock |
+  | Greyhound | the sofa, and running | `LeadDeveloper`, `SofaSpace`, `WholeSofa`, `PuppyAgainst` |
+  | Corgi | short legs, herds | `WorryRouter`, `CounterSurfer`, `PuppyFor` |
+  | Bulldog / Basset / Bloodhound / Shepherd / Dachshund | heat / slow / trail / police / holes | `TeamKennels`, `FenceCheck`, `ScentTrail`, `CrimeScene`, the cake |
+  Ids and packages kept their old names (`sitterNote`, `secondDogCouncil`, `_17_sitternote`) so
+  deep links from the slides still work; only the display names changed (Fridge Note, Puppy
+  Council). The agents whose names were a *person* were renamed (`EmergencyVet` → `RescueDog`,
+  `TriageNurse` → `FirstSniff`, `VetCallback` → `FenceCheck`); the ones whose names were already
+  a job a dog could do (`DogTrainer`, `EverydayCare`, `FridgeMagnet`) kept them. Rules:
+  - **Zao (a Bouvier, a herding breed) is the pack leader.** He gives the orders (`goap`'s goal),
+    reads the board and gives the verdict (`blackboard`), and is the supervisor. When he declines
+    to rule, that is the reason a demo is *not* a supervisor (`p2p`).
+  - **The only human actor is the owner**, and only where the pattern needs a person:
+    human-in-the-loop. People may be *mentioned* (the vet the rescue dog sends you to, the
+    kennels), but no agent is one. The rescue dog cannot treat anybody — its whole answer is how
+    to get the human to take this dog to the vet, which is both true and the joke.
+  - **The dog lives in the diagram, the description and the beat — not in a judgement prompt.**
+    Opening a prompt with "You are the Golden Retriever, the sensible one" makes a small model
+    *role-play*: stage directions ("*Thump, thump. My tail gives a decisive wag*"), a five-line
+    plan turned into a three-day operations order, and — the one that matters — lost judgement.
+    As the St Bernard, gemma4 cleared the **cooked chicken bone** ("Watch him. Guard the bone"),
+    and the council chair "REJECTED" a motion while "not declining the puppy". So a prompt gets a
+    persona only where the voice *is* the output and the output is short and first-person (the
+    heist, the sofa, the investigators, the voters, the puppy's first hour). Anything that has to
+    be right — a verdict, a plan, a checklist, a ruling — gets a plain task prompt, and the breed
+    goes in `@Agent(description = "The St Bernard: …")` and on the box's sub-line.
+  - **The marker names the need, not the dog.** The Beagle's hand-off was briefly `NEEDS: rescue`
+    to match `RescueDog`; live, she reasoned "something internal is wrong" and then wrote
+    `NEEDS: everyday care`. `NEEDS: vet` is what she means, and the supervisor maps it to the
+    rescue dog. Each option is glossed in her prompt for the same reason.
+  - **A prompt that ends in a marker puts the decision FIRST.** Live, the Golden wrote a good
+    food answer and signed it `ESCALATE`, and the Collie wrote "it needs a vet — ESCALATE" and
+    then two lines of training tips signed `ANSWERED`, so the ladder stopped a rung early. Both
+    prompts now open with the check ("First decide: is this one of those?"), give the marker for
+    the "no" branch with *nothing after it*, and only then the positive instruction. Same lesson
+    as the supervisor's refusal note above, one level down: the positive instruction wins.
+  - **Mock triggers must not key on a dog's name.** "you are the labrador" was the sofa peer's
+    trigger, and the Labrador's debate prompt said it too — the holiday debate silently stopped
+    converging. Key on the instruction ("you want a place on the sofa"), never on who is speaking:
+    the same dog speaks in five demos.
   - **The non-AI agent is the cat.** It is not a dog, it does exactly what it does, and it is
     invisible to the listener — the `1.20.0-beta30` gap, told as a joke that is also true.
   - **The box name is the role, and the breed goes on the sub-line** (`CounterSurfer` /
@@ -457,7 +500,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **3. Something in the input must be visibly wrong, dangerous or funny — and the run must be
     seen dealing with it.** This is the newest rule and the one the catalogue was weakest on. The
     demos that land are the ones with an "oh no" the room spots before the first agent runs: the
-    conker, the 85% chocolate, the 2-1 split, the nurse sending it to the vet, the ladder stopping
+    conker, the 85% chocolate, the 2-1 split, the Beagle sending it to the rescue dog, the ladder stopping
     at the book. The ones that died on stage all produced *admin* — "plan the meals for the days
     the owners are away" is a perfectly good pattern fit and a paragraph nobody watches. **This is
     not fixed by better prose.** A pass that only made the sentences wittier was rejected in the
@@ -618,10 +661,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   **different** one-word votes per assessor (`YES` for money, `LATER` for the other two) so the
   offline vote is a genuine 2-1 majority; a **catch-all** `argue` rule that hands both holiday
   advocates the same words so `ConvergenceStrategy.unanimous()` fires, against the council's two
-  named rules that differ so it does not; a 2-step supervisor plan nurse→specialist→done; and an
+  named rules that differ so it does not; a 2-step supervisor plan Beagle→specialist→done; and an
   item-aware table so the mapper really does clear the croissant and condemn the cooked bone. Its
   worry-routing rule must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan
-  names `TriageNurse` literally and reads `NEEDS: vet`/`trainer`/`everyday` out of the nurse's
+  names `FirstSniff` literally and reads `NEEDS: vet`/`trainer`/`everyday` out of the Beagle's
   answer to pick the second call — renaming her, or changing that marker, breaks the demo.
   **Two traps this table has now sprung twice.** A rule whose trigger no prompt contains any more
   is worse than no rule: it reads as live behaviour and its comment describes a demo that no
@@ -751,9 +794,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
   **This rule is about the chrome, not about the writing.** The `story` beats are the one place
   the humour belongs — they are what the speaker says out loud, the talk is three hours long, and
-  the room needs the laughs. The register is dry and observational (the sitter said yes *before*
-  reading the message; the dog is not sorry), and every punchline earns its place twice: `goap`'s
-  "He comes back indoors. Reliably. Indoors." **is** the precondition chain, `p2p`'s names why it
+  the room needs the laughs. The register is dry and observational (the Labrador gets *one*
+  scoop, and they have talked about this; the dog is not sorry), and every punchline earns its
+  place twice: `goap`'s "the Corgi can't reach it, the chair is loud, and the human is still in
+  the kitchen" **is** the precondition chain, `p2p`'s names why it
   is not a supervisor, `customPlanner`'s is the cost ladder. A joke you have to stop and explain
   costs more time than it buys, so it is the wrong joke. Beats are capped at
   140 chars by `everyDemoHasItsBeatInTheNarration` — a beat is a sentence, not a paragraph.
@@ -765,8 +809,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   critiques a draft, `CounterSurfer` takes the sausage off the counter, `CatsDiary` is a lookup kept by the cat, `GardenLeave`
   takes the puppy to the garden, `HelloWorld` teaches him his name first, `FinalBoarding` rules on
   whether he flies. Names appear on the diagram, so a pun that costs the reader the mechanism is
-  the wrong pun and the plain name wins — which is why `EmergencyVet`, `DogTrainer`, `EverydayCare`,
-  `TriageNurse` are still plain: they are the cast five demos share,
+  the wrong pun and the plain name wins — which is why `RescueDog`, `DogTrainer`, `EverydayCare`,
+  `FirstSniff` are still plain: they are the cast five demos share,
   and the routing only reads because their names say exactly what they are. Same test as the beats,
   applied to a noun. Beat puns that hold: `parallel`'s "two threads, nothing shared, no locks",
   `parallelMapper`'s "he did the scatter, you do the gather", `async`'s "nobody blocks the main
@@ -825,7 +869,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - `parallelMapper` was a single box, so it said "one call" — the opposite of what a mapper
     does. The agent is now drawn as a stack, `once per item`.
   - `supervisor` was a symmetric star saying "talks to all four equally", which is a fan-out.
-    The nurse is now `1 · always first` with a two-way edge (the supervisor reads her answer),
+    The Beagle is now `1 · always first` with a two-way edge (the supervisor reads her answer),
     and the three desks are `2 · if she says so` behind one arrow.
   - `blackboard` was four identical satellites round a box, which said nothing about where the
     problem comes from, why the order is free, or how the run ever stops. Sub-lines were the

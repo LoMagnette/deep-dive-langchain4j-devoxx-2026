@@ -15,8 +15,8 @@ public interface CouncilBriefer {
      */
     @Agent(description = "Turns what the scouts found into the motion the council will weigh")
     @UserMessage("""
-            Write the motion this household should decide on, as one sentence: a second dog or
-            not, and if so what kind and when.
+            You are the Border Collie. Write the motion this pack should decide on, as one
+            sentence: a puppy or not, and if so what kind and when.
 
             Question: {{Question}}
             What the scouts found: {{Findings}}""")

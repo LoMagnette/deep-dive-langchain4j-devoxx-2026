@@ -3,7 +3,7 @@ package dev.devoxx.dashboard.demos._02_sequential;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.demos._01_single.SinglePattern.SITTER_MESSAGE;
+import static dev.devoxx.dashboard.demos._01_single.SinglePattern.HUMAN_MESSAGE;
 
 import java.util.List;
 import java.util.Map;
@@ -54,19 +54,19 @@ public final class SequentialPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "message", "input"),
-                        node("clerk", "NoteRetriever", "agent"),
-                        node("list", "FridgeMagnet", "agent")),
+                        node("clerk", "NoteRetriever", "agent").withSub("Border Collie · reads"),
+                        node("list", "FridgeMagnet", "agent").withSub("Golden · for the door")),
                 List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
         return new PatternDef("sequential", "Sequential", "workflow",
-                "Your friend is not a dog person. At 07:00 they will be holding a lead, a "
-                        + "phone, and a dog who has decided the day starts now.",
+                "Nobody in the pack reads paragraphs. At 06:59 four dogs will be standing at "
+                        + "the fridge, having decided the day starts now.",
                 "Demo 1's NoteRetriever, unchanged — this adds the second step.",
                 "Deterministic pipeline: each agent's output feeds the next. The second step "
                         + "cannot start before the first — it needs the card — and it writes for "
-                        + "a different reader, someone standing in your kitchen at 07:00. That is "
+                        + "a different reader, four dogs standing at the fridge at 06:59. That is "
                         + "why it is a second agent and not a longer prompt.",
                 "Rigid order; a bad hand-off midway derails the whole chain. Watch the Scope tab: "
                         + "'card' is the seam, and the second agent trusts it completely.",
-                topo, SITTER_MESSAGE, SequentialPattern::run);
+                topo, HUMAN_MESSAGE, SequentialPattern::run);
     }
 }

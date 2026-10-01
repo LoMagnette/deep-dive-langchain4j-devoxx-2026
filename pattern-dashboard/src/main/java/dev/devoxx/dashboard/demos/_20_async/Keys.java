@@ -9,7 +9,7 @@ public final class Keys {
     }
 
     /**
-     * What the out-of-hours line came back with.
+     * What the Basset found on his way round the fence. Slow to arrive, needed only at the end.
      */
-    public record VetLine() implements TypedKey<String> {}
+    public record FenceReport() implements TypedKey<String> {}
 }

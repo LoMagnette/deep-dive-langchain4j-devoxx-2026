@@ -124,17 +124,17 @@ class PatternCatalogTest {
 
         var invoked = r.invoked();
         assertTrue(invoked.contains("WorryRouter"), "no triage: " + invoked);
-        assertTrue(invoked.stream().anyMatch(a -> a.equals("EmergencyVet")
+        assertTrue(invoked.stream().anyMatch(a -> a.equals("RescueDog")
                         || a.equals("DogTrainer") || a.equals("EverydayCare")),
                 "routing reached nobody: " + invoked);
         assertTrue(invoked.contains("ChowHound") && invoked.contains("LeadDeveloper"),
                 "the parallel step did not fan out: " + invoked);
-        assertTrue(invoked.contains("SitterNoteMerger"), "nothing merged the parts: " + invoked);
+        assertTrue(invoked.contains("PackNoteMerger"), "nothing merged the parts: " + invoked);
         // The mock alternates 0.60 then 0.95, so a working exit condition scores exactly twice.
         assertEquals(2, invoked.stream().filter("RuffDraftCritic"::equals).count(),
                 "refinement loop should iterate once then exit: " + invoked);
 
-        assertTrue(r.result() != null && !r.result().isBlank(), "no sitter note produced");
+        assertTrue(r.result() != null && !r.result().isBlank(), "no fridge note produced");
     }
 
     @Test
@@ -160,22 +160,22 @@ class PatternCatalogTest {
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
 
         var called = r.invoked().stream()
-                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
                         .contains(a))
                 .toList();
-        assertEquals(List.of("TriageNurse", "EmergencyVet"), called,
-                "the nurse takes the call, and who she names is called next: " + r.invoked());
+        assertEquals(List.of("FirstSniff", "RescueDog"), called,
+                "the Beagle sniffs it first, and who she names is called next: " + r.invoked());
 
         // One answer with a route, not a set of opinions — printing every call as a peer block
         // is what a parallel workflow produces, and it made this demo read as one.
-        assertTrue(r.result().startsWith("**TriageNurse → EmergencyVet**"),
+        assertTrue(r.result().startsWith("**FirstSniff → RescueDog**"),
                 "the route has to lead, as a chain: " + r.result());
-        assertTrue(r.result().contains("named EmergencyVet, so that is who the supervisor called"),
+        assertTrue(r.result().contains("named RescueDog, so that is who the supervisor called"),
                 "the result must say why the second call happened: " + r.result());
         // The protocol words the planner acts on must never reach the reader.
         assertTrue(!r.result().contains("NEEDS:") && !r.result().contains("ESCALATE"),
                 "protocol markers leaked into the answer: " + r.result());
-        int answerAt = r.result().indexOf("The nurse is right to send him");
+        int answerAt = r.result().indexOf("The Beagle is right to send him");
         int reasonAt = r.result().indexOf("did not answer it");
         assertTrue(answerAt > 0 && reasonAt > answerAt,
                 "the final answer must come first and the route beneath it: " + r.result());
@@ -184,20 +184,20 @@ class PatternCatalogTest {
         // trainer instead, on the same wiring.
         var behaviour = run(def, "he pulls like a train on the lead and barks at the postman")
                 .invoked().stream()
-                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
                         .contains(a))
                 .toList();
-        assertEquals(List.of("TriageNurse", "DogTrainer"), behaviour,
+        assertEquals(List.of("FirstSniff", "DogTrainer"), behaviour,
                 "the same run should reach a different specialist: " + behaviour);
 
         // And when nobody else is needed it stops, or "it called two" is just a longer script.
         var settled = run(def, "he ate a bit of grass and was sick once, then asked for his tea")
                 .invoked().stream()
-                .filter(a -> List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet")
+                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
                         .contains(a))
                 .toList();
-        assertEquals(List.of("TriageNurse"), settled,
-                "the nurse settled this one, so nobody else should have been called: " + settled);
+        assertEquals(List.of("FirstSniff"), settled,
+                "the Beagle settled this one, so nobody else should have been called: " + settled);
     }
 
     /**
@@ -217,11 +217,11 @@ class PatternCatalogTest {
         assertTrue(halves.result().contains("Meals") && halves.result().contains("Walks"),
                 "the join must bring both halves back together: " + halves.result());
 
-        // A dog that has eaten chocolate must reach the vet. Routing that to the trainer is
+        // A dog that has eaten chocolate must reach the rescue dog. Routing that to the trainer is
         // precisely the mistake conditional routing is here to prevent, and the room knows it.
         Run worry = run(catalog.byId("conditional").orElseThrow());
-        assertTrue(worry.invoked().contains("EmergencyVet"),
-                "a poisoning must reach the vet: " + worry.invoked());
+        assertTrue(worry.invoked().contains("RescueDog"),
+                "a poisoning must reach the rescue dog: " + worry.invoked());
 
         // GOAP's agents are registered backwards on purpose, so the only way to get this order
         // is for the planner to have derived it from the declared I/O keys.
@@ -249,8 +249,8 @@ class PatternCatalogTest {
         assertTrue(hour.indexOf("FirstBytes") < hour.indexOf("HelloWorld"),
                 "fed before taught: " + hour);
 
-        // The refinement loop has to actually fix the note it was given: rule 3 is the vet's
-        // number, and the input deliberately does not have one.
+        // The refinement loop has to actually fix the note it was given, and keep the facts while
+        // it does: rule 3 is the vet's number, buried mid-ramble in the input.
         String note = run(catalog.byId("loop").orElseThrow()).result();
         assertTrue(note.contains("061 22 33 44"),
                 "the loop did not bring the note up to the rules: " + note);
@@ -258,7 +258,7 @@ class PatternCatalogTest {
         // Every assessor votes, the result shows each vote separately, and they SPLIT. Three
         // agents that always agree make the tally decoration.
         Run ballot = run(catalog.byId("voting").orElseThrow());
-        assertTrue(ballot.invoked().containsAll(List.of("SpaceAndTime", "MoneyAndVet",
+        assertTrue(ballot.invoked().containsAll(List.of("SofaSpace", "FoodBudget",
                 "AskZaoHimself")), "the vote did not reach all three criteria: "
                 + ballot.invoked());
         List<String> votes = ballot.result().lines().filter(l -> l.startsWith("- ")).toList();
@@ -273,7 +273,7 @@ class PatternCatalogTest {
         // still come out. A run that quietly answers anyway has not demonstrated optional at
         // all — it has demonstrated an agent that ignores its own arguments.
         Run noMeds = run(catalog.byId("resilience").orElseThrow(),
-                "away Friday to Sunday, my sister has him, two scoops morning and evening, "
+                "away Friday to Sunday, nobody is coming, two scoops each morning and evening, "
                         + "vet 061 22 33 44");
         assertTrue(noMeds.errors().stream().noneMatch(e -> e.contains("MedicationNote")),
                 "a skipped optional step is not an error: " + noMeds.errors());
@@ -311,7 +311,7 @@ class PatternCatalogTest {
         assertEquals(1, times(holiday, "TeamTuscany"),
                 "both advocates said the same thing, so the debate must stop after ONE round: "
                         + holiday.invoked());
-        assertEquals(1, times(holiday, "TeamStaycation"),
+        assertEquals(1, times(holiday, "TeamKennels"),
                 "both advocates said the same thing, so the debate must stop after ONE round: "
                         + holiday.invoked());
         assertEquals(1, times(holiday, "FinalBoarding"),
@@ -319,13 +319,13 @@ class PatternCatalogTest {
 
         Run council = run(catalog.byId("secondDogCouncil").orElseThrow());
         assertTrue(council.errors().isEmpty(), council.errors()::toString);
-        assertEquals(2, times(council, "SecondDogFor"),
+        assertEquals(2, times(council, "PuppyFor"),
                 "the council's advocates disagree, so this debate must run its full two rounds "
                         + "— the opposite behaviour, on the same page: " + council.invoked());
-        assertEquals(2, times(council, "SecondDogAgainst"),
+        assertEquals(2, times(council, "PuppyAgainst"),
                 "the council's advocates disagree, so this debate must run its full two rounds: "
                         + council.invoked());
-        assertEquals(1, times(council, "HouseholdVerdict"),
+        assertEquals(1, times(council, "PackVerdict"),
                 "the judge is called once, after the rounds run out: " + council.invoked());
     }
 
@@ -580,13 +580,13 @@ class PatternCatalogTest {
         List<RunEvent> done = events.stream()
                 .filter(e -> "agent-after".equals(e.type())).toList();
         long agentTime = done.stream()
-                .filter(e -> List.of("VetCallback", "ChowHound", "LeadDeveloper")
+                .filter(e -> List.of("FenceCheck", "ChowHound", "LeadDeveloper")
                         .contains(e.agent()))
                 .mapToLong(RunEvent::millis).sum();
         long step = done.stream().filter(e -> "Sequential".equals(e.agent()))
                 .mapToLong(RunEvent::millis).max().orElseThrow();
 
-        assertEquals(3, done.stream().filter(e -> List.of("VetCallback", "ChowHound",
+        assertEquals(3, done.stream().filter(e -> List.of("FenceCheck", "ChowHound",
                         "LeadDeveloper").contains(e.agent())).count(),
                 "all three steps must run: " + done.stream().map(RunEvent::agent).toList());
         assertTrue(step < agentTime * 0.8,
@@ -607,7 +607,7 @@ class PatternCatalogTest {
         // A limp is past the book and past the trainer, so the ladder runs to the top.
         Run medical = run(def);
         assertTrue(medical.errors().isEmpty(), medical.errors()::toString);
-        assertEquals(List.of("EverydayCare", "DogTrainer", "EmergencyVet"),
+        assertEquals(List.of("EverydayCare", "DogTrainer", "RescueDog"),
                 medical.invoked().stream().filter(a -> !a.equals("invoke")).toList(),
                 "a limp should escalate all the way, in cost order");
 
@@ -616,14 +616,14 @@ class PatternCatalogTest {
         Run basics = run(def, "which food should I buy for a four-year-old bouvier?");
         assertEquals(List.of("EverydayCare"), basics.invoked().stream()
                         .filter(a -> !a.equals("invoke")).toList(),
-                "everyday care answered, so nobody should have rung the trainer or the vet");
+                "everyday care answered, so nobody should have rung the trainer or the rescue dog");
         assertTrue(basics.result() != null && !basics.result().isBlank(), "no answer returned");
 
-        // A behaviour question stops one rung further up — never reaching the vet.
+        // A behaviour question stops one rung further up — never reaching the rescue dog.
         Run behaviour = run(def, "he pulls like a train on the lead");
         assertEquals(List.of("EverydayCare", "DogTrainer"), behaviour.invoked().stream()
                         .filter(a -> !a.equals("invoke")).toList(),
-                "the trainer answered, so the vet should not have been rung");
+                "the trainer answered, so the rescue dog should not have been asked");
     }
 
     /**
@@ -641,7 +641,7 @@ class PatternCatalogTest {
         var asked = new ArrayList<String>();
         Run approved = run(def, def.defaultInput(), q -> {
             asked.add(q);
-            return "Yes, but also tell her to count the socks again before she sets off.";
+            return "Yes, but also count the socks again before I get home.";
         });
         assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
         assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
@@ -654,9 +654,9 @@ class PatternCatalogTest {
         // echoes what the person said, so a naive contains() passes on their own words and a
         // run that ignored them entirely still looks green.
         Run refused = run(def, def.defaultInput(), q -> "No. Do not ring anyone, wait for me.");
-        assertTrue(instruction(refused).contains("Do not act on it"),
+        assertTrue(instruction(refused).contains("Do nothing yet"),
                 "a refusal must survive to the instruction: " + instruction(refused));
-        assertFalse(instruction(refused).contains("Ring the practice now"), "a refusal must not be quietly overridden: " + instruction(refused));
+        assertFalse(instruction(refused).contains("straight to the vet"), "a refusal must not be quietly overridden: " + instruction(refused));
 
         // And the run has to be legible on the page: a question event, then an answer event.
         List<String> types = refused.events().stream().map(RunEvent::type).toList();
@@ -666,7 +666,7 @@ class PatternCatalogTest {
 
     /** Just the final instruction, without the draft and the answer the result also shows. */
     private static String instruction(Run r) {
-        String marker = "**So the sitter is told**";
+        String marker = "**So the pack is told**";
         int at = r.result().indexOf(marker);
         return at < 0 ? r.result() : r.result().substring(at + marker.length());
     }
@@ -760,7 +760,7 @@ class PatternCatalogTest {
 
     /**
      * The hand-off lives in two files that have to agree and nothing at run time forces them to:
-     * the nurse's prompt must name who is needed, and the supervisor's context must say what to
+     * the Beagle's prompt must name who is needed, and the supervisor's context must say what to
      * do with that. When they disagree a live planner calls one agent and stops, and every other
      * test here still passes — the mock cannot see it.
      */
@@ -893,11 +893,11 @@ class PatternCatalogTest {
         for (String id : List.of("conditional", "humanApproval", "supervisor", "customPlanner",
                 "sitterNote")) {
             assertTrue(labels(catalog, id).containsAll(List.of("EverydayCare", "DogTrainer",
-                            "EmergencyVet")),
+                            "RescueDog")),
                     id + " should be built from the three desks: " + labels(catalog, id));
         }
 
-        // The sitter-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
+        // The fridge-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
         // used a third time by the capstone.
         for (String id : List.of("sequential", "loop", "sitterNote")) {
             assertTrue(labels(catalog, id).contains("FridgeMagnet"),
@@ -909,21 +909,21 @@ class PatternCatalogTest {
                 "the capstone should reuse the parallel demo's planners");
 
         // And the council ratifies with the very assessors that voted two demos earlier.
-        assertTrue(labels(catalog, "secondDogCouncil").containsAll(List.of("SpaceAndTime",
-                        "MoneyAndVet", "AskZaoHimself")),
+        assertTrue(labels(catalog, "secondDogCouncil").containsAll(List.of("SofaSpace",
+                        "FoodBudget", "AskZaoHimself")),
                 "the council should reuse the voting demo's assessors");
 
-        // The supervisor adds exactly one agent — the nurse, who makes the hand-off reliable —
+        // The supervisor adds exactly one agent — the Beagle, who makes the hand-off reliable —
         // and reuses the routing demo's three. Anything more and the "same cast, different
         // decider" point stops being true.
         // Agents only: the input box and the supervisor itself are the diagram's scaffolding,
         // not part of the cast this is counting.
         var extra = nodes(catalog, "supervisor").stream()
                 .filter(n -> n.role().equals("agent")).map(Topology.Node::label)
-                .filter(l -> !List.of("EverydayCare", "DogTrainer", "EmergencyVet").contains(l))
+                .filter(l -> !List.of("EverydayCare", "DogTrainer", "RescueDog").contains(l))
                 .toList();
-        assertEquals(List.of("TriageNurse"), extra,
-                "the supervisor should add only the nurse: " + labels(catalog, "supervisor"));
+        assertEquals(List.of("FirstSniff"), extra,
+                "the supervisor should add only the Beagle: " + labels(catalog, "supervisor"));
     }
 
     private static List<Topology.Node> nodes(PatternCatalog c, String id) {
@@ -1059,16 +1059,16 @@ class PatternCatalogTest {
                 "the mapped agent must be drawn as a stack");
 
         // The async step's whole claim is that it SPANS the steps after it. Drawn as a plain
-        // chain the picture is demo 2 exactly, and the one thing that differs — that the vet is
+        // chain the picture is demo 2 exactly, and the one thing that differs — that the Basset is
         // still working while the planners run — is the thing not on the page. The skip-ahead
         // edge is what says it, and in a stages layout it arcs over the boxes between its ends.
         var spanning = edges(catalog, "async").stream()
-                .filter(e -> e.from().equals("vet") && e.to().equals("join")).toList();
+                .filter(e -> e.from().equals("fence") && e.to().equals("join")).toList();
         assertEquals(1, spanning.size(), "the async step must reach the join directly");
         assertTrue(spanning.getFirst().label() != null && spanning.getFirst().label().contains("read"),
                 "the long edge has to say that the READ is the join, not the step: "
                         + spanning.getFirst().label());
-        assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "vet"),
+        assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "fence"),
                 "the async edge must skip columns, or it is drawn flat and disappears behind "
                         + "the boxes it passes");
 
@@ -1093,10 +1093,11 @@ class PatternCatalogTest {
                         .anyMatch(n -> n.sub() != null && n.sub().contains("strong")),
                 "the desk box has to say that its model is the variable");
 
-        // The supervisor's nurse is called first and the rest only if she says so; a symmetric
+        // The supervisor's Beagle is called first and the rest only if she says so; a symmetric
         // star would say all four are equal peers, which is a fan-out.
         assertTrue(nodes(catalog, "supervisor").stream()
-                        .anyMatch(n -> "1 · always first".equals(n.sub())),
+                        .anyMatch(n -> n.sub() != null && n.sub().startsWith("1 ·")
+                                && n.sub().endsWith("first")),
                 "the supervisor diagram must show which call comes first");
 
         // The person must not be drawn as an agent. A human-in-the-loop diagram whose middle
@@ -1120,16 +1121,16 @@ class PatternCatalogTest {
         // which is the exact misreading the pattern exists to correct.
         String exit = role(catalog, "customPlanner", "join");
         assertEquals(3, inDegree(catalog, "customPlanner", exit),
-                "every rung needs its own way out, or the picture says only the vet can answer");
+                "every rung needs its own way out, or the picture says only the rescue dog can answer");
         assertEquals(2, edges(catalog, "customPlanner").stream()
                         .filter(e -> "ESCALATE".equals(e.label())).count(),
                 "the two lower rungs escalate; the top one has nowhere to escalate to");
 
         // Supervisor and blackboard are loops, not one-way arrows.
-        // The nurse edge specifically: the supervisor invokes her and reads what comes back,
+        // The Beagle edge specifically: the supervisor invokes her and reads what comes back,
         // which is the edge the whole demo turns on. One-way arrows would draw a fan-out.
         assertTrue(mutual(catalog, "supervisor", "supervisor", "nurse"),
-                "the supervisor must be shown reading the nurse's answer, not just calling her");
+                "the supervisor must be shown reading the Beagle's answer, not just calling her");
         assertTrue(mutual(catalog, "blackboard", "trail", "board"),
                 "blackboard contributors read as well as write");
 

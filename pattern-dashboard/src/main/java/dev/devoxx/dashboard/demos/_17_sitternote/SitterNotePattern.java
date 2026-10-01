@@ -19,7 +19,7 @@ import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
 import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos._06_conditional.RescueDog;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
@@ -29,7 +29,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>sitter note (composite)</b> demo — the capstone: four patterns composed into the note on the fridge door.
+ * Wiring for the <b>fridge note (composite)</b> demo — the capstone: four patterns composed into the note on the fridge door.
  */
 public final class SitterNotePattern {
 
@@ -44,9 +44,9 @@ public final class SitterNotePattern {
                 .name("WorryRouter")
                 .outputKey(Category.class)
                 .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+        var rescue = AgenticServices.agentBuilder(RescueDog.class)
                 .chatModel(model)
-                .name("EmergencyVet")
+                .name("RescueDog")
                 .outputKey(Answer.class)
                 .build();
         var trainer = AgenticServices.agentBuilder(DogTrainer.class)
@@ -61,7 +61,7 @@ public final class SitterNotePattern {
                 .build();
         TriageDesk triage = AgenticServices.conditionalBuilder(TriageDesk.class)
                 .name("Conditional")
-                .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), vet)
+                .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), rescue)
                 .subAgents(s -> category(s.readState(Category.class)).equals("training"), trainer)
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
                 .build();
@@ -103,9 +103,9 @@ public final class SitterNotePattern {
                 .build();
 
         // 4. Sequence — the spine that holds the three composites plus the merge step.
-        var merge = AgenticServices.agentBuilder(SitterNoteMerger.class)
+        var merge = AgenticServices.agentBuilder(PackNoteMerger.class)
                 .chatModel(model)
-                .name("SitterNoteMerger")
+                .name("PackNoteMerger")
                 .outputKey(Notes.class)
                 .build();
         SitterNotePipeline app = AgenticServices.sequenceBuilder(SitterNotePipeline.class)
@@ -124,13 +124,13 @@ public final class SitterNotePattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "the weekend", "input", 0),
-                        node("router", "WorryRouter", "router", 1),
-                        node("vet", "EmergencyVet", "agent", 2),
+                        node("router", "WorryRouter", "router", 1).withSub("Corgi · herds worries"),
+                        node("vet", "RescueDog", "agent", 2),
                         node("trainer", "DogTrainer", "agent", 2),
                         node("care", "EverydayCare", "agent", 2),
                         node("meals", "ChowHound", "agent", 2),
                         node("walks", "LeadDeveloper", "agent", 2),
-                        node("merge", "SitterNoteMerger", "join", 3),
+                        node("merge", "PackNoteMerger", "join", 3).withSub("Zao · one note"),
                         node("tighten", "FridgeMagnet", "agent", 4),
                         node("check", "RuffDraftCritic", "agent", 4)),
                 List.of(edge("in", "router"),
@@ -146,12 +146,12 @@ public final class SitterNotePattern {
                         edge("tighten", "check"),
                         edge("check", "tighten", "score < 0.8")));
 
-        return new PatternDef("sitterNote", "Sitter Note (composite)", "composite",
-                "Back to that weekend away, the whole thing end to end. Seventeen demos later, "
-                        + "somebody finally writes down when the dog goes out.",
+        return new PatternDef("sitterNote", "Fridge Note (composite)", "composite",
+                "Back to that weekend alone, the whole thing end to end. Seventeen demos later, "
+                        + "somebody finally writes down when the pack goes out.",
                 "Almost everything: demo 6's router and desks, demo 4's meal and walk "
                         + "planners, and demo 3's checklist and critic in the refining loop.",
-                "A real system, not a pattern: the owner's worry is routed to the right person, a "
+                "A real system, not a pattern: the human's worry is routed to the right dog, a "
                         + "parallel step plans the meals and the walks, a sequence merges all "
                         + "three into one note for the fridge door, and a loop tightens it until "
                         + "it passes the same four rules as the loop demo. Deterministic "
@@ -160,9 +160,10 @@ public final class SitterNotePattern {
                 "Composites fail at the seams: every step depends on a key an earlier one wrote, "
                         + "so one agent answering off-format breaks a step that looks unrelated.",
                 topo,
-                "we're away Friday to Sunday and my sister is having Zao. Two scoops morning "
-                        + "and evening, he pulls like a train on the lead, and it's New Year, so "
-                        + "there will be fireworks both nights and he will be under the table.",
+                "I'm away Friday to Sunday and nobody is coming. Two scoops each morning and "
+                        + "evening, the Greyhound pulls everyone along like a train, and it's New "
+                        + "Year, so there will be fireworks both nights and he will be under the table. "
+                        + "Vet is 061 22 33 44.",
                 SitterNotePattern::run);
     }
 }

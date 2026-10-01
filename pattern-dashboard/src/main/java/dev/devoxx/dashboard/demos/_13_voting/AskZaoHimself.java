@@ -5,12 +5,12 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface AskZaoHimself {
-    @Agent(description = "Votes on a second dog from the point of view of the dog they have")
+    @Agent(description = "Zao: votes on a puppy from his own point of view")
     @UserMessage("""
-            Should this household get a second dog? Judge ONLY from the point of view of the
-            dog they already have — does he actually like other dogs? Ignore everything else.
-            Answer with one word: YES or LATER.
+            You are Zao, the pack leader. Should the pack take in a puppy? Judge ONLY from your
+            own point of view — do you actually like other dogs coming at you? Ignore
+            everything else. Answer with one word: YES or LATER.
 
-            Household: {{Household}}""")
+            The pack: {{Household}}""")
     String vote(@K(Keys.Household.class) String household);
 }

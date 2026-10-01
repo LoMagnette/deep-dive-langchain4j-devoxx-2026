@@ -7,11 +7,11 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
-public interface SitterNoteMerger {
-    @Agent(description = "Merges the answer and the two plans into one note for the sitter")
+public interface PackNoteMerger {
+    @Agent(description = "Zao: merges the answer and the two plans into one note for the pack")
     @UserMessage("""
-            Write the note that goes on the fridge for the dog sitter. Put the thing that
-            matters most at the top.
+            Write the note that goes on the fridge for the pack. Put the thing that matters most
+            at the top. Use only what is below — never invent a time, an amount or a number.
 
             What the expert said: {{Answer}}
             Meals: {{Meals}}

@@ -13,7 +13,7 @@ import dev.devoxx.dashboard.demos._04_parallel.Keys.Meals;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
 import dev.devoxx.dashboard.demos._04_parallel.ChowHound;
 import dev.devoxx.dashboard.demos._04_parallel.LeadDeveloper;
-import dev.devoxx.dashboard.demos._20_async.Keys.VetLine;
+import dev.devoxx.dashboard.demos._20_async.Keys.FenceReport;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -32,10 +32,10 @@ public final class AsyncPattern {
         // The only line that differs from an ordinary sequence. The agent is not written any
         // differently and the builder is not a different builder — async is one call on this one
         // step, and the two planners below it are demo 4's, unchanged.
-        var vet = AgenticServices.agentBuilder(VetCallback.class)
+        var basset = AgenticServices.agentBuilder(FenceCheck.class)
                 .chatModel(model)
-                .name("VetCallback")
-                .outputKey(VetLine.class)
+                .name("FenceCheck")
+                .outputKey(FenceReport.class)
                 .async(true)
                 .build();
         var meals = AgenticServices.agentBuilder(ChowHound.class)
@@ -50,9 +50,9 @@ public final class AsyncPattern {
                 .build();
         CoveragePipeline app = AgenticServices.sequenceBuilder(CoveragePipeline.class)
                 .name("Sequential")
-                // Declaration order is still a sequence: the vet is asked FIRST. It just does not
-                // hold the other two up, because its answer is not needed until the note.
-                .subAgents(vet, meals, walks)
+                // Declaration order is still a sequence: the Basset is sent FIRST. He just does
+                // not hold the other two up, because his answer is not needed until the note.
+                .subAgents(basset, meals, walks)
                 .output(AsyncPattern::note)
                 .listener(listener)
                 .build();
@@ -65,8 +65,8 @@ public final class AsyncPattern {
     private static String note(AgenticScope scope) {
         return "**Meals**\n\n" + requireNonNullElse(scope.readState(Meals.class), "")
                 + "\n\n**Walks**\n\n" + requireNonNullElse(scope.readState(Walks.class), "")
-                + "\n\n**Vet cover** *(the run waited here, and only here)*\n\n"
-                + requireNonNullElse(scope.readState(VetLine.class), "");
+                + "\n\n**The fence** *(the run waited here, and only here)*\n\n"
+                + requireNonNullElse(scope.readState(FenceReport.class), "");
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -76,19 +76,19 @@ public final class AsyncPattern {
         // between its ends. That long arc IS the agent's lifetime.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "the stay", "input", 0),
-                        node("vet", "VetCallback", "agent", 1).withSub("async · starts here"),
-                        node("meals", "ChowHound", "agent", 2),
-                        node("walks", "LeadDeveloper", "agent", 3),
-                        node("join", "the note", "join", 4).withSub("reads vetline")),
-                List.of(edge("in", "vet"),
-                        edge("vet", "meals", "does not wait"),
+                        node("fence", "FenceCheck", "agent", 1).withSub("Basset · async · slow"),
+                        node("meals", "ChowHound", "agent", 2).withSub("Labrador · food"),
+                        node("walks", "LeadDeveloper", "agent", 3).withSub("Greyhound · running"),
+                        node("join", "the note", "join", 4).withSub("reads FenceReport")),
+                List.of(edge("in", "fence"),
+                        edge("fence", "meals", "does not wait"),
                         edge("meals", "walks"),
                         edge("walks", "join"),
-                        edge("vet", "join", "the read that joins")));
+                        edge("fence", "join", "the read that joins")));
         return new PatternDef("async", "Asynchronous Agents", "production",
-                "The vet's out-of-hours line takes a minute to answer. Nobody blocks the main "
-                        + "thread on hold music while the rest of the note writes itself.",
-                "Demo 4's ChowHound and LeadDeveloper, unchanged — only the vet step is new.",
+                "The Basset is checking the fence. It is a long fence and he is a Basset. Nobody "
+                        + "blocks the main thread waiting for him.",
+                "Demo 4's ChowHound and LeadDeveloper, unchanged — only the Basset is new.",
                 "One step in an ordinary sequence marked `async(true)`. The agent is unchanged, "
                         + "the builder is unchanged, and the declaration order is unchanged — the "
                         + "slow step is still asked first. What changes is that it writes an "
@@ -101,10 +101,9 @@ public final class AsyncPattern {
                         + "shows `<pending>` until then. Only mark a step async when nothing "
                         + "between it and its reader needs its answer.",
                 topo,
-                "Friday to Sunday, my sister has him. Two scoops morning and evening, walks "
-                        + "morning and evening, and I want the out-of-hours cover on the note — "
-                        + "the practice takes a minute to pick up and I am not standing here "
-                        + "holding the phone.",
+                "Friday to Sunday, nobody is coming. Two scoops morning and evening, garden "
+                        + "morning and evening, and nobody goes out until the Basset has been round "
+                        + "the whole fence — it is a long fence, and he is a Basset.",
                 AsyncPattern::run);
     }
 }

@@ -10,7 +10,7 @@ import java.util.Locale;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos._06_conditional.RescueDog;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
 import dev.devoxx.dashboard.run.StreamingListener;
@@ -28,13 +28,13 @@ public final class CustomPlannerPattern {
 
     /** The escalation ladder, cheapest first — the same order the planner is handed. */
     private static final List<String> LADDER =
-            List.of("EverydayCare", "DogTrainer", "EmergencyVet");
+            List.of("EverydayCare", "DogTrainer", "RescueDog");
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Declaration order IS the cost order — that is the whole configuration of this
         // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
-        var book = AgenticServices.agentBuilder(EverydayCare.class)
+        var golden = AgenticServices.agentBuilder(EverydayCare.class)
                 .chatModel(model)
                 .name("EverydayCare")
                 .outputKey(Answer.class)
@@ -44,13 +44,13 @@ public final class CustomPlannerPattern {
                 .name("DogTrainer")
                 .outputKey(Answer.class)
                 .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+        var rescue = AgenticServices.agentBuilder(RescueDog.class)
                 .chatModel(model)
-                .name("EmergencyVet")
+                .name("RescueDog")
                 .outputKey(Answer.class)
                 .build();
         EscalationLadder app = AgenticServices.plannerBuilder(EscalationLadder.class)
-                .subAgents(book, trainer, vet)
+                .subAgents(golden, trainer, rescue)
                 // Same builder as every pattern above it. The only difference is that this
                 // planner is forty lines in this repo instead of forty lines in the library.
                 .planner(EscalationPlanner::new)
@@ -85,9 +85,9 @@ public final class CustomPlannerPattern {
         // three ways out arc over the rungs they skip.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "worry", "input", 0),
-                        node("book", "EverydayCare", "agent", 1).withSub("rung 1 · cheapest"),
-                        node("trainer", "DogTrainer", "agent", 2).withSub("rung 2 · only if asked"),
-                        node("vet", "EmergencyVet", "agent", 3).withSub("rung 3 · last resort"),
+                        node("book", "EverydayCare", "agent", 1).withSub("1 · Golden · free"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("2 · Collie · if asked"),
+                        node("vet", "RescueDog", "agent", 3).withSub("3 · St Bernard · €180"),
                         node("out", "first ANSWERED wins", "join", 4)),
                 List.of(edge("in", "book"),
                         edge("book", "trainer", "ESCALATE"),
@@ -96,13 +96,13 @@ public final class CustomPlannerPattern {
                         edge("trainer", "out", "ANSWERED"),
                         edge("vet", "out")));
         return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
-                "By now you know who to ask, in what order, and that the vet charges for "
-                        + "the phone call. Escalation, with the bill in view.",
+                "By now the pack knows who to ask, in what order, and that the St Bernard "
+                        + "always ends at the vet's. Escalation, with the bill in view.",
                 "Demo 6's three desks a third time. Routing picks one, the supervisor "
                         + "picks several, and this tries them cheapest-first and stops early.",
                 "Every planner above is an implementation of one small interface — here is one "
-                        + "written by hand. The policy is a cost ladder: ask the book, then the "
-                        + "trainer, then the vet, and stop at the first rung that can actually "
+                        + "written by hand. The policy is a cost ladder: ask the old Golden, then "
+                        + "the Collie, then the rescue dog, and stop at the first rung that can actually "
                         + "answer. Change the question and watch it stop at a different rung: "
                         + "that decision depends on what came back, which is the one thing none "
                         + "of the built-in builders can express.",
@@ -115,9 +115,9 @@ public final class CustomPlannerPattern {
                 topo,
                 // Escalates all the way, so the default run walks the whole ladder. Try
                 // "which food should I buy for a four-year-old bouvier?" and it stops at the
-                // book; try "he pulls like a train on the lead" and it stops at the trainer.
-                "he's suddenly limping on his back left leg and won't put weight on it — and "
-                        + "the out-of-hours vet charges €180 before anybody has touched the dog",
+                // Golden; try "he pulls like a train on the lead" and it stops at the trainer.
+                "the Greyhound is suddenly limping on his back left leg and won't put weight on "
+                        + "it — and the out-of-hours vet charges €180 before anybody has touched him",
                 CustomPlannerPattern::run);
     }
 }

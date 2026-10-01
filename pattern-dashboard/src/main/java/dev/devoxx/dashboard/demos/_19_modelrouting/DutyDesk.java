@@ -11,10 +11,11 @@ import dev.langchain4j.service.UserMessage;
  * variable, so anything that changes between the two runs came from the tier and nowhere else.
  */
 public interface DutyDesk {
-    @Agent(description = "Answers a dog owner's worry, whatever kind it is")
+    @Agent(description = "The dog on duty: answers the pack's worry, whatever kind it is")
     @UserMessage("""
-            You are the desk a worried dog owner reaches. Answer the worry below directly and
-            practically: what to do now, and whether it needs a vet today. Keep it short.
+            You are the dog on duty tonight, the one the pack comes to with a worry. Answer the
+            worry below directly and practically: what to do now, and whether the human needs
+            waking for the vet. Keep it short.
 
             Worry: {{Worry}}""")
     String answer(@K(Worry.class) String worry);

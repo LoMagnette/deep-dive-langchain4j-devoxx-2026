@@ -11,11 +11,12 @@ import dev.langchain4j.service.UserMessage;
  * honest if the two runs differ in nothing but how the answer arrives.
  */
 public interface StreamingNoteRetriever {
-    @Agent(description = "Turns a rambling message about the dog into a structured sitter card")
+    @Agent(description = "The Border Collie: turns the human's rambling message into a structured pack card")
     @UserMessage("""
-            Turn this message into a sitter card with exactly these five lines. Invent
-            nothing — if the message does not say, write "not given":
-            Dog:
+            You are the Border Collie, the one in the pack who actually reads things. Turn the
+            human's message into a pack card with exactly these five lines. Invent nothing — if
+            the message does not say, write "not given":
+            Pack:
             Meals:
             Walks:
             Watch out for:

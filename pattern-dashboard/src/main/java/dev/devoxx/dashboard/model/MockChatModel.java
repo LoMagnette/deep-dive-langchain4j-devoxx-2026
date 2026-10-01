@@ -99,9 +99,9 @@ public class MockChatModel implements ChatModel {
                         p -> String.format(Locale.US, "%.2f",
                                 scoreCounter.getAndIncrement() % 2 == 0 ? 0.60 : 0.95)),
 
-                // --- 2. The second-dog vote. One word, and deliberately NOT the same word for
+                // --- 2. The puppy vote. One word, and deliberately NOT the same word for
                 // all three — a real 2-1 majority rather than three agents agreeing.
-                new Rule(p -> p.contains("what a second dog costs"), p -> "YES"),
+                new Rule(p -> p.contains("judge only the food"), p -> "YES"),
                 new Rule(p -> p.contains("yes or later"), p -> "LATER"),
 
                 // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or it
@@ -119,81 +119,56 @@ public class MockChatModel implements ChatModel {
                 // demonstrate nothing.
                 new Rule(p -> p.contains("out of the beard"), MockChatModel::beardVerdict),
 
-                // --- 5. The sitter note, narrowest first. All three of these prompts talk about
-                // notes and cards, and the checklist's prompt quotes the words "sitter card".
+                // --- 5. The pack's note, narrowest first. Both prompts talk about notes and
+                // cards, and the checklist's prompt may quote the card it was handed.
                 new Rule(p -> p.contains("times of day in order"),
                         p -> """
-                                07:30  two scoops, in the tub by the back door
-                                08:00  out for a walk, lead on the whole time
-                                13:00  quick garden visit
-                                18:00  two scoops
-                                19:00  last walk of the day
-                                Never: the dried liver treats. Never off the lead in the park.
-                                Lead and poo bags: hook by the back door. Vet: 061 22 33 44."""),
-                new Rule(p -> p.contains("sitter card with exactly"),
+                                07:00  feeder: two scoops each (Labrador: one)
+                                07:15  garden, through the dog flap
+                                13:00  garden again
+                                18:00  feeder: two scoops each (Labrador: one)
+                                19:00  last garden of the day
+                                Nobody touches: the dried liver treats. Nobody digs under the fence.
+                                Vet: 061 22 33 44. The Greyhound howls the first night: ignore."""),
+                new Rule(p -> p.contains("pack card with exactly"),
                         p -> """
-                                Dog: Zao, Bouvier des Flandres
-                                Meals: two scoops morning and evening, food in the tub by the back door
+                                Pack: Zao (in charge), the Labrador, the Dachshund, the Greyhound
+                                Meals: two scoops each from the feeder, morning and evening; the Labrador gets one
                                 Walks: not given
-                                Watch out for: no dried liver treats; never off the lead in the park
+                                Watch out for: nobody touches the dried liver treats; the garden, not under the fence
                                 Vet: 061 22 33 44"""),
 
-                // --- 6. The refinement loop's rewrite. Satisfies all four rules, so the room can
-                // hold it against the note it started from and see what the loop fixed.
-                new Rule(p -> p.contains("never met the dog"),
-                        p -> """
-                                Zao eats twice a day: two scoops at 07:30 and two at 18:00. Food \
-                                is in the tub by the back door. No dried liver treats — they \
-                                upset him.
-
-                                Walk him at 08:00 and again at 19:00. His lead and the poo bags \
-                                are on the hook by the back door. Keep him on the lead in the \
-                                park; he will not come back yet.
-
-                                He may cry the first night. He settles.
-
-                                Vet: 061 22 33 44."""),
-
-                // --- 7. The weekend-away composite, narrowest first. Its refining loop reuses
+                // --- 7. The weekend-alone composite, narrowest first. Its refining loop reuses
                 // demo 3's FridgeMagnet rather than an agent of its own, so it is claimed by
                 // the checklist rule above — there is deliberately no rule of its own here.
-                new Rule(p -> p.contains("goes on the fridge for the dog sitter"),
+                new Rule(p -> p.contains("goes on the fridge for the pack"),
                         p -> """
-                                Fireworks are the thing to plan for: shut the curtains, put the \
-                                radio on and keep him in after dark both nights.
-                                Meals 07:30 and 18:00, two scoops. Walks 08:00 and 19:00, lead on \
-                                throughout. Vet 061 22 33 44."""),
+                                Fireworks are the thing to plan for: everyone indoors after dark \
+                                both nights, and the Greyhound gets the table to hide under.
+                                Meals 07:00 and 18:00, two scoops each. Garden 07:15 and 19:00, \
+                                and nobody pulls anybody. Vet 061 22 33 44."""),
                 new Rule(p -> p.contains("meals for the days"),
-                        p -> "Two scoops at 07:30 and two at 18:00, from the tub by the back "
-                                + "door. Nothing off the table, and no dried liver treats."),
+                        p -> "Two scoops each at 07:00 and 18:00 from the feeder — the Labrador "
+                                + "gets one, and he knows why. Nothing off the counter, and nobody "
+                                + "touches the dried liver treats."),
                 new Rule(p -> p.contains("walks for the days"),
-                        p -> "08:00 for half an hour and 19:00 for twenty minutes, lead on the "
-                                + "whole time. Avoid the park after dark while the fireworks are "
-                                + "going."),
+                        p -> "07:15 and 19:00, twenty minutes of garden each, plus one zoomies "
+                                + "session at noon. Stay away from the back fence — the Dachshund "
+                                + "knows why. Indoors after dark while the fireworks are going."),
 
                 // --- 8. The three desks, AFTER the composite's rules because the merger's
                 // prompt quotes whichever of them answered. Each ends with the word the
-                // escalation ladder branches on; the vet is the last rung, so it always answers.
-                new Rule(p -> p.contains("out-of-hours line"), MockChatModel::nurse),
+                // escalation ladder branches on; the rescue dog is the last rung, so it always
+                // answers.
+                new Rule(p -> p.contains("you sniff every problem first"), MockChatModel::firstSniff),
 
-                new Rule(p -> p.contains("emergency vet"),
+                new Rule(p -> p.contains("the pack's rescue dog"),
                         p -> vet(p) + "\nANSWERED"),
-                new Rule(p -> p.contains("the dog trainer"), MockChatModel::trainer),
-                new Rule(p -> p.contains("everyday dog questions"),
+                new Rule(p -> p.contains("who trains the rest of the pack"),
+                        MockChatModel::trainer),
+                new Rule(p -> p.contains("answer the everyday questions"),
                         p -> everyday(p) + "\n"
                                 + (kind(p) == Kind.BASICS ? "ANSWERED" : "ESCALATE")),
-
-                // --- 9. The supervisor's two specialists.
-                new Rule(p -> p.contains("daily routine"),
-                        p -> "Start now, not in month three: move his bed off your room and into "
-                                + "the hall this month, so it is not something the baby did to "
-                                + "him. Keep the 08:00 and 19:00 walks exactly as they are — they "
-                                + "are the two things that will not change in March."),
-                new Rule(p -> p.contains("needs to be taught"),
-                        p -> "In this order: a settle on a mat while you are busy in the room; "
-                                + "waiting at doorways instead of barging through; and off the "
-                                + "furniture on a word. Three months is enough for all three if "
-                                + "you start with the mat."),
 
                 // --- 10. The sausage heist, in three steps. The Corgi's rule is FIRST because
                 // its prompt quotes the chair step's answer, and the chair prompt quotes the
@@ -221,7 +196,7 @@ public class MockChatModel implements ChatModel {
                 // Note the lowercase() inside the reply: the lambda is handed the RAW prompt,
                 // not the lowercased text the rule matched on. And "corner cushion" is in the
                 // Labrador's own prompt, never the Greyhound's, so only the counter can carry it.
-                new Rule(p -> p.contains("you are the greyhound"),
+                new Rule(p -> p.contains("you want the whole sofa"),
                         p -> p.toLowerCase(Locale.ROOT).contains("i get the corner cushion")
                                 ? "Fine. I keep the long end and stretch out as far as I like, "
                                 + "the corner cushion is yours, and the middle cushion is "
@@ -229,7 +204,7 @@ public class MockChatModel implements ChatModel {
                                 : "I sleep twenty hours a day and I am mostly legs. Proposal: "
                                 + "the sofa is mine, all of it, and the Labrador has the rug, "
                                 + "which is a very nice rug."),
-                new Rule(p -> p.contains("you are the labrador"),
+                new Rule(p -> p.contains("you want a place on the sofa"),
                         p -> "The rug is where crumbs go to die. Counter-proposal: you keep the "
                                 + "long end; I get the corner cushion, the one with the crisps "
                                 + "down the back — and nobody's legs cross the middle cushion."),
@@ -259,55 +234,57 @@ public class MockChatModel implements ChatModel {
 
                 // --- 13. The puppy's first hour, three desires.
                 new Rule(p -> p.contains("first tiny training session"),
-                        p -> "One thing only: his name. Say it once, pay him when he looks, five "
-                                + "goes, then stop while he still wants more. Two minutes is a "
-                                + "long session for an eight-week-old puppy."),
+                        p -> "One thing only: his name. The pack says it once, and the Labrador "
+                                + "drops a piece of kibble the moment he looks. Five goes, then stop "
+                                + "while he still wants more. Two minutes is a long session for an "
+                                + "eight-week-old puppy."),
                 new Rule(p -> p.contains("first meal in the new house"),
                         p -> "The amount on the breeder's sheet, not more, in a quiet corner "
-                                + "where nobody walks past. Put it down, walk away, and leave him "
-                                + "alone with it — do not stroke him or take the bowl to check."),
+                                + "where nobody walks past. Then the whole pack walks away and "
+                                + "leaves him alone with it — me especially. I do not check the "
+                                + "bowl. I do not check the bowl."),
                 new Rule(p -> p.contains("out to the garden first"),
                         p -> "Straight out of the car and onto the grass, before he comes "
-                                + "indoors at all. Stand still and say nothing until he goes, "
-                                + "then tell him he is wonderful the second he finishes."),
+                                + "indoors at all. I stand by the spot I use and say nothing until "
+                                + "he goes, then I tell him he is wonderful the second he finishes."),
 
                 // Before the desks' own rules: this prompt quotes whichever desk answered.
-                new Rule(p -> p.contains("honouring the person's decision"),
+                new Rule(p -> p.contains("honouring the human's decision"),
                         MockChatModel::finalNote),
 
-                // --- 14. The council. The chair and the glue are listed before the two
+                // --- 14. The puppy council. The chair and the glue are listed before the two
                 // advocates, because all three prompts talk about a motion.
-                new Rule(p -> p.contains("chair the household council"),
+                new Rule(p -> p.contains("chair the pack council"),
                         p -> "The motion is carried, but not yet. The fact that decided it: Zao "
-                                + "stiffens and growls at dogs that come at him, and a flat with "
-                                + "no garden gives him nowhere to get away from one. Condition: "
-                                + "not before he can meet a strange dog calmly on neutral ground."),
+                                + "stiffens and growls at dogs that come at him, and a sofa that "
+                                + "already holds two dogs gives him nowhere to get away from one. "
+                                + "Condition: not before he can meet a strange dog calmly on "
+                                + "neutral ground."),
                 new Rule(p -> p.contains("restate this ruling"),
-                        p -> "A two-bedroom flat with no garden, both owners out eight to six, "
-                                + "and a second dog brought in later once Zao can meet other "
-                                + "dogs calmly."),
+                        p -> "The same pack and the same full sofa, with a calm puppy brought "
+                                + "in later, once Zao can meet other dogs calmly."),
                 new Rule(p -> p.contains("write the motion"),
-                        p -> "Motion: get a second dog, but not this year — an older, calm "
-                                + "female, and only after Zao can meet a strange dog on neutral "
-                                + "ground without stiffening."),
+                        p -> "Motion: take in a puppy, but not this year — a calm one, and only "
+                                + "after Zao can meet a strange dog on neutral ground without "
+                                + "stiffening."),
                 new Rule(p -> p.contains("one angle only"),
-                        p -> "On this angle it points one way: the flat is small, the days are "
-                                + "long and the dog they have does not enjoy other dogs. What is "
+                        p -> "On this angle it points one way: the sofa is full, the food is "
+                                + "fine and the dog in charge does not enjoy other dogs. What is "
                                 + "unknown: whether that is every dog, or just the ones that run "
                                 + "straight at him."),
                 // The two council advocates answer DIFFERENTLY, so unanimous() does not converge
                 // and the debate runs its full two rounds before the chair rules — the opposite
                 // of the holiday debate below, which converges in one. Both are worth seeing.
                 new Rule(p -> p.contains("argue for this motion"),
-                        p -> "A second dog would give him company for the nine hours nobody is "
-                                + "home, which is the real problem here. The objection is fair: "
-                                + "he does not like strange dogs — which is why the motion says "
-                                + "an older calm female, and says later, not now."),
+                        p -> "A puppy would give the pack somebody new to teach, and me somebody "
+                                + "shorter than I am, which is the real point here. The objection "
+                                + "is fair: Zao does not like strange dogs — which is why the "
+                                + "motion says a calm one, and says later, not now."),
                 new Rule(p -> p.contains("argue against this motion"),
-                        p -> "Two dogs in a flat with no garden and nobody home for nine hours "
-                                + "is two bored dogs instead of one. The point in favour is real "
-                                + "— he is lonely — but the answer to a lonely dog is a dog "
-                                + "walker, not another dog."),
+                        p -> "A puppy on a sofa that already holds a Greyhound and a Labrador is "
+                                + "a fight about cushions every evening. The point in favour is "
+                                + "real — the pack would grow — but the answer to a pack that "
+                                + "wants company is more garden, not another dog."),
 
                 // --- 15. The holiday debate. "comes or stays" is the JUDGE's prompt; the two
                 // advocates fall through to the catch-all, which hands them the same words and
@@ -315,25 +292,25 @@ public class MockChatModel implements ChatModel {
                 // load-bearing: a rule between these two that tells the advocates apart kills
                 // the contrast with the council's debate, and turns that test red.
                 new Rule(p -> p.contains("comes or stays"),
-                        p -> "He stays, with the sitter. The fact that decided it: a house with "
+                        p -> "He stays, at the kennels. The fact that decided it: a house with "
                                 + "no shade in Tuscany in August is dangerous for a black "
                                 + "double-coated bouvier, and the twelve-hour drive is on top of "
-                                + "that. Condition: the sitter stays in our house, not hers, and "
-                                + "does two overnight trial stays before August."),
+                                + "that. Condition: two trial nights at the kennels before "
+                                + "August, so he knows the place before he is left there."),
                 new Rule(p -> has(p, "argue"),
                         p -> "The twelve hours in the car and a house with no shade are the whole "
                                 + "argument, and August in Tuscany is not survivable for a black "
-                                + "double-coated dog. Two weeks with a sitter he knows costs him "
-                                + "a fortnight of missing you; the alternative could cost more."),
+                                + "double-coated dog. Two weeks at kennels he knows costs him "
+                                + "a fortnight of missing the human; the alternative could cost "
+                                + "more."),
 
                 // --- 16. Running it for real. Last and safely so: each is keyed on an
-                // instruction no rule above quotes. The out-of-hours DESK, not the out-of-hours
-                // LINE — the nurse owns that phrase nine rules up.
-                new Rule(p -> p.contains("cover arrangements"),
-                        p -> "Mr Devos is on call from 19:00 to 08:00 both nights. Ring 061 22 "
-                                + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
-                                + "surgery is in Marche, twenty minutes by car — ring before you "
-                                + "set off, they do not always have someone on site."),
+                // instruction no rule above quotes.
+                new Rule(p -> p.contains("walked the whole garden fence"),
+                        p -> "Sound all the way round, except behind the shed: there is a gap "
+                                + "under the third panel exactly the width of a Dachshund.\nNobody "
+                                + "goes behind the shed until the human is back. Especially the "
+                                + "Dachshund."),
                 // Deliberately DROPS the sausage and the remote's exact spots, so the cat has
                 // something to catch. Copy them here and that step becomes ceremony.
                 new Rule(p -> p.contains("from the cat's diary below"),
@@ -347,14 +324,15 @@ public class MockChatModel implements ChatModel {
 
                                 Labrador: no digging for you. You know what you did."""),
                 new Rule(p -> p.contains("medication paragraph"),
-                        p -> "Half a tablet with his breakfast, every morning, for his hip.\n"
-                                + "Push it into a folded slice of cheese and he takes it without "
-                                + "noticing.\nIf he spits it out, wait ten minutes and try the "
-                                + "other half.\nNever give two to catch up on a missed one."),
+                        p -> "Greyhound: half a tablet with breakfast, every morning, for his hip.\n"
+                                + "The Labrador folds it into a slice of cheese, and he takes it "
+                                + "without noticing.\nIf he spits it out, wait ten minutes and "
+                                + "try again — the Labrador does not eat it.\nNever two to catch "
+                                + "up on a missed one."),
                 // One agent, three kinds of question — because the point of the demo is that the
                 // ANSWER is not what changes between tiers, so it had better be a real answer
                 // whichever question is typed in.
-                new Rule(p -> p.contains("desk a worried dog owner reaches"), p -> switch (kind(p)) {
+                new Rule(p -> p.contains("the one the pack comes to with a worry"), p -> switch (kind(p)) {
                     case MEDICAL -> vet(p);
                     case BEHAVIOUR -> trainer(p);
                     case BASICS -> everyday(p);
@@ -383,7 +361,7 @@ public class MockChatModel implements ChatModel {
      * The canned supervisor plan — and it is deliberately a <b>reactive</b> one.
      */
     /**
-     * The argument the nurse and the three desks all take. A planner's JSON names the agent's
+     * The argument the Beagle and the three desks all take. A planner's JSON names the agent's
      * parameter, so this is {@code demos._06_conditional.Keys.Worry} spelled out — the mock cannot
      * import it without making the offline model depend on the demos, so it is named here
      * instead of hidden inside two string concatenations.
@@ -396,13 +374,13 @@ public class MockChatModel implements ChatModel {
         String req = jsonEscape(between(prompt, "The user request is: '", "'."));
         if (firstRound) {
             plannerStep.set(1);
-            return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"" + WORRY_ARG + "\":\""
+            return "{\"agentName\":\"FirstSniff\",\"arguments\":{\"" + WORRY_ARG + "\":\""
                     + req + "\"}}";
         }
         // ONLY the last response, never the whole prompt: the supervisor context spells out
-        // every phrase the nurse can use, so scanning the page would match them all.
+        // every phrase the Beagle can use, so scanning the page would match them all.
         String last = between(prompt, "last received response is: '", "'").toLowerCase(Locale.ROOT);
-        String needs = last.contains("needs: vet") ? "EmergencyVet"
+        String needs = last.contains("needs: vet") ? "RescueDog"
                 : last.contains("needs: trainer") ? "DogTrainer"
                 : last.contains("needs: everyday") ? "EverydayCare"
                 : null;
@@ -410,7 +388,7 @@ public class MockChatModel implements ChatModel {
             return "{\"agentName\":\"" + needs + "\",\"arguments\":{\"" + WORRY_ARG + "\":\""
                     + req + "\"}}";
         }
-        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"The nurse named who it "
+        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"The Beagle named who it "
                 + "needed and they have answered.\"}}";
     }
 
@@ -427,21 +405,21 @@ public class MockChatModel implements ChatModel {
                 || said.contains("nothing") || said.contains("don't") || said.contains("refuse")
                 || said.contains("wait");
         if (refused) {
-            return "Do not act on it. Sit with him, keep him where you can see him, and ring us "
-                    + "— we will decide and ring the vet ourselves if it comes to that.";
+            return "Do nothing yet. Lie next to him, keep him where the whole pack can see him, "
+                    + "and wait by the door — the human is coming home and will decide.";
         }
         boolean changed = said.contains("but") || said.contains("also") || said.contains("add")
                 || said.contains("instead");
-        return "Ring the practice now, tell them what he swallowed and roughly when, and take "
-                + "him straight in."
+        return "Keep him still and give him nothing to eat or drink. Be at the door when the "
+                + "human gets home: they are taking him straight to the vet."
                 + (changed ? " And do exactly what they added: " + said.trim() : "")
-                + " Do not try to make him sick yourself.";
+                + " Nobody tries to make him sick.";
     }
 
 
 
-    /** What the nurse makes of the call, and who she says it needs. */
-    private static String nurse(String prompt) {
+    /** What the Beagle makes of the problem, and which dog she says it needs. */
+    private static String firstSniff(String prompt) {
         String q = worry(prompt);
         if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
             return "A dog who has never done this before and now does is the one that worries "
@@ -454,14 +432,14 @@ public class MockChatModel implements ChatModel {
         }
         if (q.contains("pull") || q.contains("bark") || q.contains("postman")
                 || q.contains("lunging")) {
-            return "Nothing here sounds like pain — he is well in himself and this is about what "
+            return "Nothing here smells like pain — he is well in himself and this is about what "
                     + "he has learned to do.\nNEEDS: trainer";
         }
         if (q.contains("food") || q.contains("switch") || q.contains("groom")) {
             return "Ordinary stuff, nothing urgent in it.\nNEEDS: everyday care";
         }
-        return "He is bright, eating, and nothing about this needs anybody tonight. Ring us in "
-                + "the morning if it has not settled.\nNEEDS: nobody";
+        return "He is bright, eating, and nothing about this needs anybody tonight. Sniff him "
+                + "again in the morning if it has not settled.\nNEEDS: nobody";
     }
 
     /**
@@ -470,38 +448,39 @@ public class MockChatModel implements ChatModel {
     private static String vet(String prompt) {
         String q = worry(prompt);
         if (q.contains("chocolate") || q.contains("ate a") || q.contains("poison")) {
-            return "Ring the practice now and tell them his weight and how much he ate — dark "
-                    + "chocolate is the worst kind. Take the wrapper so they can read the cocoa "
-                    + "percentage. Do not wait to see whether he is sick.";
+            return "Wake the human now — bark at the bedroom door until the light goes on — and "
+                    + "bring them the wrapper: the vet will want the cocoa percentage, and dark "
+                    + "is the worst kind. Do not wait to see whether he is sick.";
         }
         if (has(q, "ear", "ears")) {
             return "That is an infection until a vet says otherwise, and a smell means it has "
-                    + "been going a while. Book today, do not poke anything down there, and stop "
-                    + "him scratching it open — a buster collar tonight if you have one.";
+                    + "been going a while. Get the human to book today, nobody pokes at it, and "
+                    + "stop him scratching it open.";
         }
         if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
-            return "The nurse is right to send him. A dog that snaps where he never used to is "
+            return "The Beagle is right to send him. A dog that growls where he never used to is "
                     + "telling you something hurts, and at four the usual suspects are teeth and "
-                    + "ears. Book a full examination — mouth, ears, hips, spine — and keep the "
-                    + "children away from his bed entirely until he has been seen.";
+                    + "ears. Get the human to book a full examination — mouth, ears, hips, spine "
+                    + "— and everyone stays off his bed until he has been seen.";
         }
         if (q.contains("sock") || q.contains("swallow")) {
-            return "Bring him in now and do not try to make him sick — a sock coming back up is "
-                    + "how it gets stuck somewhere worse. Nothing to eat or drink on the way. "
-                    + "Tell us roughly when he swallowed it, because under two hours we have "
-                    + "options we lose afterwards.";
+            return "Get the human home now and do not let anyone make him sick — a sock coming "
+                    + "back up is how it gets stuck somewhere worse. Nothing to eat or drink. "
+                    + "Tell them roughly when he swallowed it, because under two hours the vet "
+                    + "has options it loses afterwards.";
         }
         if (q.contains("wasp") || q.contains("sting") || q.contains("stung")) {
             return "Watch his breathing, not his nose — a swollen face is ugly and usually fine, "
                     + "a swollen throat is not. If the swelling spreads past the muzzle, or he "
-                    + "starts retching or wheezing, come straight in. Cold compress meanwhile, "
-                    + "and nothing from the human medicine cupboard.";
+                    + "starts retching or wheezing, wake the human: vet, now. Meanwhile, a cold "
+                    + "floor tile to lie on, and nobody goes looking for the wasp.";
         }
         if (q.contains("limp") || q.contains("sore")) {
-            return "Keep him still and off stairs, and give him nothing from your own cupboard. "
-                    + "A dog that will not weight-bear needs examining today.";
+            return "Keep him still and off the stairs, and nobody brings him anything from the "
+                    + "human's cupboard. A dog that will not put weight on a leg needs the vet "
+                    + "today: get the human.";
         }
-        return "Nothing here needs me tonight, but ring the practice in the morning if it has "
+        return "Nothing here needs me tonight, but sniff him again in the morning if it has "
                 + "not settled.";
     }
 
@@ -515,19 +494,20 @@ public class MockChatModel implements ChatModel {
             return "I will not train this yet, and you should not either. A dog that has never "
                     + "snapped and now does has usually started hurting somewhere — teeth, ears, "
                     + "hips, back. Training a dog out of telling you it is in pain is how you get "
-                    + "a dog that bites without warning first. Get him examined, then call me.\n"
+                    + "a dog that bites without warning first. Get him to the vet, then come "
+                    + "back to me.\n"
                     + "ESCALATE";
         }
         if (q.contains("postman") || q.contains("letterbox") || q.contains("lunging")) {
-            return "Block the hallway so he cannot reach the door, and feed him something good "
+            return "Lie across the hallway so he cannot reach the door, and make a fuss of him "
                     + "the moment the post lands — he learns the noise pays. Never let him "
                     + "rehearse the lunge; every time he does it, it works, because the postman "
                     + "always leaves.";
         }
         if (q.contains("pull") || q.contains("lead")) {
-            return "Stop the walk dead every time the lead goes tight, and only move off when it "
-                    + "slackens. Stop yanking him back, which teaches him that pulling is how "
-                    + "walks feel.\n"
+            return "Sit down dead every time he pulls ahead, and only move off when he comes "
+                    + "back to your shoulder. Stop chasing him to catch up, which teaches him "
+                    + "that pulling is how the pack moves.\n"
                 + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
         }
         if (q.contains("bark")) {
@@ -547,10 +527,10 @@ public class MockChatModel implements ChatModel {
                     + "what upsets stomachs, not the food itself.";
         }
         if (q.contains("groom") || q.contains("brush") || q.contains("coat")) {
-            return "Twice a week normally, daily while he is dropping coat, and do it somewhere "
-                    + "you do not mind hoovering.";
+            return "Twice a week normally, daily while he is dropping coat — and lie still for "
+                    + "it, it is over faster that way.";
         }
-        return "Keep it boring and keep it the same: same food, same times, same route.";
+        return "Keep it boring and keep it the same: same food, same times, same garden.";
     }
 
     /**
@@ -620,25 +600,27 @@ public class MockChatModel implements ChatModel {
      */
     private static final String[][] FOODS = {
             {"bone,chicken bone,rib", "Dangerous — a cooked bone splinters, and the splinters "
-                    + "are the problem, not the bone. Ring the vet now and give him nothing "
-                    + "else to eat."},
+                    + "are the problem, not the bone. Wake the human: vet, now, and nobody gives "
+                    + "him anything else to eat."},
             {"conker,chestnut,acorn", "Dangerous — conkers are toxic AND exactly the right size "
-                    + "to block a gut. Ring the vet, and count how many trees he walked under."},
-            {"glove,sock,fabric,tea towel", "Dangerous — fabric does not pass, it wedges. Ring "
-                    + "the vet even though he looks delighted with himself."},
+                    + "to block a gut. Wake the human for the "
+                    + "vet, and count how many trees he walked under."},
+            {"glove,sock,fabric,tea towel", "Dangerous — fabric does not pass, it wedges. Wake "
+                    + "the human for the vet even though he looks delighted with himself."},
             {"croissant,pastry,bread,crust,toast", "Fine — plain baked dough does nothing. "
                     + "Nothing to do (raw dough would be a different answer)."},
-            {"puddle,water,pond,rain", "Fine — that is just beard. It is going on your leg, not "
+            {"puddle,water,pond,rain", "Fine — that is just beard. It is going on the sofa, not "
                     + "into the dog. Nothing to do."},
             {"grape,raisin,sultana", "Dangerous — grapes and raisins can shut a dog's kidneys "
-                    + "down and there is no known safe amount. Ring the vet now."},
-            {"chocolate,cocoa", "Dangerous — and dark is the worst kind. Ring the vet now with "
-                    + "his weight and how much he ate; keep the wrapper."},
+                    + "down and there is no known safe amount. Wake the human: vet, now."},
+            {"chocolate,cocoa", "Dangerous — and dark is the worst kind. Wake the human: vet, "
+                    + "now, with his weight and how much he ate; keep the wrapper."},
             {"onion,garlic,leek,shallot", "Dangerous — onions damage red blood cells, and raw is "
-                    + "worse. Ring the vet, even if he seems fine today."},
+                    + "worse. Wake the human for the vet, even if he seems fine today."},
             {"xylitol,sweetener,sugar-free", "Dangerous — xylitol drops a dog's blood sugar "
-                    + "within minutes. Ring the vet now."},
-            {"macadamia", "Dangerous — macadamias cause weakness and tremors. Ring the vet."},
+                    + "within minutes. Wake the human: vet, now."},
+            {"macadamia", "Dangerous — macadamias cause weakness and tremors. Wake the "
+                    + "human for the vet."},
             {"cheese,cheddar", "Fine — a slice of cheese is fat and salt, nothing worse. Nothing "
                     + "to do."},
             {"bread,crust,toast", "Fine — plain baked bread does nothing. Nothing to do (raw "
@@ -662,7 +644,7 @@ public class MockChatModel implements ChatModel {
                 }
             }
         }
-        return "Probably nothing, but watch him for a few hours and ring the vet if he is sick "
+        return "Probably nothing, but watch him for a few hours and wake the human if he is sick "
                 + "more than once.";
     }
 

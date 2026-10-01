@@ -10,9 +10,9 @@ public final class Keys {
 
     public record Household() implements TypedKey<String> {}
 
-    public record MoneyVote() implements TypedKey<String> {}
+    public record FoodVote() implements TypedKey<String> {}
 
-    public record SpaceVote() implements TypedKey<String> {}
+    public record SofaVote() implements TypedKey<String> {}
 
     public record ZaoVote() implements TypedKey<String> {}
 }

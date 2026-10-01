@@ -8,8 +8,9 @@ import dev.langchain4j.service.UserMessage;
 public interface CouncilNote {
     @Agent(description = "Restates the ruling as the household line the assessors will ratify")
     @UserMessage("""
-            Restate this ruling as one line describing the household as it would be if the
-            ruling is carried out, so the assessors can vote on it.
+            Restate this ruling as one line describing the pack as it would be if the ruling is
+            carried out, so the assessors can vote on it. Write that one line and nothing else —
+            no options, no headings.
 
             Ruling: {{Verdict}}""")
     String note(@K(Verdict.class) String verdict);

@@ -6,10 +6,11 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 public interface LeadDeveloper {
-    @Agent(description = "Plans the dog's walks for the days the owners are away")
+    @Agent(description = "The Greyhound: plans the pack's walks for the days the human is away")
     @UserMessage("""
-            Plan the dog's walks for the days the owners are away: when, how long, on or off
-            the lead, and anywhere to avoid. Be brief.
+            Plan the pack's walks for the days the human is away — in the garden, because nobody
+            is holding a lead: when, how long, and anywhere to avoid. Five short lines at most,
+            no headings.
 
             The stay: {{Stay}}""")
     String plan(@V("Stay") String stay);

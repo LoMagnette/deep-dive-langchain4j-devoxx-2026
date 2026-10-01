@@ -30,15 +30,16 @@ public final class SinglePattern {
     }
 
     /** Shared with the sequential demo, which runs the same text through a second agent. */
-    public static final String SITTER_MESSAGE =
-            "hey!! ok so — zao, the big grey hairy one. he is a bouvier. he is not a bear and "
-                    + "he is not a sheep, people ask. "
-                    + "food's in the tub by the back door, two scoops morning and evening. he "
-                    + "CANNOT have the dried liver treats any more, they go straight through him "
-                    + "and you will know about it. do NOT let him off the lead in the park. he "
-                    + "does not come back. he has never come back. vet's 061 22 33 44. he will "
-                    + "scream the first night like you are taking him apart — ignore it, he's "
-                    + "fine, he does it to us too. thank you!!! x";
+    public static final String HUMAN_MESSAGE =
+            "ok pack, listen. I'm away till Sunday and nobody is coming, so Zao is in charge, "
+                    + "god help us all. the feeder in the kitchen does breakfast and dinner, two "
+                    + "scoops each. Labrador, you get ONE scoop, we have talked about this. NOBODY "
+                    + "touches the dried liver treats, they go straight through Zao and you will "
+                    + "all know about it. the dog flap is open to the garden. Dachshund: NO "
+                    + "digging under the fence, we have talked about that too. vet's 061 22 33 44 "
+                    + "if anything happens — I know none of you can use a phone. Zao, put it "
+                    + "down. the Greyhound will howl the first night like he's being taken apart, "
+                    + "ignore him, he does it to me too. love you all x";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
@@ -105,11 +106,12 @@ public final class SinglePattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("chain",
                 List.of(node("in", "message", "input"),
-                        node("clerk", "NoteRetriever", "agent")),
+                        node("clerk", "NoteRetriever", "agent")
+                                .withSub("Border Collie · reads")),
                 List.of(edge("in", "clerk")));
         return new PatternDef("single", "Single Agent", "workflow",
-                "You are away this weekend. A friend said yes to having Zao before reading "
-                        + "the message. You have just sent them the message.",
+                "The human is away this weekend and nobody is coming. Zao is in charge. The "
+                        + "human has just sent the pack a voice note.",
                 null,
                 "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
                         + "LLM is genuinely best at: turning what a human actually typed into a "
@@ -121,7 +123,7 @@ public final class SinglePattern {
                 // A real message: no punctuation, out of order, and one field genuinely absent
                 // (nobody said when to walk him), so the room can check whether the agent obeys
                 // "write not given" or quietly makes something up.
-                SITTER_MESSAGE,
+                HUMAN_MESSAGE,
                 SinglePattern::run,
                 // The only demo that honours the token toggle, so the only one the page offers
                 // it on. Streaming is a property of the LAST agent, and every other entry in the

@@ -5,10 +5,10 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 public interface ChowHound {
-    @Agent(description = "Plans the dog's meals for the days the owners are away")
+    @Agent(description = "The Labrador: plans the pack's meals for the days the human is away")
     @UserMessage("""
-            Plan the dog's meals for the days the owners are away: times, amounts, and
-            anything he must not be given. Be brief.
+            Plan the pack's meals for the days the human is away: times, amounts, and anything
+            nobody may be given. Five short lines at most, no headings.
 
             The stay: {{Stay}}""")
     String plan(@V("Stay") String stay);

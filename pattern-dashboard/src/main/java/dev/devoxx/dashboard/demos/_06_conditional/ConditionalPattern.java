@@ -30,9 +30,9 @@ public final class ConditionalPattern {
                 .name("WorryRouter")
                 .outputKey(Category.class)
                 .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+        var rescue = AgenticServices.agentBuilder(RescueDog.class)
                 .chatModel(model)
-                .name("EmergencyVet")
+                .name("RescueDog")
                 .outputKey(Answer.class)
                 .build();
         var trainer = AgenticServices.agentBuilder(DogTrainer.class)
@@ -48,7 +48,7 @@ public final class ConditionalPattern {
 
         RoutedDesk routed = AgenticServices.conditionalBuilder(RoutedDesk.class)
                 .name("Conditional")
-                .subAgents(s -> "emergency".equals(category(s.readState(Category.class))), vet)
+                .subAgents(s -> "emergency".equals(category(s.readState(Category.class))), rescue)
                 .subAgents(s -> "training".equals(category(s.readState(Category.class))), trainer)
                 .subAgents(s -> "everyday".equals(category(s.readState(Category.class))), care)
                 .build();
@@ -67,28 +67,28 @@ public final class ConditionalPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("branch",
                 List.of(node("in", "worry", "input"),
-                        node("router", "WorryRouter", "router"),
-                        node("vet", "EmergencyVet", "agent"),
-                        node("trainer", "DogTrainer", "agent"),
-                        node("care", "EverydayCare", "agent")),
+                        node("router", "WorryRouter", "router").withSub("Corgi · herds worries"),
+                        node("vet", "RescueDog", "agent").withSub("St Bernard · rescue"),
+                        node("trainer", "DogTrainer", "agent").withSub("Border Collie · trains"),
+                        node("care", "EverydayCare", "agent").withSub("Golden · the everyday")),
                 List.of(edge("in", "router"),
                         edge("router", "vet", "emergency"),
                         edge("router", "trainer", "training"),
                         edge("router", "care", "everyday")));
         return new PatternDef("conditional", "Conditional Routing", "workflow",
-                "One of them was a whole bar of dark chocolate. This is not a training "
-                        + "question, and he is not sorry.",
+                "Meanwhile the Labrador found a whole bar of dark chocolate. This is not a "
+                        + "training question, and he is not sorry.",
                 "Introduces the three desks that demos 7, 9, 16 and 17 all reuse.",
                 "A router classifies the input and dispatches to the right specialist. Worth it "
                         + "when mis-routing is expensive: everyone in this room knows a dog that "
-                        + "has eaten chocolate needs a vet and not a training tip, so everyone "
+                        + "has eaten chocolate needs the rescue dog and not a training tip, so everyone "
                         + "can see whether the classifier got it right.",
                 "Only as good as the classifier, and unseen inputs fall through the cracks — so "
-                        + "choose which way it falls. The fallback here is the vet, because that "
+                        + "choose which way it falls. The fallback here is the rescue dog, because that "
                         + "is the mistake you can live with.",
                 topo,
-                "he's eaten a whole bar of dark chocolate off the coffee table — 85%, the good "
-                        + "stuff. The wrapper is on the floor and he is wagging",
+                "the Labrador has eaten a whole bar of dark chocolate off the coffee table — "
+                        + "85%, the good stuff. The wrapper is on the floor and he is wagging",
                 ConditionalPattern::run);
     }
 }

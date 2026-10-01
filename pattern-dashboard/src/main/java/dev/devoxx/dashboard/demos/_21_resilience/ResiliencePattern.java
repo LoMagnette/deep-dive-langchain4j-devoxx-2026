@@ -67,7 +67,7 @@ public final class ResiliencePattern {
                 .errorHandler(ctx -> attempts.incrementAndGet() <= MAX_RETRIES
                         ? ErrorRecoveryResult.retry()
                         : ErrorRecoveryResult.result(
-                                "(could not be written — ring us on 061 22 33 44)"))
+                                "(could not be written — the vet is 061 22 33 44)"))
                 .output(scope -> note(scope, flaky, attempts.get()))
                 .listener(listener)
                 .build();
@@ -107,18 +107,18 @@ public final class ResiliencePattern {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "message", "input", 0),
                         node("clerk", "NoteRetriever", "agent", 1)
-                                .withSub("drops one · retried"),
+                                .withSub("Collie · fails · retried"),
                         node("meds", "MedicationNote", "agent", 2)
                                 .withSub("optional · may skip"),
-                        node("list", "FridgeMagnet", "agent", 3),
+                        node("list", "FridgeMagnet", "agent", 3).withSub("Golden · for the door"),
                         node("out", "the note", "join", 4).withSub("always produced")),
                 List.of(edge("in", "clerk"),
                         edge("clerk", "meds", "notes"),
                         edge("meds", "list"),
                         edge("list", "out")));
         return new PatternDef("resilience", "Optional Agents & Error Handling", "production",
-                "Most dogs are not on tablets, and the practice's line drops. Neither is a "
-                        + "reason for the sitter to end up with no note.",
+                "Most of the pack is on no tablets, and the Collie's first go gets lost. Neither "
+                        + "is a reason for the fridge door to stay empty.",
                 "Demo 1's NoteRetriever and demo 2's FridgeMagnet, unchanged — on a "
                         + "connection that fails.",
                 "Two different answers to \"this step produced nothing\", and they are not "
@@ -137,9 +137,9 @@ public final class ResiliencePattern {
                 topo,
                 // Mentions tablets, so the optional step runs. Delete that sentence on stage and
                 // watch the same run skip it and still put a note on the door.
-                "we're away Friday to Sunday and my sister is having Zao. Two scoops morning and "
-                        + "evening, food in the tub by the back door. Half a tablet with his "
-                        + "breakfast for his hip — hide it in cheese; he is not fooled, but he "
+                "I'm away Friday to Sunday and nobody is coming. Two scoops each morning and "
+                        + "evening from the feeder. The Greyhound has half a tablet with breakfast "
+                        + "for his hip — the Labrador hides it in cheese; he is not fooled, but he "
                         + "takes it anyway. Vet is 061 22 33 44.",
                 ResiliencePattern::run);
     }

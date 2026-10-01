@@ -49,8 +49,8 @@ public final class ParallelPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "the stay", "input"),
-                        node("meals", "ChowHound", "agent"),
-                        node("walks", "LeadDeveloper", "agent"),
+                        node("meals", "ChowHound", "agent").withSub("Labrador · food"),
+                        node("walks", "LeadDeveloper", "agent").withSub("Greyhound · running"),
                         // The combiner is the whole second half of "fan out, then join": the
                         // note cannot be written until both halves are back, which is the only
                         // reason the two branches have to meet again at all.
@@ -58,8 +58,8 @@ public final class ParallelPattern {
                 List.of(edge("in", "meals"), edge("in", "walks"),
                         edge("meals", "join", "meals"), edge("walks", "join", "walks")));
         return new PatternDef("parallel", "Parallel", "workflow",
-                "The note needs two halves with nothing to say to each other: what he eats, "
-                        + "and when he goes out. Two threads, nothing shared, no locks.",
+                "The note needs two halves with nothing to say to each other: what the pack "
+                        + "eats, and when it runs. Two threads, nothing shared, no locks.",
                 "Takes the card demo 1 produced. Both planners come back in the capstone.",
                 "Fan out independent work concurrently, then join. The meals do not depend on "
                         + "the walks and the walks do not depend on the meals, but the note needs "
@@ -74,10 +74,10 @@ public final class ParallelPattern {
                 // INPUTS, not at run time, so skipping a demo on stage never strands the next
                 // one and a deep link from a slide still works on its own.
                 """
-                        Dog: Zao, Bouvier des Flandres
-                        Meals: two scoops morning and evening, food in the tub by the back door
+                        Pack: Zao (in charge), the Labrador, the Dachshund, the Greyhound
+                        Meals: two scoops each from the feeder, morning and evening; the Labrador gets one
                         Walks: not given
-                        Watch out for: no dried liver treats; never off the lead in the park
+                        Watch out for: nobody touches the dried liver treats; the garden, not under the fence
                         Vet: 061 22 33 44""",
                 ParallelPattern::run);
     }

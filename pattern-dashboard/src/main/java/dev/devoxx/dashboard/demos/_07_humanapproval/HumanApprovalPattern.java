@@ -12,7 +12,7 @@ import java.util.List;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos._06_conditional.RescueDog;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
 import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
@@ -53,26 +53,26 @@ public final class HumanApprovalPattern {
                 .name("DogTrainer")
                 .outputKey(Draft.class)
                 .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+        var rescue = AgenticServices.agentBuilder(RescueDog.class)
                 .chatModel(model)
-                .name("EmergencyVet")
+                .name("RescueDog")
                 .outputKey(Draft.class)
                 .build();
         TriageDesk triage = AgenticServices.conditionalBuilder(TriageDesk.class)
                 .name("Conditional")
                 .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
                 .subAgents(s -> category(s.readState(Category.class)).equals("training"), trainer)
-                .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), vet)
+                .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), rescue)
                 .build();
 
 
         var owner = AgenticServices.humanInTheLoopBuilder()
-                .description("The owner, who decides what the sitter is actually told to do")
+                .description("The human, who decides what the pack is actually told to do")
                 .inputKey(String.class, new Draft().name())
                 .outputKey(new Decision().name())
                 .responseProvider(scope -> listener.askHuman("You", """
-                        This is what the desk says, and your sitter is waiting on it. \
-                        Approve it, change it, or refuse it — nothing is passed on until \
+                        This is what the desk says, and the pack is waiting on it. \
+                        Approve it, change it, or refuse it — nothing is done until \
                         you say.
 
                         """ + requireNonNullElse(scope.readState(Draft.class), "")))
@@ -107,7 +107,7 @@ public final class HumanApprovalPattern {
         String instructionText = requireNonNullElse(scope.readState(Instruction.class), "");
         return "**The desk drafted**\n\n" + draft
                 + "\n\n**You said**\n\n" + decisionText
-                + "\n\n**So the sitter is told**\n\n" + instructionText;
+                + "\n\n**So the pack is told**\n\n" + instructionText;
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -117,11 +117,11 @@ public final class HumanApprovalPattern {
                 // drawn as another agent box it would say the model decided, which is the one
                 // thing this pattern exists to deny.
                 List.of(node("in", "worry", "input", 0),
-                        node("router", "WorryRouter", "router", 1),
-                        node("care", "EverydayCare", "agent", 2),
-                        node("trainer", "DogTrainer", "agent", 2),
-                        node("vet", "EmergencyVet", "agent", 2),
-                        node("owner", "You", "human", 3),
+                        node("router", "WorryRouter", "router", 1).withSub("Corgi · herds worries"),
+                        node("care", "EverydayCare", "agent", 2).withSub("Golden · the everyday"),
+                        node("trainer", "DogTrainer", "agent", 2).withSub("Border Collie · trains"),
+                        node("vet", "RescueDog", "agent", 2).withSub("St Bernard · rescue"),
+                        node("owner", "You", "human", 3).withSub("the only human"),
                         node("final", "FinalNote", "agent", 4)),
                 List.of(edge("in", "router"),
                         edge("router", "care", "everyday"),
@@ -132,12 +132,12 @@ public final class HumanApprovalPattern {
                         edge("owner", "final", "decision")));
 
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
-                "Same three desks, a different disaster. Except the person acting on the "
-                        + "answer is your sister, and she will do exactly what it says.",
+                "Same three desks, a different disaster. This time nothing happens until the "
+                        + "human says so, and the pack will do exactly what it is told.",
                 "Demo 6 exactly — same router, same three desks — with one person added "
-                        + "before anything reaches the sitter.",
+                        + "before anything reaches the pack.",
                 "The previous demo with a person added, and nothing else changed: same router, "
-                        + "same three desks, one more step before anything reaches the sitter. "
+                        + "same three desks, one more step before anything reaches the pack. "
                         + "`HumanInTheLoop` is a non-AI agent — it reads a key from the scope and "
                         + "writes one back, so the sequence around it cannot tell that the answer "
                         + "came from a browser.",
@@ -146,8 +146,8 @@ public final class HumanApprovalPattern {
                         + "too often and it is a form nobody fills in; ask too rarely and the "
                         + "approval is a rubber stamp. Put it where the action is hard to undo.",
                 topo,
-                "he has swallowed a sock. A whole sock. We have counted them and there are "
-                        + "eleven. My sister is the one standing there, not me",
+                "the Labrador has swallowed a sock. A whole sock. There were twelve and there "
+                        + "are eleven. The human is standing right here, holding the car keys",
                 HumanApprovalPattern::run);
     }
 }

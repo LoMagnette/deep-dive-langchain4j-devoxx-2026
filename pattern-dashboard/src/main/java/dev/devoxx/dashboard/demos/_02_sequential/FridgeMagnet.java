@@ -8,13 +8,13 @@ import dev.langchain4j.service.V;
  * <b>Sequential</b>
  */
 public interface FridgeMagnet {
-    @Agent(description = "Writes the checklist that goes on the fridge door")
+    @Agent(description = "The Golden Retriever: writes the checklist that goes on the fridge door")
     @UserMessage("""
-            Turn this into the checklist that goes on the fridge door: the times of day in
-            order, one line each, nothing the sitter has to work out for themselves. All four
-            rules must hold:
+            Turn this into the checklist that goes on the pack's fridge door: the times of day
+            in order, one line each, nothing the pack has to work out for itself. No title, no
+            headings, and never invent a number the notes do not give. All four rules must hold:
             1. every meal has a time and an amount
-            2. it says where the lead and the poo bags are
+            2. it says what nobody may touch
             3. it gives the vet's telephone number
             4. under 100 words, so it fits on the door
 

@@ -29,9 +29,9 @@ public final class DebatePattern {
                 .chatModel(model)
                 .name("TeamTuscany")
                 .build();
-        var leave = AgenticServices.agentBuilder(TeamStaycation.class)
+        var leave = AgenticServices.agentBuilder(TeamKennels.class)
                 .chatModel(model)
-                .name("TeamStaycation")
+                .name("TeamKennels")
                 .build();
         var verdict = AgenticServices.agentBuilder(FinalBoarding.class)
                 .chatModel(model)
@@ -53,8 +53,8 @@ public final class DebatePattern {
         // advocates share the middle column, so their rebuttals bow between them.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
-                        node("take", "TeamTuscany", "agent", 1),
-                        node("leave", "TeamStaycation", "agent", 1),
+                        node("take", "TeamTuscany", "agent", 1).withSub("Labrador · go"),
+                        node("leave", "TeamKennels", "agent", 1).withSub("Bulldog · stay"),
                         // "only if they never agree" is what this said, and it was simply
                         // false: DebatePlanner invokes the judge when the rounds END, and
                         // convergence is one of the two ways they can end — the holiday debate
@@ -68,8 +68,8 @@ public final class DebatePattern {
                         edge("leave", "take", "≤2 rounds · unless unanimous"),
                         edge("take", "verdict"), edge("leave", "verdict")));
         return new PatternDef("debate", "Debate", "pattern-zoo",
-                "And before any of it, two weeks in Tuscany in August. Does he come? Both of "
-                        + "you are certain, and not about the same thing.",
+                "The human is off to Tuscany for two weeks in August. Does Zao go? The "
+                        + "Labrador and the Bulldog are both certain, and not of the same thing.",
                 null,
                 "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
                         + "drama: ask one agent and it picks a side and then rationalises it, "
@@ -81,9 +81,9 @@ public final class DebatePattern {
                         + "token-hungry. Check the ruling against the facts yourself; that is why "
                         + "the motion states them.",
                 topo,
-                "two weeks in Tuscany in August: take Zao, or leave him with a sitter? Twelve "
-                        + "hours in the car, a house with no shade, and a black double-coated dog "
-                        + "who has never been left for more than two nights.",
+                "two weeks in Tuscany in August: does Zao go with the human, or to the kennels? "
+                        + "Twelve hours in the car, a house with no shade, and a black double-coated "
+                        + "dog who has never been left for more than two nights.",
                 DebatePattern::run);
     }
 }

@@ -84,7 +84,7 @@ public final class ModelRoutingPattern {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "worry", "input", 0),
                         node("router", "WorryRouter", "router", 1)
-                                .withSub("always the cheap tier"),
+                                .withSub("Corgi · always cheap"),
                         node("desk", "DutyDesk", "agent", 2)
                                 .withSub("cheap · or strong"),
                         node("out", "the answer", "join", 3).withSub("names the tier")),
@@ -92,8 +92,8 @@ public final class ModelRoutingPattern {
                         edge("router", "desk", "category picks the model"),
                         edge("desk", "out")));
         return new PatternDef("modelRouting", "Dynamic Model Selection", "production",
-                "You do not ring the emergency vet to ask which kibble to buy, and you do not "
-                        + "ask the pet shop about a face swelling shut.",
+                "You do not wake the St Bernard to ask which kibble is best, and you do not ask "
+                        + "the puppy about a face swelling shut.",
                 "Demo 6's WorryRouter, unchanged. The three desks are gone — here one "
                         + "agent answers everything and only its model changes.",
                 "`chatModel(...)` has an overload taking a `Function<AgenticScope, ChatModel>`, "
@@ -110,8 +110,8 @@ public final class ModelRoutingPattern {
                         + "answered — if you need that for a bill, you have to write it down "
                         + "yourself.",
                 topo,
-                "a wasp has stung him on the nose and it has swollen up like a tennis ball. He "
-                        + "has gone to find the wasp",
+                "a wasp has stung the Beagle on the nose and it has swollen up like a tennis "
+                        + "ball. He has gone to find the wasp",
                 ModelRoutingPattern::run);
     }
 }

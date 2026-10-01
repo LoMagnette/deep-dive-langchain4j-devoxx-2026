@@ -10,7 +10,7 @@ import java.util.Locale;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
+import dev.devoxx.dashboard.demos._06_conditional.RescueDog;
 import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -21,23 +21,23 @@ import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>supervisor</b> demo — the same three people the router chose between, except
- * that now nobody wrote down who to ask.
+ * Wiring for the <b>supervisor</b> demo — the same three dogs the router chose between, except
+ * that now nobody wrote down who to ask. Zao decides.
  */
 public final class SupervisorPattern {
 
     private SupervisorPattern() {
     }
 
-    /** Everyone this supervisor may call: the nurse it adds, then the routing demo's three. */
+    /** Everyone this supervisor may call: the Beagle it adds, then the routing demo's three. */
     private static final List<String> DESKS =
-            List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet");
+            List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog");
 
     /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var nurse = AgenticServices.agentBuilder(TriageNurse.class)
+        var beagle = AgenticServices.agentBuilder(FirstSniff.class)
                 .chatModel(model)
-                .name("TriageNurse")
+                .name("FirstSniff")
                 .build();
 
         var care = AgenticServices.agentBuilder(EverydayCare.class)
@@ -50,23 +50,23 @@ public final class SupervisorPattern {
                 .name("DogTrainer")
                 .build();
 
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
+        var rescue = AgenticServices.agentBuilder(RescueDog.class)
                 .chatModel(model)
-                .name("EmergencyVet")
+                .name("RescueDog")
                 .build();
 
         SupervisorAgent sup = AgenticServices.supervisorBuilder()
-                .subAgents(nurse, care, trainer, vet)
+                .subAgents(beagle, care, trainer, rescue)
                 .chatModel(model)
                 .supervisorContext("""
-                        Always call the nurse first: she takes the call, works out what is \
-                        going on, and ends by naming who it needs. She never treats and \
-                        never trains, so her answer is NEVER the answer to give back — it \
-                        tells you who to call next. When she says NEEDS: vet, call the vet \
-                        with the original worry; NEEDS: trainer, call the trainer; NEEDS: \
-                        everyday care, call everyday care. Only when she says NEEDS: nobody \
-                        is her own answer enough. You are finished once the specialist she \
-                        named has answered.""")
+                        You are Zao, the pack leader. Always send the Beagle first: she \
+                        sniffs the problem, works out what is going on, and ends by naming \
+                        which dog it needs. She never rescues and never trains, so her answer \
+                        is NEVER the answer to give back — it tells you who to call next. \
+                        When she says NEEDS: vet, call the rescue dog with the original \
+                        worry; NEEDS: trainer, call the trainer; NEEDS: everyday care, call \
+                        everyday care. Only when she says NEEDS: nobody is her own answer \
+                        enough. You are finished once the dog she named has answered.""")
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
                 .maxAgentsInvocations(4)
                 .output(SupervisorPattern::answerWithItsRoute)
@@ -111,7 +111,7 @@ public final class SupervisorPattern {
 
     /**
      * The answer without the protocol on the end of it. Both markers have to go: the desks sign
-     * off with ANSWERED or ESCALATE, and the nurse ends by naming who is needed — words the
+     * off with ANSWERED or ESCALATE, and the Beagle ends by naming who is needed — words the
      * planner acts on and a reader should never have to see.
      */
     private static String strip(Object output) {
@@ -135,12 +135,12 @@ public final class SupervisorPattern {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "worry", "input", 0),
                         node("supervisor", "Supervisor", "supervisor", 1)
-                                .withSub("asks, reads, asks again"),
-                        node("nurse", "TriageNurse", "agent", 2).withSub("1 · always first"),
+                                .withSub("Zao · reads, asks again"),
+                        node("nurse", "FirstSniff", "agent", 2).withSub("1 · Beagle · first"),
                         node("care", "EverydayCare", "agent", 2).withSub("2 · if she says so"),
                         node("trainer", "DogTrainer", "agent", 2).withSub("2 · if she says so"),
-                        node("vet", "EmergencyVet", "agent", 2).withSub("2 · if she says so")),
-                // Two-way on the nurse only — the supervisor reads her answer, and that is the
+                        node("vet", "RescueDog", "agent", 2).withSub("2 · if she says so")),
+                // Two-way on the Beagle only — the supervisor reads her answer, and that is the
                 // edge the demo turns on. Only the return half is labelled: both halves bow
                 // through the same gap, and the answer is the one carrying the mechanism.
                 List.of(edge("in", "supervisor"),
@@ -151,37 +151,37 @@ public final class SupervisorPattern {
                         edge("supervisor", "vet")));
 
         return new PatternDef("supervisor", "Supervisor", "pure-agent",
-                "Then something that is not like him at all. You cannot tell if it is "
-                        + "behaviour or something worse, and neither can one phone call.",
-                "Demo 6's three desks again, unchanged, plus one new agent: the nurse who "
-                        + "takes the call. Routing picks one desk; this picks several and "
+                "Then the Greyhound does something that is not like him at all. Behaviour, or "
+                        + "something worse? Zao does not know yet, and that is the point.",
+                "Demo 6's three desks again, unchanged, plus one new agent: the Beagle who "
+                        + "sniffs it first. Routing picks one desk; Zao picks several and "
                         + "decides when to stop.",
                 "An LLM supervisor decides which specialist to invoke, and when to stop. Watch "
-                        + "the order: the **TriageNurse** takes the call, works out what is going "
-                        + "on and ends by naming who is needed — and **that answer is what makes "
-                        + "it call the vet.** A router gets one call and stops. A fan-out would "
+                        + "the order: the Beagle (**FirstSniff**) sniffs it first, works out what "
+                        + "is going on and ends by naming who is needed — and **that answer is "
+                        + "what makes Zao call the rescue dog.** A router gets one call and stops. A fan-out would "
                         + "have asked all three desks at once and learned nothing from any of "
                         + "them. Neither can produce a second call that exists only because of "
                         + "what the first one said. Change the input and the route changes with "
                         + "it: pulling and barking reach the trainer, grass-eating settles with "
-                        + "the nurse and stops there. Note what the result shows: **one answer**, "
-                        + "with the route to it underneath. The nurse did not give an opinion "
+                        + "the Beagle and stops there. Note what the result shows: **one answer**, "
+                        + "with the route to it underneath. The Beagle did not give an opinion "
                         + "worth keeping — she assessed, and assessing is work, not output.",
                 "Non-deterministic, and the roll-call is honest about it: a weaker planner will "
-                        + "sometimes take the nurse's assessment as the answer and stop. Bound "
+                        + "sometimes take the Beagle's assessment as the answer and stop. Bound "
                         + "the invocations. Note also what it took to make the hand-off reliable "
                         + "— an agent whose job **is** to hand on, rather than one that declines; "
                         + "a model asked to refuse under a positive instruction will follow the "
                         + "positive one. And ask the hard question first: if you can write down "
-                        + "\"nurse, then whoever she names\", that is a sequence with a "
+                        + "\"Beagle, then whoever she names\", that is a sequence with a "
                         + "condition, and it is cheaper and debuggable. Reach for this when you "
                         + "genuinely cannot enumerate who is needed.",
                 topo,
                 // Reads as a training problem, and is not one — which nobody can know until the
                 // trainer has looked at it. That is the point: the second call is not in anyone's
                 // plan at the start, it is caused by the first agent's answer.
-                "he is four and he has started snapping when the children go near his bed. He has "
-                        + "never done that in his life. Nothing here has changed except him.",
+                "the Greyhound is four and he has started growling when anyone goes near his bed. "
+                        + "He has never done that in his life. Nothing here has changed except him.",
                 SupervisorPattern::run);
     }
 }

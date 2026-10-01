@@ -56,30 +56,34 @@ public final class LoopPattern {
                 // Demo 2's agent unchanged, with a critic and a loop drawn round it. Both ways
                 // out of the critic: the arc back AND the exit, which is what ends a loop.
                 List.of(node("in", "notes", "input"),
-                        node("writer", "FridgeMagnet", "agent"),
-                        node("check", "RuffDraftCritic", "agent").withSub("4 rules, scored"),
+                        node("writer", "FridgeMagnet", "agent").withSub("Golden · rewrites"),
+                        node("check", "RuffDraftCritic", "agent").withSub("Poodle · 4 rules, scored"),
                         node("out", "the note", "join").withSub("or after 5 passes")),
                 List.of(edge("in", "writer"), edge("writer", "check", "notes"),
                         edge("check", "writer", "score < 0.8"),
                         edge("check", "out", "score ≥ 0.8")));
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
-                "This is the note you actually sent last time. You can see the four things "
-                        + "wrong with it from there. So could they.",
+                "This is the note the human left last time. Everything is in it, in no order "
+                        + "at all. The Poodle noticed from across the room.",
                 "Demo 2's FridgeMagnet, unchanged. Nothing about the agent changed; a "
                         + "critic and a loop were drawn around it.",
                 "Refine until a quality bar is met. The bar is four rules nobody has to be "
-                        + "persuaded of — every meal with a time and an amount, where the lead "
-                        + "is, the vet's number, short enough for the fridge door — so the score "
+                        + "persuaded of — every meal with a time and an amount, what nobody may "
+                        + "touch, the vet's number, short enough for the fridge door — so the score "
                         + "is a fraction of rules satisfied, and you can see which one each pass "
                         + "fixes.",
                 "Can spin forever or oscillate — always cap iterations and define a clear exit. A "
                         + "critic scoring 'quality' out of 1.0 gives you a number nobody in the "
                         + "room can check; score against named rules instead.",
                 topo,
-                // Fails three of the four rules on sight, which is the point: the audience can
-                // count the failures before the first agent runs.
-                "just feed him twice like normal and take him out when you can, he knows the "
-                        + "routine better than we do honestly. ring me if anything's up!! xx",
+                // Every fact the four rules need is in here — the feeder times, the scoops, what
+                // nobody may touch, the vet — so the loop is fixing the SHAPE and never has to
+                // invent a fact. Without the vet's number a live model made one up ("Dr Waffles,
+                // 555-GR-EET") and the critic passed it, which is the opposite of the lesson.
+                "just eat when the feeder goes like normal, it's 7 and 6, two scoops each (one for "
+                        + "you Labrador, you know why) and go out when you need to, you know the "
+                        + "routine better than I do honestly. oh and stay OUT of the dried liver "
+                        + "treats. vet's 061 22 33 44, ring me if anything's up!! xx",
                 LoopPattern::run);
     }
 }

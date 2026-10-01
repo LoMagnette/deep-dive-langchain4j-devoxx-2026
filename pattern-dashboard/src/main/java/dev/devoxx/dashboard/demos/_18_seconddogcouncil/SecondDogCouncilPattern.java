@@ -12,8 +12,8 @@ import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._13_voting.AskZaoHimself;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Household;
-import dev.devoxx.dashboard.demos._13_voting.MoneyAndVet;
-import dev.devoxx.dashboard.demos._13_voting.SpaceAndTime;
+import dev.devoxx.dashboard.demos._13_voting.FoodBudget;
+import dev.devoxx.dashboard.demos._13_voting.SofaSpace;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Motion;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.demos._18_seconddogcouncil.Keys.Angles;
@@ -59,17 +59,17 @@ public final class SecondDogCouncilPattern {
                 .build();
 
         // 3. Debate (advanced) — the two sides argue, the chair rules.
-        var forIt = AgenticServices.agentBuilder(SecondDogFor.class)
+        var forIt = AgenticServices.agentBuilder(PuppyFor.class)
                 .chatModel(model)
-                .name("SecondDogFor")
+                .name("PuppyFor")
                 .build();
-        var against = AgenticServices.agentBuilder(SecondDogAgainst.class)
+        var against = AgenticServices.agentBuilder(PuppyAgainst.class)
                 .chatModel(model)
-                .name("SecondDogAgainst")
+                .name("PuppyAgainst")
                 .build();
-        var chair = AgenticServices.agentBuilder(HouseholdVerdict.class)
+        var chair = AgenticServices.agentBuilder(PackVerdict.class)
                 .chatModel(model)
-                .name("HouseholdVerdict")
+                .name("PackVerdict")
                 .outputKey(Verdict.class)
                 .build();
         CouncilDebate debate = AgenticServices.plannerBuilder(CouncilDebate.class)
@@ -88,13 +88,13 @@ public final class SecondDogCouncilPattern {
 
         // 5. Voting (advanced) — the same three assessors the voting demo used, now
         //    ratifying a debated motion instead of voting cold.
-        var space = AgenticServices.agentBuilder(SpaceAndTime.class)
+        var space = AgenticServices.agentBuilder(SofaSpace.class)
                 .chatModel(model)
-                .name("SpaceAndTime")
+                .name("SofaSpace")
                 .build();
-        var money = AgenticServices.agentBuilder(MoneyAndVet.class)
+        var money = AgenticServices.agentBuilder(FoodBudget.class)
                 .chatModel(model)
-                .name("MoneyAndVet")
+                .name("FoodBudget")
                 .build();
         var zao = AgenticServices.agentBuilder(AskZaoHimself.class)
                 .chatModel(model)
@@ -115,8 +115,8 @@ public final class SecondDogCouncilPattern {
         // The angles are derived here rather than by an agent: the mapper needs a real
         // collection in scope before anything has run.
         var r = app.convene(input,
-                List.of("the space and the hours alone — " + input,
-                        "the money over ten years — " + input,
+                List.of("the sofa and the beds — " + input,
+                        "the food, over ten years — " + input,
                         "what Zao would say about it — " + input));
         // The last stage is the vote, so the result has to show it: returning only the
         // debate's verdict would leave the ratification invisible and the final third of the
@@ -137,15 +137,15 @@ public final class SecondDogCouncilPattern {
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "question", "input", 0),
-                        node("scout", "AngleScout (per angle)", "agent", 1),
-                        node("briefer", "CouncilBriefer", "join", 2),
-                        node("for", "SecondDogFor", "agent", 3),
-                        node("against", "SecondDogAgainst", "agent", 3),
-                        node("chair", "HouseholdVerdict", "judge", 4),
+                        node("scout", "AngleScout (per angle)", "agent", 1).withSub("Beagle · per angle"),
+                        node("briefer", "CouncilBriefer", "join", 2).withSub("Collie · the motion"),
+                        node("for", "PuppyFor", "agent", 3).withSub("Corgi · for"),
+                        node("against", "PuppyAgainst", "agent", 3).withSub("Greyhound · against"),
+                        node("chair", "PackVerdict", "judge", 4).withSub("Golden · rules"),
                         node("note", "CouncilNote", "join", 5),
-                        node("space", "SpaceAndTime", "agent", 6),
-                        node("money", "MoneyAndVet", "agent", 6),
-                        node("zao", "AskZaoHimself", "agent", 6),
+                        node("space", "SofaSpace", "agent", 6).withSub("Greyhound · space"),
+                        node("money", "FoodBudget", "agent", 6).withSub("Labrador · food"),
+                        node("zao", "AskZaoHimself", "agent", 6).withSub("Zao · himself"),
                         node("tally", "majority()", "join", 7)),
                 List.of(edge("in", "scout", "3 angles"),
                         edge("scout", "briefer", "findings"),
@@ -156,13 +156,13 @@ public final class SecondDogCouncilPattern {
                         edge("note", "space"), edge("note", "money"), edge("note", "zao"),
                         edge("space", "tally"), edge("money", "tally"), edge("zao", "tally")));
 
-        return new PatternDef("secondDogCouncil", "Second Dog Council (composite)", "composite",
-                "And the second dog, finally put properly to the household. Zao has not been "
-                        + "asked. Zao is on the committee.",
+        return new PatternDef("secondDogCouncil", "Puppy Council (composite)", "composite",
+                "The vote said LATER. The human has asked again anyway, properly this time. "
+                        + "Zao is on the committee.",
                 "Demo 13's three assessors, now ratifying a motion that has been debated "
                         + "rather than voting on it cold.",
                 "Settles the question the voting demo only took a snap poll on: a mapper reads "
-                        + "three angles of the household at once, one agent turns them into a "
+                        + "three angles of the pack at once, one agent turns them into a "
                         + "motion, a debate argues it to a ruling, and the same three assessors "
                         + "ratify it. Two zoo patterns carried by simple plumbing.",
                 // caveat: the zoo patterns are the easy part; the adapters between them are not.
@@ -170,7 +170,7 @@ public final class SecondDogCouncilPattern {
                         + "key — the debate writes 'verdict', the assessors read 'household' — so "
                         + "composing them is mostly writing the small steps in between.",
                 topo,
-                "should we get a second dog? " + HOUSEHOLD,
+                "should the pack take in a puppy? " + HOUSEHOLD,
                 SecondDogCouncilPattern::run);
     }
 }

@@ -5,10 +5,10 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
-public interface SecondDogFor {
-    @Agent(description = "Argues for the motion in front of the council")
+public interface PuppyFor {
+    @Agent(description = "The Corgi: argues for the motion in front of the council")
     @UserMessage("""
-            Argue for this motion, and answer the strongest objection to it honestly. Two or
+            You are the Corgi, and you would like someone shorter than you. Argue for this motion, and answer the strongest objection to it honestly. Two or
             three sentences.
 
             Motion: {{Motion}}""")

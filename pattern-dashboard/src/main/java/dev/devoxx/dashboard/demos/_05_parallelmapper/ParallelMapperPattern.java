@@ -72,8 +72,8 @@ public final class ParallelMapperPattern {
                         edge("check", "gather", "verdicts")));
 
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
-                "A Bouvier's beard is a collection type. This is one walk's worth, emptied "
-                        + "onto the kitchen table. Nobody knows about the conker.",
+                "A Bouvier's beard is a collection type. This is one afternoon in the garden, "
+                        + "emptied onto the kitchen floor. Nobody knows about the conker.",
                 null,
                 "Map one agent over a collection in parallel (scatter/gather). Whatever came "
                         + "out of the beard, one verdict each. The width of the fan-out is data, "
