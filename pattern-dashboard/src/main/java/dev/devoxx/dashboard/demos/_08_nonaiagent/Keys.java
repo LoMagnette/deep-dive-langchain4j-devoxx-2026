@@ -2,22 +2,21 @@ package dev.devoxx.dashboard.demos._08_nonaiagent;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
 
-/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+/** The Pup Board pins this mission introduces. See {@code demos/package-info.java}. */
 public final class Keys {
 
     private Keys() {
     }
 
     /**
-     * The cat's record of where everything was buried: facts that exist somewhere authoritative
-     * and must never be generated. A non-AI agent writes this key, and nothing downstream can
-     * tell the difference — which is the point.
+     * How high the ladder has to reach, in metres. A tree here, a water tower in Mission 10 —
+     * Bolt does not care which, which is why the pin is not called treeHeight.
      */
-    public record Facts() implements TypedKey<String> {}
+    public record Height() implements TypedKey<Double> {}
 
-    /** What the humans want dug up. */
-    public record Mission() implements TypedKey<String> {}
+    /** Bolt's answer, in metres. A number, because Bolt is Java and Java can promise one. */
+    public record LadderLength() implements TypedKey<Double> {}
 
-    /** The pack's dig plan — written by the model, then checked and amended by the cat. */
-    public record Plan() implements TypedKey<String> {}
+    /** Which ladder Zoom brought, and where it is now. */
+    public record Ladder() implements TypedKey<String> {}
 }

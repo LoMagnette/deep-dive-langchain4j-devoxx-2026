@@ -1,7 +1,8 @@
 /**
- * <b>Loop / iterative refinement</b>
+ * <b>Mission 3 · Loop: The Town Fair Poster</b>
  *
- * <p>The critic scores the battle plan against four rules the room agrees with on sight —
- * score "quality" out of 1.0 and the loop is a light show nobody can check.
+ * <p>Howl writes, Fifi scores against four rules the room can check, Howl rewrites — until the
+ * score reaches 0.8 or Howl runs out of treats. The treats are {@code maxIterations(5)}: the
+ * safety net that stops a critic nobody can satisfy from running for ever.
  */
 package dev.devoxx.dashboard.demos._03_loop;

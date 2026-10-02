@@ -2,24 +2,24 @@ package dev.devoxx.dashboard.demos._12_blackboard;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
 
-/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+/**
+ * The Pup Board pins this mission introduces. See {@code demos/package-info.java}.
+ *
+ * <p>The spec's {@code clues} list is three pins rather than one list, deliberately: an agent's
+ * output OVERWRITES its key, so three Rangers writing one list would keep only the last clue.
+ * One pin each is how a board accumulates.
+ */
 public final class Keys {
 
     private Keys() {
     }
 
-    /** Who could physically have done it. The Collie's note on the board. */
-    public record Alibis() implements TypedKey<String> {}
+    public record ScentClue() implements TypedKey<String> {}
 
-    /** What happened, as reported. The only thing the three investigators read. */
-    public record Crime() implements TypedKey<String> {}
+    public record TunnelClue() implements TypedKey<String> {}
 
-    /** Who did it, ranked. Writing this is the goal state. */
-    public record Ruling() implements TypedKey<String> {}
+    public record CameraClue() implements TypedKey<String> {}
 
-    /** What the evidence left behind says. The Shepherd's note on the board. */
-    public record Scene() implements TypedKey<String> {}
-
-    /** Where the crumbs go. The Bloodhound's note on the board. */
-    public record Trail() implements TypedKey<String> {}
+    /** Zao's ruling. Writing this is the goal state. */
+    public record Culprit() implements TypedKey<String> {}
 }

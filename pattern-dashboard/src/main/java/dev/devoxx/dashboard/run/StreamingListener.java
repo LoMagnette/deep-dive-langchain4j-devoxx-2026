@@ -10,7 +10,9 @@ import java.util.function.Consumer;
 
 import dev.devoxx.dashboard.run.RunEvent.ScopeValue;
 import dev.devoxx.dashboard.support.Errors;
+import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
+import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
@@ -130,6 +132,27 @@ public class StreamingListener implements AgentListener {
         String msg = e.error() == null ? "error" : Errors.explain(e.error());
         emit("agent-error", e.agentName(), "error in " + e.agentName() + ": " + msg,
                 e.agenticScope(), null, elapsed(e.agentId()));
+    }
+
+    /**
+     * A Ranger reaching for its gear. Mission 1's whole point is that the MODEL chose these calls
+     * and their order, so they are emitted as events of their own rather than left to the server
+     * log: the Run events pane then reads "sniff(...) → followTrail(...) → answer", which is the
+     * thing to point at on stage.
+     */
+    @Override
+    public void beforeAgentToolExecution(BeforeAgentToolExecution t) {
+        var req = t.toolExecution().request();
+        emit("tool-call", t.agentInstance().name(),
+                req.name() + "(" + req.arguments() + ")", null, null);
+    }
+
+    @Override
+    public void afterAgentToolExecution(AfterAgentToolExecution t) {
+        var exec = t.toolExecution();
+        Long took = exec.duration() == null ? null : exec.duration().toMillis();
+        emit("tool-result", t.agentInstance().name(),
+                exec.request().name() + " → " + exec.result(), null, null, took);
     }
 
     /** Milliseconds since this invocation started, or null if we never saw it start. */

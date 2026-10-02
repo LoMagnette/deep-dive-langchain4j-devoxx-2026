@@ -1,7 +1,8 @@
 /**
- * <b>Voting / ensemble</b>
+ * <b>Mission 13 · Voting / ensemble: Is the Lake Ice Safe?</b>
  *
- * <p>Three voters with deliberately different criteria, so they can genuinely
- * split. One word each, because that is what a voting strategy can tally.
+ * <p>Sniff, Doc and Bolt vote independently, none seeing the others. The aggregation strategy is
+ * part of the design, and the mission shows two: a majority, fine for naming the HQ mascot, and
+ * a veto — one "not safe" is enough — which is the only sane rule for ice.
  */
 package dev.devoxx.dashboard.demos._13_voting;

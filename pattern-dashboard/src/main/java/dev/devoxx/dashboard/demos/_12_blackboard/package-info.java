@@ -1,7 +1,8 @@
 /**
- * <b>Blackboard</b>
+ * <b>Mission 12 · Blackboard: The Great Sausage Heist</b>
  *
- * <p>A crime scene and three investigators who each read ONLY the crime, so any of them can
- * go first. Chain them and you have a sequence wearing a blackboard's coat.
+ * <p>Sniff, Dig and Bolt each pin a clue when they can — any of them can go first — and Zao names
+ * the culprit once the board holds enough. The twist: a sausage crumb in Zao's own beard. He is
+ * innocent. It was Mittens.
  */
 package dev.devoxx.dashboard.demos._12_blackboard;

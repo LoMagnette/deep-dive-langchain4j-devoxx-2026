@@ -1,8 +1,8 @@
 /**
- * <b>GOAP</b>
+ * <b>Mission 10 · GOAP: Mittens on the Water Tower</b>
  *
- * <p>A precondition chain nobody has to be told about: the chair is too loud to push while the
- * human is in the kitchen, and the Corgi cannot reach the counter without the chair. Registered
- * in the WRONG order on purpose.
+ * <p>Goal: {@code CatSafe}. Each Ranger declares what it needs and what it pins, and the planner
+ * works backwards from the goal — Doc needs the ladder secured, Dig needs a ladder, Zoom needs a
+ * length, Bolt needs a height. Registered in a scrambled order on purpose.
  */
 package dev.devoxx.dashboard.demos._10_goap;

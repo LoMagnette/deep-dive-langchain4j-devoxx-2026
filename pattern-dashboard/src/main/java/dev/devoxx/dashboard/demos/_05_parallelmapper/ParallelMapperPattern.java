@@ -12,79 +12,74 @@ import java.util.stream.IntStream;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Beard;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Verdicts;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
+import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Ducklings;
+import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.FoundDucklings;
+import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Sighting;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>parallel mapper</b> demo — the same check over everything the beard held.
+ * Wiring for <b>Mission 5</b> — one Sniff, eight ducklings, all at once.
  */
 public final class ParallelMapperPattern {
 
     private ParallelMapperPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The mapper collects each per-item invocation under the agent's outputKey, and binds
-        // the item itself to the sub-agent's first argument.
-        var check = AgenticServices.agentBuilder(BeardOverflow.class)
+        var sniff = AgenticServices.agentBuilder(SniffSearches.class)
                 .chatModel(model)
-                .name("BeardOverflow")
-                .outputKey(Verdict.class)
+                .name("Sniff")
+                .outputKey(Sighting.class)
                 .build();
-        BeardCheck app = AgenticServices.parallelMapperBuilder(BeardCheck.class)
+        DucklingSearch app = AgenticServices.parallelMapperBuilder(DucklingSearch.class)
                 .name("ParallelMapper")
-                .subAgents(check)
-                .itemsProvider(new Beard().name())
-                .outputKey(Verdicts.class)
+                .subAgents(sniff)
+                .itemsProvider(new Ducklings().name())
+                .outputKey(FoundDucklings.class)
                 .listener(listener)
                 .build();
-        // The items come from what the user typed (comma- or semicolon-separated), not a
-        // hard-coded list — otherwise the input box on the page has no effect here.
-        List<String> found = items(input);
-        // Paired back with the item each verdict is about — the mapper preserves order, and
-        // five unlabelled verdicts would leave the room counting. Verdicts is a
-        // TypedKey<List<String>>, so this reads as a List with no cast.
-        List<String> said = requireNonNullElse(app.check(found), List.of());
-        if (said.isEmpty()) {
-            return "";
-        }
-        return IntStream.range(0, said.size())
-                .mapToObj(i -> "- **" + (i < found.size() ? found.get(i) : "item " + i)
-                        + "** — " + said.get(i))
+        // The ducklings come from what was typed (one per line or semicolon), so the input box
+        // decides how wide the fan-out is — eight is only the default.
+        List<String> ducklings = items(input);
+        List<String> found = requireNonNullElse(app.search(ducklings), List.of());
+        // Paired back with the duckling each result is about: the mapper preserves order, and
+        // eight unlabelled lines would leave the room counting.
+        return IntStream.range(0, found.size())
+                .mapToObj(i -> "- **" + (i < ducklings.size() ? ducklings.get(i) : "duckling " + i)
+                        + "** — " + found.get(i))
                 .collect(joining("\n"));
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // The agent is drawn as a stack: one agent, invoked once per item, all at once. A
-        // single box would say "one call", which is the opposite of what a mapper does.
+        // One agent drawn as a stack: one Sniff, invoked once per item, all at once. A single box
+        // would say "one call", which is the opposite of what a mapper does.
         Topology.Graph topo = graph("fanout",
-                List.of(node("in", "the beard", "input").withSub("5 items"),
-                        node("check", "BeardOverflow", "agent")
-                                .withSub("St Bernard · per item").asStack(),
-                        node("gather", "gather", "join").withSub("one verdict each")),
-                List.of(edge("in", "check", "scatter"),
-                        edge("check", "gather", "verdicts")));
-
+                List.of(node("in", "ducklings", "input").withSub("8 · last seen where"),
+                        node("sniff", "Sniff", "agent").withSub("once per duckling").asStack().as("sniff"),
+                        node("gather", "gather", "join").withSub("foundDucklings")),
+                List.of(edge("in", "sniff", "scatter"),
+                        edge("sniff", "gather", "one result each")));
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
-                "A Bouvier's beard is a collection type. This is one afternoon in the garden, "
-                        + "emptied onto the kitchen floor. Nobody knows about the conker.",
-                null,
-                "Map one agent over a collection in parallel (scatter/gather). Whatever came "
-                        + "out of the beard, one verdict each. The width of the fan-out is data, "
-                        + "decided at run time — and you already know all five answers, so you "
-                        + "can mark this run yourself.",
-                "Beware fan-out cost and rate limits when the list is long — this is the pattern "
-                        + "where emptying a whole beard into the box quietly becomes fifty "
-                        + "concurrent calls.",
+                "Mrs Mallard has lost all eight ducklings at once. Each was last seen somewhere "
+                        + "different. One of them is following Mittens.",
+                "Mission 4 sent three different Rangers. This sends one Ranger eight times.",
+                "Map one agent over a collection in parallel (scatter / gather): the same Sniff "
+                        + "search, once per duckling, all at once. The contrast with Mission 4 is "
+                        + "the point — there, different agents on one input; here, **one agent "
+                        + "on many inputs**, and the width of the fan-out is data. Add a ninth "
+                        + "duckling to the input and there are nine searches.",
+                "Beware fan-out cost and rate limits when the list is long: a list of ducklings "
+                        + "is a list of concurrent model calls, and nothing in the builder asks "
+                        + "how long the list is.",
                 topo,
-                "a cooked chicken bone; half a croissant; one conker; somebody's left glove; "
-                        + "and roughly a litre of yesterday's puddle",
+                "Puddle — last seen at the duck pond; Pickle — last seen by the bakery bins; "
+                        + "Waddles — last seen on the town hall steps; Biscuit — last seen in the "
+                        + "fountain; Noodle — last seen under the bandstand; Pip — last seen at the "
+                        + "bus stop; Socks — last seen in the Mayor's roses; Bean — last seen "
+                        + "following Mittens",
                 ParallelMapperPattern::run);
     }
 }

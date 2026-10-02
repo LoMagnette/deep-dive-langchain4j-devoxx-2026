@@ -231,6 +231,16 @@ function drawGraph(topo){
     const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
     r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',14);
     g.appendChild(r);
+    /* "Color = job": every Pawer Ranger has one colour, and the box wears it as a badge in the
+       corner. A badge rather than a tinted fill or stroke because Doc is WHITE — a white stroke
+       vanishes on the light canvas, a white dot with an outline does not. */
+    if(n.ranger){
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('class','ranger');
+      c.setAttribute('cx',n.x-NW/2+13); c.setAttribute('cy',n.y-NH/2+13); c.setAttribute('r',6);
+      c.style.fill=`var(--r-${String(n.ranger).replace(/[^a-z]/g,'')}, var(--muted))`;
+      g.appendChild(c);
+    }
     /* A second line lets a box say WHY it is there — the key GOAP needed to order it, the
        priority BDI ranked it by — which is the difference between a diagram of the cast and a
        diagram of the mechanism. The name shifts up to make room rather than the box growing,

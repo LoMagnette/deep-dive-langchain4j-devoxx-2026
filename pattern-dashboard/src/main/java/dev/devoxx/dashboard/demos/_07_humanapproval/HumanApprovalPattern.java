@@ -3,7 +3,6 @@ package dev.devoxx.dashboard.demos._07_humanapproval;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Parsing.category;
 import static java.util.Objects.requireNonNullElse;
 
 import java.nio.file.Path;
@@ -11,14 +10,9 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.RescueDog;
-import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
-import dev.devoxx.dashboard.demos._06_conditional.WorryRouter;
-import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Decision;
-import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Draft;
-import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Instruction;
+import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
+import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Approved;
+import dev.devoxx.dashboard.demos._07_humanapproval.Keys.DigPlan;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.observability.AgentMonitor;
@@ -27,127 +21,93 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>human in the loop</b> demo — the previous demo, with a person added.
+ * Wiring for <b>Mission 7</b> — Dig plans, Officer Jo decides, Dig acts.
  */
 public final class HumanApprovalPattern {
 
     private HumanApprovalPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
         var monitor = new AgentMonitor();
 
-        var router = AgenticServices.agentBuilder(WorryRouter.class)
+        var plan = AgenticServices.agentBuilder(DigPlans.class)
                 .chatModel(model)
-                .name("WorryRouter")
-                .outputKey(Category.class)
-                .build();
-        var care = AgenticServices.agentBuilder(EverydayCare.class)
-                .chatModel(model)
-                .name("EverydayCare")
-                .outputKey(Draft.class)
-                .build();
-        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                .chatModel(model)
-                .name("DogTrainer")
-                .outputKey(Draft.class)
-                .build();
-        var rescue = AgenticServices.agentBuilder(RescueDog.class)
-                .chatModel(model)
-                .name("RescueDog")
-                .outputKey(Draft.class)
-                .build();
-        TriageDesk triage = AgenticServices.conditionalBuilder(TriageDesk.class)
-                .name("Conditional")
-                .subAgents(s -> category(s.readState(Category.class)).equals("everyday"), care)
-                .subAgents(s -> category(s.readState(Category.class)).equals("training"), trainer)
-                .subAgents(s -> category(s.readState(Category.class)).equals("emergency"), rescue)
+                .name("Dig")
+                .outputKey(DigPlan.class)
                 .build();
 
+        var jo = AgenticServices.humanInTheLoopBuilder()
+                .description("Officer Jo, who runs Pup HQ and approves anything risky")
+                .inputKey(String.class, new DigPlan().name())
+                .outputKey(new Approved().name())
+                .responseProvider(scope -> listener.askHuman("OfficerJo", """
+                        Dig wants to tunnel under the Mayor's prize roses. Yes, no, or yes-but? \
+                        Nothing is dug until you say.
 
-        var owner = AgenticServices.humanInTheLoopBuilder()
-                .description("The human, who decides what the pack is actually told to do")
-                .inputKey(String.class, new Draft().name())
-                .outputKey(new Decision().name())
-                .responseProvider(scope -> listener.askHuman("You", """
-                        This is what the desk says, and the pack is waiting on it. \
-                        Approve it, change it, or refuse it — nothing is done until \
-                        you say.
-
-                        """ + requireNonNullElse(scope.readState(Draft.class), "")))
+                        """ + requireNonNullElse(scope.readState(DigPlan.class), "")))
                 .build();
 
-        var last = AgenticServices.agentBuilder(FinalNote.class)
+        var act = AgenticServices.agentBuilder(DigActs.class)
                 .chatModel(model)
-                .name("FinalNote")
-                .outputKey(Instruction.class)
+                .name("DigActs")
+                .outputKey(RescueStatus.class)
                 .build();
 
-        ApprovalPipeline app = AgenticServices.sequenceBuilder(ApprovalPipeline.class)
+        RoseRescue app = AgenticServices.sequenceBuilder(RoseRescue.class)
                 .name("Sequential")
-                .subAgents(router, triage, owner, last)
-                .outputKey(Instruction.class)
+                .subAgents(plan, jo, act)
+                .outputKey(RescueStatus.class)
                 .listener(listener)
                 .listener(monitor)
                 .build();
-        var r = app.instruct(input);
+        var r = app.rescue(input);
 
         HtmlReportGenerator.generateReport(monitor, Path.of("human-in-the-loop.html"));
 
-        // Show what was drafted and what the person said, not only the outcome: the whole
-        // point of the pattern is the gap between those two.
+        // Show what was planned and what Jo said, not only the outcome: the whole point of the
+        // pattern is the gap between those two.
         AgenticScope scope = r.agenticScope();
         if (scope == null) {
             return String.valueOf(r.result());
         }
-        String draft = requireNonNullElse(scope.readState(Draft.class), "")
-                .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
-        String decisionText = requireNonNullElse(scope.readState(Decision.class), "");
-        String instructionText = requireNonNullElse(scope.readState(Instruction.class), "");
-        return "**The desk drafted**\n\n" + draft
-                + "\n\n**You said**\n\n" + decisionText
-                + "\n\n**So the pack is told**\n\n" + instructionText;
+        return "**Dig's plan**\n\n" + requireNonNullElse(scope.readState(DigPlan.class), "")
+                + "\n\n**Officer Jo said**\n\n" + requireNonNullElse(scope.readState(Approved.class), "")
+                + "\n\n**So Dig…**\n\n" + requireNonNullElse(scope.readState(RescueStatus.class), "");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("stages",
-                // The person's node has role "human", not "agent", and that is the whole diagram:
-                // drawn as another agent box it would say the model decided, which is the one
-                // thing this pattern exists to deny.
-                List.of(node("in", "worry", "input", 0),
-                        node("router", "WorryRouter", "router", 1).withSub("Corgi · herds worries"),
-                        node("care", "EverydayCare", "agent", 2).withSub("Golden · the everyday"),
-                        node("trainer", "DogTrainer", "agent", 2).withSub("Border Collie · trains"),
-                        node("vet", "RescueDog", "agent", 2).withSub("St Bernard · rescue"),
-                        node("owner", "You", "human", 3).withSub("the only human"),
-                        node("final", "FinalNote", "agent", 4).withSub("Zao · tells the pack")),
-                List.of(edge("in", "router"),
-                        edge("router", "care", "everyday"),
-                        edge("router", "trainer", "training"),
-                        edge("router", "vet", "emergency"),
-                        edge("care", "owner"), edge("trainer", "owner"),
-                        edge("vet", "owner", "draft"),
-                        edge("owner", "final", "decision")));
-
+                // Officer Jo has role "human", not "agent", and that is the whole diagram: drawn
+                // as another agent box she would say the model decided, which is the one thing
+                // this pattern exists to deny.
+                List.of(node("in", "mission", "input", 0),
+                        node("plan", "Dig", "agent", 1).withSub("plans the tunnel").as("dig"),
+                        node("jo", "OfficerJo", "human", 2).withSub("yes · no · yes-but").as("jo"),
+                        node("act", "DigActs", "agent", 3).withSub("digs, or finds a way").as("dig"),
+                        node("out", "rescueStatus", "join", 4)),
+                List.of(edge("in", "plan"),
+                        edge("plan", "jo", "digPlan"),
+                        edge("jo", "act", "approved"),
+                        edge("act", "out")));
         return new PatternDef("humanApproval", "Human in the Loop", "workflow",
-                "Same three desks, a different disaster. This time nothing happens until the "
-                        + "human says so, and the pack will do exactly what it is told.",
-                "Demo 6 exactly — same router, same three desks — with one person added "
-                        + "before anything reaches the pack.",
-                "The previous demo with a person added, and nothing else changed: same router, "
-                        + "same three desks, one more step before anything reaches the pack. "
-                        + "`HumanInTheLoop` is a non-AI agent — it reads a key from the scope and "
-                        + "writes one back, so the sequence around it cannot tell that the answer "
-                        + "came from a browser.",
+                "A hedgehog is trapped under the Mayor's prize roses. Dig is delighted. Officer "
+                        + "Jo would like a word first.",
+                null,
+                "A sequence with a person in it: Dig plans, `HumanInTheLoop` asks Officer Jo, "
+                        + "Dig acts on her answer. `HumanInTheLoop` is a non-AI agent — it reads "
+                        + "`digPlan` from the scope and writes `approved` back — so **the sequence "
+                        + "cannot tell the answer came from a browser**. On stage, say no once: "
+                        + "Dig does not dig, and suggests another way.",
                 "The brake on the dial, and it costs what brakes cost: the run blocks on a "
                         + "person, so it needs a timeout and a thread you can afford to park. Ask "
-                        + "too often and it is a form nobody fills in; ask too rarely and the "
-                        + "approval is a rubber stamp. Put it where the action is hard to undo.",
+                        + "too often and it is a form nobody reads; ask too rarely and the "
+                        + "approval is a rubber stamp. Put it where the action is hard to undo — "
+                        + "a rose bed is.",
                 topo,
-                "the Labrador has swallowed a sock. A whole sock. There were twelve and there "
-                        + "are eleven. The human is standing right here, holding the car keys",
+                "Paws up, Rangers! A hedgehog is trapped under the Mayor's prize roses, the ones "
+                        + "that won Best in Show. The Mayor is at the flower show until four.",
                 HumanApprovalPattern::run);
     }
 }

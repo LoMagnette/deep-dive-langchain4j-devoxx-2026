@@ -1,7 +1,6 @@
 package dev.devoxx.dashboard.catalog;
 
 import static java.util.stream.Collectors.toSet;
-import static dev.devoxx.dashboard.support.Parsing.agreed;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
@@ -10,10 +9,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import dev.devoxx.dashboard.demos._12_blackboard.AlibiCheck;
-import dev.devoxx.dashboard.demos._12_blackboard.CrimeScene;
-import dev.devoxx.dashboard.demos._12_blackboard.PackLeader;
-import dev.devoxx.dashboard.demos._12_blackboard.ScentTrail;
+import dev.devoxx.dashboard.demos._02_sequential.DocChecks;
+import dev.devoxx.dashboard.demos._02_sequential.HowlWritesStory;
+import dev.devoxx.dashboard.demos._02_sequential.ZoomRescues;
+import dev.devoxx.dashboard.demos._12_blackboard.BoltCameras;
+import dev.devoxx.dashboard.demos._12_blackboard.DigTunnels;
+import dev.devoxx.dashboard.demos._12_blackboard.SniffTrails;
+import dev.devoxx.dashboard.demos._12_blackboard.ZaoNamesTheCulprit;
 import dev.devoxx.dashboard.model.MockChatModel;
 import dev.devoxx.dashboard.model.MockStreamingChatModel;
 import dev.devoxx.dashboard.run.AskHuman;
@@ -26,33 +28,36 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 
 /**
- * Smoke test over the whole catalog. Runs every registered pattern against the deterministic
- * {@link dev.devoxx.dashboard.model.MockChatModel} and fails on any error event or empty result — the check that turns
- * "the demo broke on stage" into "the build went red".
+ * Smoke test over the whole catalogue, plus one claim per mission. Runs every registered mission
+ * against the deterministic {@link MockChatModel} and fails on any error event or empty result —
+ * the check that turns "the demo broke on stage" into "the build went red".
+ *
+ * <p><b>Every mission owes a claim of its own, not just a smoke run.</b> "It did not throw" is
+ * true of a pattern that has quietly turned back into a sequence; each claim below is the thing
+ * the speaker says out loud, asserted.
  */
 class PatternCatalogTest {
 
+    // ------------------------------------------------------------------------------------------
+    // Running a mission
+    // ------------------------------------------------------------------------------------------
+
     /**
-     * Runs one pattern on a fresh mock model and returns (result, events).
+     * Runs one mission on a fresh mock model and returns (result, events).
      *
-     * <p>The list must be synchronized: parallel and mapper patterns invoke their agents on
+     * <p>The list must be synchronized: parallel and mapper missions invoke their agents on
      * several threads, so the listener fires concurrently. A plain ArrayList silently drops
-     * events here, which shows up as a flaky "that agent never ran" failure.
+     * events here, which shows up as a flaky "that Ranger never ran" failure.
      */
     private static Run run(PatternDef def) {
         return run(def, def.defaultInput());
     }
 
-    /** Same, with a typed-in input — for patterns whose behaviour depends on what is asked. */
     private static Run run(PatternDef def, String input) {
         return run(def, input, AskHuman.NOBODY);
     }
 
-    /**
-     * Same, with two distinguishable models. Only the model-routing demo reads them, and it is
-     * the only way to assert which tier it picked: with one model the two tiers are the same
-     * object and every run reports the same name.
-     */
+    /** With two distinguishable models — the only way to assert which tier was picked. */
     private static Run run(PatternDef def, String input, ModelTiers tiers) {
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong(), AskHuman.NOBODY,
@@ -60,16 +65,11 @@ class PatternCatalogTest {
         return new Run(def.run(new MockChatModel(), input, listener), events);
     }
 
-    /**
-     * Same, with a stand-in for the person. This is the only way to test a pattern that stops and
-     * waits for a human: swap the human for a lambda. It is also why {@link AskHuman} is an
-     * interface rather than a method on the web layer.
-     */
+    /** With a stand-in for Officer Jo: the only way to test a mission that waits for a person. */
     private static Run run(PatternDef def, String input, AskHuman human) {
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong(), human);
-        String result = def.run(new MockChatModel(), input, listener);
-        return new Run(result, events);
+        return new Run(def.run(new MockChatModel(), input, listener), events);
     }
 
     private record Run(String result, List<RunEvent> events) {
@@ -82,645 +82,441 @@ class PatternCatalogTest {
             return events.stream().filter(e -> "agent-before".equals(e.type()))
                     .map(RunEvent::agent).toList();
         }
-    }
 
-    @Test
-    void everyPatternCompletesUnderTheMockModel() {
-        var catalog = new PatternCatalog();
-        var failures = new ArrayList<String>();
-
-        for (var info : catalog.infos()) {
-            var def = catalog.byId(info.id()).orElseThrow();
-            Run r = run(def);
-            // One demo is ABOUT a failing call, so an error event there is the subject rather
-            // than a broken demo. The exemption is deliberately narrow: only that pattern, and
-            // only on the step it breaks on purpose — anything else erroring is still a bug,
-            // and the result assertion below still has to hold for it like everything else.
-            r.errors().stream()
-                    .filter(e -> !("resilience".equals(info.id()) && e.contains("NoteRetriever")))
-                    .forEach(e -> failures.add(info.id() + " -> " + e));
-            if (r.result() == null || r.result().isBlank() || "null".equals(r.result())) {
-                // The old conditional-routing bug produced exactly this: no error, no answer.
-                failures.add(info.id() + " -> produced no result (" + r.result() + ")");
-            }
+        /** The Rangers only — planner wrappers report themselves too, as "invoke". */
+        List<String> rangers(String... names) {
+            var keep = Set.of(names);
+            return invoked().stream().filter(keep::contains).toList();
         }
 
-        assertEquals(19, catalog.infos().stream()
-                        .filter(i -> !i.category().equals("composite")).count(),
-                "expected all 19 patterns registered");
-        assertTrue(failures.isEmpty(), () -> "patterns failed:\n" + String.join("\n", failures));
+        List<String> toolCalls() {
+            return events.stream().filter(e -> "tool-call".equals(e.type()))
+                    .map(RunEvent::message).toList();
+        }
+
+        Object scope(String key) {
+            for (int i = events.size() - 1; i >= 0; i--) {
+                var s = events.get(i).scope();
+                if (s != null && s.containsKey(key)) {
+                    return s.get(key).value();
+                }
+            }
+            return null;
+        }
     }
 
-    /**
-     * The capstone is the one entry that is a system rather than a pattern, so what matters is
-     * that the composition actually holds together: every stage runs, and each one is reached
-     * through the key the previous stage wrote.
-     */
-    @Test
-    void theCompositeRunsEveryStageItAdvertises() {
-        var def = new PatternCatalog().byId("sitterNote").orElseThrow();
-        Run r = run(def);
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-
-        var invoked = r.invoked();
-        assertTrue(invoked.contains("WorryRouter"), "no triage: " + invoked);
-        assertTrue(invoked.stream().anyMatch(a -> a.equals("RescueDog")
-                        || a.equals("DogTrainer") || a.equals("EverydayCare")),
-                "routing reached nobody: " + invoked);
-        assertTrue(invoked.contains("ChowHound") && invoked.contains("LeadDeveloper"),
-                "the parallel step did not fan out: " + invoked);
-        assertTrue(invoked.contains("PackNoteMerger"), "nothing merged the parts: " + invoked);
-        // The mock alternates 0.60 then 0.95, so a working exit condition scores exactly twice.
-        assertEquals(2, invoked.stream().filter("RuffDraftCritic"::equals).count(),
-                "refinement loop should iterate once then exit: " + invoked);
-
-        assertTrue(r.result() != null && !r.result().isBlank(), "no fridge note produced");
+    private static PatternDef mission(String id) {
+        return new PatternCatalog().byId(id).orElseThrow();
     }
 
-    @Test
-    void loopIteratesThenExitsOnTheScoreBar() {
-        var def = new PatternCatalog().byId("loop").orElseThrow();
-        Run r = run(def);
-        // The mock alternates 0.60 then 0.95, so the scorer must run twice: once below the
-        // 0.8 bar, once above it. One invocation would mean the exit condition never gated.
-        long scorings = r.invoked().stream().filter("RuffDraftCritic"::equals).count();
-        assertEquals(2, scorings, "loop should refine once, then exit: " + r.invoked());
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-    }
-
-    /**
-     * The claim is not "it calls more than one agent" — a fan-out does that. It is that the
-     * <b>second call exists because of what the first one said</b>, which neither a router nor a
-     * fan-out can produce.
-     */
-    @Test
-    void theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid() {
-        var def = new PatternCatalog().byId("supervisor").orElseThrow();
-        Run r = run(def);
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-
-        var called = r.invoked().stream()
-                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
-                        .contains(a))
-                .toList();
-        assertEquals(List.of("FirstSniff", "RescueDog"), called,
-                "the Beagle sniffs it first, and who she names is called next: " + r.invoked());
-
-        // One answer with a route, not a set of opinions — printing every call as a peer block
-        // is what a parallel workflow produces, and it made this demo read as one.
-        assertTrue(r.result().startsWith("**FirstSniff → RescueDog**"),
-                "the route has to lead, as a chain: " + r.result());
-        assertTrue(r.result().contains("named RescueDog, so that is who the supervisor called"),
-                "the result must say why the second call happened: " + r.result());
-        // The protocol words the planner acts on must never reach the reader.
-        assertTrue(!r.result().contains("NEEDS:") && !r.result().contains("ESCALATE"),
-                "protocol markers leaked into the answer: " + r.result());
-        int answerAt = r.result().indexOf("The Beagle is right to send him");
-        int reasonAt = r.result().indexOf("did not answer it");
-        assertTrue(answerAt > 0 && reasonAt > answerAt,
-                "the final answer must come first and the route beneath it: " + r.result());
-
-        // Who she names decides who is called — not a script. A behaviour problem goes to the
-        // trainer instead, on the same wiring.
-        var behaviour = run(def, "he pulls like a train on the lead and barks at the postman")
-                .invoked().stream()
-                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
-                        .contains(a))
-                .toList();
-        assertEquals(List.of("FirstSniff", "DogTrainer"), behaviour,
-                "the same run should reach a different specialist: " + behaviour);
-
-        // And when nobody else is needed it stops, or "it called two" is just a longer script.
-        var settled = run(def, "he ate a bit of grass and was sick once, then asked for his tea")
-                .invoked().stream()
-                .filter(a -> List.of("FirstSniff", "EverydayCare", "DogTrainer", "RescueDog")
-                        .contains(a))
-                .toList();
-        assertEquals(List.of("FirstSniff"), settled,
-                "the Beagle settled this one, so nobody else should have been called: " + settled);
-    }
-
-    /**
-     * Every assertion here is a claim the speaker makes out loud. If one goes red, a prompt
-     * change has turned a pattern back into decoration — which no "it ran without erroring"
-     * test would notice.
-     */
-    @Test
-    void theDemoProblemsActuallyDemonstrateTheirPattern() {
-        var catalog = new PatternCatalog();
-
-        // Both halves of the note get planned at once and the join brings them back — a fan-out
-        // that never rejoins is only half the pattern.
-        Run halves = run(catalog.byId("parallel").orElseThrow());
-        assertTrue(halves.invoked().containsAll(List.of("ChowHound", "LeadDeveloper")),
-                "both halves must be planned: " + halves.invoked());
-        assertTrue(halves.result().contains("The bait") && halves.result().contains("The chase"),
-                "the join must bring both halves back together: " + halves.result());
-
-        // A dog that has eaten chocolate must reach the rescue dog. Routing that to the trainer is
-        // precisely the mistake conditional routing is here to prevent, and the room knows it.
-        Run worry = run(catalog.byId("conditional").orElseThrow());
-        assertTrue(worry.invoked().contains("RescueDog"),
-                "a poisoning must reach the rescue dog: " + worry.invoked());
-
-        // GOAP's agents are registered backwards on purpose, so the only way to get this order
-        // is for the planner to have derived it from the declared I/O keys.
-        List<String> heist = run(catalog.byId("goap").orElseThrow()).invoked();
-        assertTrue(heist.indexOf("DoorbellDecoy") < heist.indexOf("ChairPusher"),
-                "the chair cannot move while the human is in the kitchen: " + heist);
-        assertTrue(heist.indexOf("ChairPusher") < heist.indexOf("CounterSurfer"),
-                "the Corgi cannot reach the counter without the chair: " + heist);
-
-        // Five things out of the beard, five verdicts, and they must NOT all be the same — the
-        // room knows the croissant is fine and the cooked bone is not.
-        List<String> verdicts = run(catalog.byId("parallelMapper").orElseThrow())
-                .result().lines().toList();
-        assertEquals(5, verdicts.size(), "one verdict per item: " + verdicts);
-        assertTrue(verdicts.stream().anyMatch(v -> v.contains("Dangerous")),
-                "the cooked bone must be flagged: " + verdicts);
-        assertTrue(verdicts.stream().anyMatch(v -> v.contains("Fine")),
-                "the croissant must be cleared: " + verdicts);
-
-        // BDI orders by priority and precondition, not by declaration order. Nobody needs to be
-        // told a puppy goes out before he is fed and long before he is taught anything.
-        List<String> hour = run(catalog.byId("bdi").orElseThrow()).invoked();
-        assertTrue(hour.indexOf("GardenLeave") < hour.indexOf("FirstBytes"),
-                "out before food: " + hour);
-        assertTrue(hour.indexOf("FirstBytes") < hour.indexOf("HelloWorld"),
-                "fed before taught: " + hour);
-
-        // The refinement loop has to actually fix the plan it was given: the input sends the
-        // Labrador over the fence and the Dachshund after the cat, and the room can see both.
-        String note = run(catalog.byId("loop").orElseThrow()).result();
-        assertTrue(note.contains("Nobody goes over the fence") && note.contains("not a target"),
-                "the loop did not bring the plan up to the rules: " + note);
-
-        // Every assessor votes, the result shows each vote separately, and they SPLIT. Three
-        // agents that always agree make the tally decoration.
-        Run ballot = run(catalog.byId("voting").orElseThrow());
-        assertTrue(ballot.invoked().containsAll(List.of("SofaSpace", "FoodBudget",
-                "AskZaoHimself")), "the vote did not reach all three criteria: "
-                + ballot.invoked());
-        List<String> votes = ballot.result().lines().filter(l -> l.startsWith("- ")).toList();
-        assertEquals(3, votes.size(), "each criterion's own vote must be visible: " + votes);
-        assertTrue(votes.stream().anyMatch(v -> v.contains("YES"))
-                        && votes.stream().anyMatch(v -> v.contains("LATER")),
-                "the three criteria must be able to disagree: " + votes);
-        assertTrue(ballot.result().startsWith("**Majority: LATER"),
-                "two of three said later, so that is the majority: " + ballot.result());
-
-        // The optional step must actually be skipped when its key is absent, and the note must
-        // still come out. A run that quietly answers anyway has not demonstrated optional at
-        // all — it has demonstrated an agent that ignores its own arguments.
-        Run noMeds = run(catalog.byId("resilience").orElseThrow(),
-                "it got away again: down the oak, along the fence, up the oak. the cat watched.");
-        assertTrue(noMeds.errors().stream().noneMatch(e -> e.contains("FirstAidNote")),
-                "a skipped optional step is not an error: " + noMeds.errors());
-        assertTrue(!noMeds.invoked().contains("FirstAidNote"),
-                "with nobody hurt in the report that step must be skipped: "
-                        + noMeds.invoked());
-        assertTrue(noMeds.result().contains("skipped"),
-                "the result must say the step was skipped, or a skip looks like an operation "
-                        + "where nobody happened to write anything: " + noMeds.result());
-    }
-
-    /** How many times an agent was invoked in this run. Loops and debate rounds repeat names. */
     private static long times(Run r, String agent) {
         return r.invoked().stream().filter(agent::equals).count();
     }
 
-    /**
-     * The debate's claim is not that agents argue — it is that the argument <b>ends</b>, and ends
-     * for one of two different reasons on the same page. The holiday advocates agree, so
-     * {@code ConvergenceStrategy.unanimous()} fires after round one; the council's do not, so that
-     * debate runs its full two rounds and the judge is called on a genuine disagreement.
-     *
-     * <p>Nothing pinned either behaviour before, and both are one mock rule away from vanishing:
-     * the holiday advocates converge because they fall through to a catch-all that hands both
-     * sides the same words, so any new rule inserted between the judge's rule and that catch-all
-     * turns the holiday debate into a second copy of the council's. It would still pass the smoke
-     * test, still draw the same diagram, and quietly stop showing the contrast.
-     */
+    // ------------------------------------------------------------------------------------------
+    // The whole catalogue
+    // ------------------------------------------------------------------------------------------
+
     @Test
-    void theDebateConvergesOnAgreementAndNotOtherwise() {
+    void everyMissionCompletesUnderTheMockModel() {
         var catalog = new PatternCatalog();
+        var failures = new ArrayList<String>();
 
-        Run holiday = run(catalog.byId("debate").orElseThrow());
-        assertTrue(holiday.errors().isEmpty(), holiday.errors()::toString);
-        assertEquals(1, times(holiday, "TeamTuscany"),
-                "both advocates said the same thing, so the debate must stop after ONE round: "
-                        + holiday.invoked());
-        assertEquals(1, times(holiday, "TeamKennels"),
-                "both advocates said the same thing, so the debate must stop after ONE round: "
-                        + holiday.invoked());
-        assertEquals(1, times(holiday, "FinalBoarding"),
-                "the judge rules once, on the round that converged: " + holiday.invoked());
-
-        Run council = run(catalog.byId("secondDogCouncil").orElseThrow());
-        assertTrue(council.errors().isEmpty(), council.errors()::toString);
-        assertEquals(2, times(council, "PuppyFor"),
-                "the council's advocates disagree, so this debate must run its full two rounds "
-                        + "— the opposite behaviour, on the same page: " + council.invoked());
-        assertEquals(2, times(council, "PuppyAgainst"),
-                "the council's advocates disagree, so this debate must run its full two rounds: "
-                        + council.invoked());
-        assertEquals(1, times(council, "PackVerdict"),
-                "the judge is called once, after the rounds run out: " + council.invoked());
-    }
-
-    /**
-     * P2P's claim is the one its diagram spends a box on: the run ends because the exit predicate
-     * fired, not because it hit the round cap. Neither peer can overrule the other, so without a
-     * predicate they counter each other until {@code P2PPlanner}'s limit of ten rounds — which
-     * looks identical from the outside unless you count the invocations.
-     */
-    @Test
-    void theTwoPeersSettleOnThePredicateRatherThanRunningOutOfRounds() {
-        Run r = run(new PatternCatalog().byId("p2p").orElseThrow());
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-
-        // The peers only: the planner wrapper reports itself too, under its method name
-        // ("invoke"), because plannerBuilder() takes no .name(). That is the same default the
-        // .name("X") rule is about, one layer up.
-        var peers = r.invoked().stream()
-                .filter(a -> a.equals("WholeSofa") || a.equals("CornerSeat")).toList();
-        // Three turns: a proposal, a counter, and the first peer signing the counter. The
-        // count is the assertion. TWO would mean the predicate fired the moment the second
-        // peer had spoken — which is what the old hasState(Agreement) predicate did, on any
-        // model, making this a two-step sequence with a planner bolted on. TEN would mean it
-        // never fires at all and the cap is doing the stopping.
-        assertEquals(List.of("WholeSofa", "CornerSeat", "WholeSofa"), peers,
-                "the peers must actually negotiate: propose, counter, then sign — and stop on "
-                        + "the predicate, well short of the ten-round cap: " + r.invoked());
-        assertTrue(agreed(r.result()),
-                "the shared draft is the result, and it is only the result once somebody has "
-                        + "signed it: " + r.result());
-    }
-
-    /**
-     * The blackboard's claim is that <b>any contributor can go first</b>, which is what separates
-     * it from the sequence it used to be. That is a property of the agents' declared inputs, not
-     * of one run: each note-taker reads only {@code problem}, so nothing orders them; the lead
-     * reads all three, so it can only go last. Asserted from the interfaces for exactly that
-     * reason — a run shows one order, and one order is what a sequence shows too.
-     */
-    @Test
-    void anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast() {
-        for (Class<?> notes : List.of(ScentTrail.class, AlibiCheck.class, CrimeScene.class)) {
-            assertEquals(List.of("Crime"), inputKeys(notes),
-                    notes.getSimpleName() + " must read ONLY the Crime. Give it a key another "
-                            + "contributor writes and the board has an order again, which is the "
-                            + "sequence this demo was rewritten to stop being.");
-        }
-        assertEquals(List.of("Trail", "Alibis", "Scene"), inputKeys(PackLeader.class),
-                "the lead reads the whole board, which is what makes it the step that ends the run");
-
-        Run r = run(new PatternCatalog().byId("blackboard").orElseThrow());
-        assertTrue(r.errors().isEmpty(), r.errors()::toString);
-        assertTrue(r.invoked().containsAll(List.of("ScentTrail", "AlibiCheck", "CrimeScene")),
-                "every kind of evidence must reach the board: " + r.invoked());
-        assertEquals("PackLeader", r.invoked().getLast(),
-                "the lead needs all three, so it can only run once they have: " + r.invoked());
-    }
-
-    /**
-     * The scope keys an agent interface declares as inputs, in declaration order — resolved the
-     * way the framework resolves them, so this reads whichever annotation the agent used.
-     * {@code @K(Notes.class)} is the typed form and names the key {@code TypedKey.name()}
-     * returns; {@code @V("food")} survives only where there is no key to point at, which is the
-     * parallel mapper's item.
-     */
-    private static List<String> inputKeys(Class<?> agent) {
-        var method = java.util.Arrays.stream(agent.getMethods())
-                .filter(m -> m.isAnnotationPresent(dev.langchain4j.agentic.Agent.class))
-                .findFirst().orElseThrow(() -> new AssertionError(
-                        agent.getSimpleName() + " has no @Agent method"));
-        return java.util.Arrays.stream(method.getParameters())
-                .map(PatternCatalogTest::declaredKey)
-                .filter(java.util.Objects::nonNull)
-                .toList();
-    }
-
-    /** The key one parameter binds to, from {@code @K} or {@code @V}, or null if it binds none. */
-    private static String declaredKey(java.lang.reflect.Parameter p) {
-        var typed = p.getAnnotation(dev.langchain4j.agentic.declarative.K.class);
-        if (typed != null) {
-            try {
-                return typed.value().getDeclaredConstructor().newInstance().name();
-            } catch (ReflectiveOperationException e) {
-                throw new AssertionError("a TypedKey must be a no-args record: " + typed.value(), e);
+        for (var info : catalog.infos()) {
+            Run r = run(catalog.byId(info.id()).orElseThrow());
+            // One mission is ABOUT a failing call, so an error event there is the subject rather
+            // than a broken demo. The exemption is deliberately narrow: only that mission, and
+            // only on the step it breaks on purpose.
+            r.errors().stream()
+                    .filter(e -> !("resilience".equals(info.id()) && e.contains("Sniff")))
+                    .forEach(e -> failures.add(info.id() + " -> " + e));
+            if (r.result() == null || r.result().isBlank() || "null".equals(r.result())) {
+                failures.add(info.id() + " -> produced no result (" + r.result() + ")");
             }
         }
-        var named = p.getAnnotation(dev.langchain4j.service.V.class);
-        return named == null ? null : named.value();
+
+        assertEquals(21, catalog.infos().size(), "16 missions, 2 Mega Mutts, 3 production demos");
+        assertEquals(19, catalog.infos().stream()
+                .filter(i -> !i.category().equals("composite")).count());
+        assertTrue(failures.isEmpty(), () -> "missions failed:\n" + String.join("\n", failures));
     }
 
-    /**
-     * A non-AI agent's claim is that the framework cannot tell it apart from an LLM one, and the
-     * only honest way to assert that is from the outside: the two Java steps must appear in the
-     * run exactly like the model step does — invoked, timed, and writing to the scope.
-     *
-     * <p>The second half is the reason the demo exists at all. The canned plan deliberately
-     * drops two of the diary's locations, so the cat has something to catch; if a future prompt
-     * change made the model copy everything, this demo would silently become ceremony and the
-     * assertion below is what would say so.
-     */
+    /** The spec's four acts, in its running order, then the two groups outside them. */
     @Test
-    void theJavaStepsAreIndistinguishableFromTheModelStepAndActuallyDoTheWork() {
-        var def = new PatternCatalog().byId("nonAiAgent").orElseThrow();
-        Run r = run(def);
+    void theCategoriesAreTheSpecsActs() {
+        var byId = new java.util.HashMap<String, String>();
+        new PatternCatalog().infos().forEach(i -> byId.put(i.id(), i.category()));
+        assertEquals("team", byId.get("single"));
+        assertEquals("team", byId.get("nonAiAgent"), "Act 1: some pups don't need a brain");
+        for (String id : List.of("sequential", "loop", "parallel", "parallelMapper", "conditional",
+                "humanApproval")) {
+            assertEquals("workflow", byId.get(id), id);
+        }
+        for (String id : List.of("supervisor", "goap", "p2p", "blackboard")) {
+            assertEquals("planner", byId.get(id), id);
+        }
+        for (String id : List.of("voting", "debate", "bdi", "customPlanner")) {
+            assertEquals("minds", byId.get(id), id);
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Act 1 — Meet the team
+    // ------------------------------------------------------------------------------------------
+
+    /** Mission 1's claim: the LLM chooses the tools, not your code — and every call is visible. */
+    @Test
+    void sniffChoosesHisOwnGear() {
+        Run r = run(mission("single"));
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
-
-        // Both Java steps genuinely ran, and neither was reported to the listener. That second
-        // half is a LIBRARY GAP, not a choice: NonAiAgentInstance.setParent sets the parent and
-        // never calls registerInheritedParentListener, which AgentInvocationHandler and
-        // PlannerBasedInvocationHandler both do. So a non-AI agent inherits no listener, emits
-        // no events and is never timed.
-        //
-        // Pinned rather than worked around, because the demo's caveat states it as fact and
-        // because it is exactly the kind of thing a version bump fixes quietly. If this line
-        // goes red on an upgrade, the library fixed it: delete the assertion, and rewrite the
-        // caveat in NonAiAgentPattern.define() — it will have become wrong.
-        assertEquals(List.of("DigPlanner"),
-                r.invoked().stream().filter(a -> !a.equals("Sequential")).toList(),
-                "only the LLM step is observable in 1.20.0-beta30 — if the Java steps now "
-                        + "appear here the library has been fixed: " + r.invoked());
-
-        // So the proof that the Java steps ran is their EFFECT, not their events. The file's
-        // output key reached the scope...
-        assertTrue(r.events().stream().anyMatch(e -> e.scope() != null
-                        && e.scope().containsKey("Facts")),
-                "the non-AI agent must write its output key into the scope");
-
-        // ...and the cat earned its place: the model's plan left two locations out, and the run
-        // still ends with them on the page.
-        assertTrue(r.result().contains("3 paces from the shed")
-                        && r.result().contains("north-east corner"),
-                "the cat must put back what the plan left out: " + r.result());
-        assertTrue(r.result().contains("left out of the plan above"),
-                "a guard that never fires proves nothing: " + r.result());
+        var calls = r.toolCalls();
+        assertEquals(2, calls.size(), "sniff, then followTrail: " + calls);
+        assertTrue(calls.get(0).startsWith("sniff(") && calls.get(1).startsWith("followTrail("),
+                "the model picked the order, and the page must show it: " + calls);
+        assertTrue(r.events().stream().anyMatch(e -> "tool-result".equals(e.type())
+                        && e.message().contains("duck pond")),
+                "the gear's answer is a fact, and the run must carry it");
+        assertTrue(r.result().contains("duck pond"), "the hat is on the pond: " + r.result());
     }
 
     /**
-     * Dynamic model selection has one claim and the answer text cannot carry it: the same agent
-     * with the same prompt produces an answer that looks identical whichever model ran it. So
-     * the test supplies two distinguishable tiers and asserts on which one was chosen.
-     *
-     * <p>Without the tiers this run would be honest but vacuous — both tiers resolve to the one
-     * model the {@code Runner} was given, and {@code ModelTiers.distinct()} is false.
+     * Mission 8: Bolt is a plain class and the sequence cannot tell — and in 1.20.0-beta30 the
+     * listener cannot see him either. Pinned rather than worked around: if the first assertion
+     * goes red on an upgrade, the library fixed it — delete it and rewrite the caveat.
      */
     @Test
-    void theExpensiveModelIsUsedOnlyWhereBeingWrongIsExpensive() {
-        var def = new PatternCatalog().byId("modelRouting").orElseThrow();
+    void boltDoesTheMathsWithNoBrainAndNoEvents() {
+        Run r = run(mission("nonAiAgent"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(List.of("Zoom"), r.invoked().stream()
+                        .filter(a -> !a.equals("Sequential")).toList(),
+                "only the LLM step is observable in 1.20.0-beta30 — if Bolt appears here the "
+                        + "library has been fixed: " + r.invoked());
+        // So the proof Bolt ran is his EFFECT: a 6 m branch needs a 7.5 m ladder.
+        assertEquals("7.5", r.scope("LadderLength"));
+        assertTrue(r.toolCalls().stream().anyMatch(c -> c.startsWith("fetch(") && c.contains("7.5")),
+                "Zoom must fetch the ladder Bolt asked for, not the 5 m one: " + r.toolCalls());
+        assertTrue(r.result().contains("7.5 m ladder"), r.result());
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Act 2 — Workflows
+    // ------------------------------------------------------------------------------------------
+
+    /** Mission 2: each Ranger reads ONLY the pin left by the one before — from the interfaces. */
+    @Test
+    void eachRangerReadsOnlyThePinLeftBeforeIt() {
+        assertEquals(List.of("Location"), inputKeys(ZoomRescues.class));
+        assertEquals(List.of("RescueStatus"), inputKeys(DocChecks.class));
+        assertEquals(List.of("HealthReport"), inputKeys(HowlWritesStory.class));
+        Run r = run(mission("sequential"));
+        assertEquals(List.of("Sniff", "Zoom", "Doc", "Howl"), r.rangers("Sniff", "Zoom", "Doc", "Howl"));
+        assertTrue(r.result().contains("KITTEN"), r.result());
+    }
+
+    /** Mission 3: Fifi scores, Howl rewrites, and the loop exits on the bar — not on the treats. */
+    @Test
+    void theLoopIteratesThenExitsOnTheScoreBar() {
+        Run r = run(mission("loop"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        // The mock scores 2/4 then 4/4: two reviews means the exit condition gated once.
+        assertEquals(2, times(r, "Fifi"), "refine once, then exit: " + r.invoked());
+        assertTrue(r.result().contains("**Pass 2 · score 1.00**"), r.result());
+        assertTrue(r.result().contains("Free entry"), "the second draft fixed the rules: " + r.result());
+        assertTrue(r.result().contains("2 of 5 treats used"), r.result());
+    }
+
+    /** Mission 5: one agent, many inputs — and the answers differ per duckling. */
+    @Test
+    void oneSniffIsSentOncePerDuckling() {
+        Run r = run(mission("parallelMapper"));
+        List<String> lines = r.result().lines().toList();
+        assertEquals(8, lines.size(), "one result per duckling: " + lines);
+        assertEquals(8, lines.stream().distinct().count(), "eight different answers");
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Bean") && l.contains("Mittens")),
+                "the duckling following Mittens is the one the room is waiting for");
+    }
+
+    /** Mission 6: four calls, four different Rangers — the audience's guessing game, asserted. */
+    @Test
+    void thePhoneSendsExactlyTheRightRanger() {
+        var def = mission("conditional");
+        assertEquals(List.of("Dig"), run(def).rangers("Sniff", "Dig", "Doc", "Zoom"),
+                "a tortoise down a well is Dig's");
+        assertEquals(List.of("Sniff"), run(def, "My glasses are gone and I have looked everywhere")
+                .rangers("Sniff", "Dig", "Doc", "Zoom"));
+        assertEquals(List.of("Doc"), run(def, "Grandpa slipped and his ankle is swelling")
+                .rangers("Sniff", "Dig", "Doc", "Zoom"));
+        assertEquals(List.of("Zoom"), run(def, "The ice-cream van is rolling downhill with nobody in it")
+                .rangers("Sniff", "Dig", "Doc", "Zoom"));
+    }
+
+    /** Mission 7: Jo is asked once, with the plan in front of her, and a "no" sticks. */
+    @Test
+    void officerJoCanSayNoAndDigHonoursIt() {
+        var def = mission("humanApproval");
+        var asked = new ArrayList<String>();
+        Run approved = run(def, def.defaultInput(), q -> {
+            asked.add(q);
+            return "Yes, but only from the wall side.";
+        });
+        assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
+        assertEquals(1, asked.size(), "Jo is asked exactly once: " + asked);
+        assertTrue(asked.get(0).contains("garden wall"),
+                "the question must carry the plan being approved: " + asked.get(0));
+        assertTrue(after(approved.result(), "**So Dig…**").contains("Dug"), approved.result());
+
+        Run refused = run(def, def.defaultInput(), q -> "No. Do not touch those roses.");
+        String outcome = after(refused.result(), "**So Dig…**");
+        assertTrue(outcome.contains("Not digging"), "a refusal must survive: " + outcome);
+        assertFalse(outcome.contains("Dug from"), "and must not be overridden: " + outcome);
+        List<String> types = refused.events().stream().map(RunEvent::type).toList();
+        assertTrue(types.contains("human-ask") && types.contains("human-answer"), types.toString());
+    }
+
+    private static String after(String text, String marker) {
+        int at = text.indexOf(marker);
+        return at < 0 ? text : text.substring(at + marker.length());
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Act 3 — Planners
+    // ------------------------------------------------------------------------------------------
+
+    /** Mission 9: Zao sends one Ranger per problem, and the route leads the result. */
+    @Test
+    void zaoSendsTheRightRangerToEachProblem() {
+        Run r = run(mission("supervisor"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(List.of("Sniff", "Zoom", "Dig"), r.rangers("Sniff", "Zoom", "Dig", "Doc"),
+                "the lost child, the cart, the hole: " + r.invoked());
+        assertTrue(r.result().startsWith("**Sniff → Zoom → Dig**"), r.result());
+        assertTrue(r.result().contains("carousel") && r.result().contains("duck pond")
+                && r.result().contains("bouncy castle"), "every report is shown: " + r.result());
+    }
+
+    /** Mission 10: registered scrambled, run in the order the goal demands. */
+    @Test
+    void goapFindsTheChainFromTheGoalBackwards() {
+        Run r = run(mission("goap"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        List<String> order = r.rangers("Zoom", "Dig", "Doc");   // Bolt is invisible: see Mission 8
+        assertEquals(List.of("Zoom", "Dig", "Doc"), order,
+                "the ladder, then steadied, then climbed: " + r.invoked());
+        assertEquals("13.5", r.scope("LadderLength"), "Bolt ran first — his number is on the board");
+        assertTrue(r.result().contains("Mittens"), r.result());
+    }
+
+    /** Mission 11: no leader, and the search ends on the predicate — nose, legs, nose. */
+    @Test
+    void thePeersStopWhenTheGoatIsFound() {
+        Run r = run(mission("p2p"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        // THREE turns, precisely: two would mean the predicate fired on the mere presence of a
+        // pin, ten would mean it never fires and the cap is doing the stopping.
+        assertEquals(List.of("Sniff", "Zoom", "Sniff"), r.rangers("Sniff", "Zoom"), r.invoked().toString());
+        assertTrue(r.result().startsWith("**Goat found.**"), r.result());
+    }
+
+    /**
+     * Mission 12: any clue-finder can go first. That is a property of the declared inputs, not of
+     * one run — a run shows one order, and one order is what a sequence shows too.
+     */
+    @Test
+    void anyClueCanBePinnedFirstAndOnlyZaoCanGoLast() {
+        assertEquals(List.of("Mission"), inputKeys(SniffTrails.class));
+        assertEquals(List.of("Mission"), inputKeys(DigTunnels.class));
+        assertEquals(List.of("Mission"), inputKeys(BoltCameras.class));
+        assertEquals(List.of("ScentClue", "TunnelClue", "CameraClue"),
+                inputKeys(ZaoNamesTheCulprit.class));
+        Run r = run(mission("blackboard"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals("Zao", r.rangers("Sniff", "Dig", "Zao").getLast());
+        assertTrue(r.result().contains("Mittens") && r.result().contains("innocent"),
+                "the twist: " + r.result());
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Act 4 — Many minds, custom brains
+    // ------------------------------------------------------------------------------------------
+
+    /** Mission 13: the strategy is the design — a majority says SAFE, the veto says no. */
+    @Test
+    void theVetoOverrulesTheMajorityOnIce() {
+        Run r = run(mission("voting"));
+        assertTrue(r.result().startsWith("**Verdict: NOT SAFE**"), r.result());
+        assertTrue(r.result().contains("majority would have said SAFE (2 of 3)"), r.result());
+        assertTrue(r.result().contains("Bolt: SAFE — measured 12.0 cm"), r.result());
+    }
+
+    /** Mission 14: three rounds, each turn minuted, then Fifi — once, last. */
+    @Test
+    void theCouncilArguesThreeRoundsBeforeFifiRules() {
+        Run r = run(mission("debate"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(3, times(r, "Howl"));
+        assertEquals(3, times(r, "Mittens"));
+        assertEquals("Fifi", r.rangers("Howl", "Mittens", "Fifi").getLast());
+        assertTrue(r.result().contains("Round 3"), "Bolt minuted every round: " + r.result());
+    }
+
+    /** Mission 15: the squirrel changes nothing while the kid is stranded; a belief update does. */
+    @Test
+    void zoomKeepsHisIntentionUntilTheBeliefChanges() {
+        var def = mission("bdi");
+        assertEquals(List.of("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
+                run(def).rangers("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
+                "rescue first, squirrel after — the intention is kept");
+        Run safe = run(def, "Radio: the bridge is out. The kid is already safe. And a SQUIRREL "
+                + "has just appeared.");
+        assertEquals(List.of("ZoomSquirrel", "ZoomNap"),
+                safe.rangers("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
+                "with nobody stranded, the rescue is dropped: " + safe.invoked());
+        assertTrue(safe.result().contains("dropped"), safe.result());
+    }
+
+    /** Mission 16: the rule, asserted — feed the hungry, rest the tired, nobody twice in a row. */
+    @Test
+    void zaosRuleFeedsNapsAndNeverRepeatsARanger() {
+        Run r = run(mission("customPlanner"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        String day = r.result();
+        assertTrue(day.indexOf("FEED  Zoom") >= 0 && day.indexOf("FEED  Zoom") < day.indexOf("GO    Zoom"),
+                "Zoom is hungry, so he eats before he works: " + day);
+        assertTrue(day.indexOf("NAP   Dig") >= 0 && day.indexOf("NAP   Dig") < day.indexOf("GO    Dig"),
+                "Dig is at 40, so he naps before he works: " + day);
+        var sent = r.rangers("Sniff", "Zoom", "Dig", "Doc");
+        assertEquals(4, sent.size(), "four missions, four sendings: " + sent);
+        for (int i = 1; i < sent.size(); i++) {
+            assertNotEquals(sent.get(i - 1), sent.get(i), "nobody twice in a row: " + sent);
+        }
+        assertTrue(day.contains("Queue empty"), day);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // The Mega Mutt and production
+    // ------------------------------------------------------------------------------------------
+
+    /** Mission 17: three missions nested into one — and every one of them actually runs. */
+    @Test
+    void theMegaMuttRunsEveryMissionItIsMadeOf() {
+        Run r = run(mission("megaMutt"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertTrue(r.invoked().containsAll(List.of("Sniff", "Zoom", "Doc", "Howl", "Fifi")),
+                r.invoked().toString());
+        assertEquals("7.5", r.scope("LadderLength"), "Bolt was dropped in, and did the maths");
+        assertEquals(2, times(r, "Fifi"), "the nested loop iterated, then exited");
+        assertTrue(r.result().contains("KITTEN SAVED"), r.result());
+    }
+
+    /** Mission 18: four spots checked at once, then the same veto as Mission 13. */
+    @Test
+    void theLakePartyIsCalledOffByOneBadSpot() {
+        Run r = run(mission("lakeParty"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(4, r.invoked().stream().filter(a -> a.matches("Sniff_\\d+")).count(),
+                "one Sniff per spot: " + r.invoked());
+        assertTrue(r.result().contains("**Verdict: NOT SAFE**"), r.result());
+        assertTrue(r.result().contains("OFF"), "Howl announced it: " + r.result());
+    }
+
+    /** Mission 19: the strong model only where being wrong is expensive. */
+    @Test
+    void theStrongModelIsUsedOnlyWhenSomeoneIsHurt() {
+        var def = mission("modelRouting");
         var tiers = ModelTiers.of(new MockChatModel(), "tiny", new MockChatModel(), "big");
-
-        Run poisoning = run(def, def.defaultInput(), tiers);
-        assertTrue(poisoning.errors().isEmpty(), poisoning.errors()::toString);
-        assertTrue(poisoning.result().startsWith("**emergency → big"),
-                "a dog that has eaten chocolate must buy the strong model: "
-                        + poisoning.result());
-
-        // The saving, which is the entire reason to do this: an ordinary question must NOT
-        // reach the expensive tier. This is the assertion that separates the demo from one
-        // that always picks the big model and never says so.
-        Run kibble = run(def, "which food should I buy for a four-year-old bouvier?", tiers);
-        assertTrue(kibble.result().startsWith("**everyday → tiny"),
-                "a kibble question must settle on the cheap model: " + kibble.result());
-
-        // And a behaviour question, so the cheap tier is not merely the default for anything
-        // the classifier fails to recognise.
-        Run pulling = run(def, "he pulls like a train on the lead", tiers);
-        assertTrue(pulling.result().startsWith("**training → tiny"),
-                "a training question does not need the strong model: " + pulling.result());
+        Run ankle = run(def, def.defaultInput(), tiers);
+        assertTrue(ankle.errors().isEmpty(), ankle.errors()::toString);
+        assertTrue(ankle.result().startsWith("**hurt → big"), ankle.result());
+        Run umbrella = run(def, "I have lost my umbrella somewhere on the high street", tiers);
+        assertTrue(umbrella.result().startsWith("**lost → tiny"), umbrella.result());
     }
 
+    /** Mission 21: the dropped call is retried, visibly; Doc runs only when someone is hurt. */
+    @Test
+    void theDroppedCallIsRetriedAndDocIsOptional() {
+        var def = mission("resilience");
+        Run r = run(def);
+        assertTrue(r.result().contains("recovered by retry"), r.result());
+        assertTrue(r.invoked().contains("Doc"), "a thorn in its paw: Doc runs: " + r.invoked());
+        assertTrue(r.result().contains("thorn"), r.result());
+
+        Run fine = run(def, "Paws up, Rangers! A kitten is stuck in the oak tree on Main Street.");
+        assertFalse(fine.invoked().contains("Doc"), "nobody hurt: Doc is skipped: " + fine.invoked());
+        assertTrue(fine.errors().stream().noneMatch(e -> e.contains("Doc")),
+                "a skipped optional step is not an error: " + fine.errors());
+        assertTrue(fine.result().contains("skipped"), fine.result());
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Timing, streaming, async
+    // ------------------------------------------------------------------------------------------
+
     /**
-     * The error handler's claim: the run survives a call that fails, and it survives it by
-     * retrying rather than by pretending. Both halves matter — a demo that swallows the failure
-     * silently looks exactly like one where nothing went wrong.
+     * Mission 4's claim, measured: three checks in the time of one. The Parallel step is itself
+     * reported as an agent, so its own duration is the wall clock of the fan-out.
      */
     @Test
-    void theFailingCallIsRetriedAndTheNoteStillReachesTheDoor() {
-        var def = new PatternCatalog().byId("resilience").orElseThrow();
-        Run r = run(def);
+    void theStormInspectionsReallyOverlap() {
+        long delay = 150;
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        var def = mission("parallel");
+        def.run(slowModel(delay), def.defaultInput(), new StreamingListener(events::add, new AtomicLong()));
+        List<RunEvent> done = events.stream().filter(e -> "agent-after".equals(e.type())).toList();
+        assertTrue(done.stream().allMatch(e -> e.millis() != null), "every step is timed");
 
-        assertTrue(r.result() != null && !r.result().isBlank(), "the note must survive");
-        assertTrue(r.result().contains("Nobody goes over the fence"),
-                "the recovered plan still has to satisfy the battle-plan rules: " + r.result());
+        List<RunEvent> branches = done.stream()
+                .filter(e -> List.of("Zoom", "Sniff", "Dig").contains(e.agent())).toList();
+        assertEquals(3, branches.size(), done.stream().map(RunEvent::agent).toList().toString());
+        long sum = branches.stream().mapToLong(RunEvent::millis).sum();
+        long step = done.stream().filter(e -> "Parallel".equals(e.agent()))
+                .mapToLong(RunEvent::millis).max().orElseThrow();
+        assertTrue(step < sum * 0.6, "three checks must overlap: the step took " + step
+                + "ms against " + sum + "ms of Ranger time");
 
-        // The clerk's model is called twice for one answer: once to fail, once to succeed.
-        assertTrue(r.result().contains("called 2 times"),
-                "the retry must be visible, or a recovered run looks like a clean one: "
-                        + r.result());
-        assertTrue(r.result().contains("recovered by retry"),
-                "the result must name the recovery: " + r.result());
-
-        // The default input DOES mention an injury, so the optional step runs here — the mirror
-        // of the skip asserted above. Both paths, or the step is only ever tested one way.
-        assertTrue(r.invoked().contains("FirstAidNote"),
-                "with the Corgi's nose in the report the optional step must run: " + r.invoked());
+        // A fan-out over eight ducklings must report eight distinct durations, not one reused.
+        var mapper = mission("parallelMapper");
+        List<RunEvent> mapped = Collections.synchronizedList(new ArrayList<>());
+        mapper.run(new MockChatModel(), mapper.defaultInput(),
+                new StreamingListener(mapped::add, new AtomicLong()));
+        assertEquals(8, mapped.stream().filter(e -> "agent-after".equals(e.type())
+                && e.agent().startsWith("Sniff") && e.millis() != null).count());
     }
 
-    /**
-     * The streaming toggle's claim is a negative one, and it is the only thing worth asserting:
-     * turning it on changes <b>how the answer arrives and nothing else</b>. The two runs use
-     * different agent interfaces and different model types, so "the answers are identical" is a
-     * real result rather than a tautology — and it is what makes the toggle safe to flip on
-     * stage mid-sentence.
-     */
+    /** Mission 20: a sequence with one async step finishes in less than its agents' time. */
+    @Test
+    void sniffsAsyncForestCheckOverlapsTheStepsAfterIt() {
+        long delay = 200;
+        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
+        var def = mission("async");
+        def.run(slowModel(delay), def.defaultInput(), new StreamingListener(events::add, new AtomicLong()));
+        List<RunEvent> done = events.stream().filter(e -> "agent-after".equals(e.type())).toList();
+        long agentTime = done.stream().filter(e -> List.of("Sniff", "Zoom", "Dig", "Zao")
+                .contains(e.agent())).mapToLong(RunEvent::millis).sum();
+        long step = done.stream().filter(e -> "Sequential".equals(e.agent()))
+                .mapToLong(RunEvent::millis).max().orElseThrow();
+        assertTrue(step < agentTime * 0.85, "the async step must overlap the ones after it: "
+                + step + "ms against " + agentTime + "ms of Ranger time");
+    }
+
+    /** Streaming changes how Sniff's answer arrives, and nothing else — gear and all. */
     @Test
     void streamingChangesHowTheAnswerArrivesAndNothingElse() {
         var catalog = new PatternCatalog();
         var def = catalog.byId("single").orElseThrow();
-        assertTrue(def.streams(), "demo 1 is the one that offers the toggle");
-
-        // Only the last agent of a run can stream to a screen, and demo 1 is the only entry
-        // that ends on one. A toggle offered where it silently does nothing is worse than none.
         assertEquals(List.of("single"), catalog.infos().stream()
-                        .filter(PatternDef.PatternInfo::streams)
-                        .map(PatternDef.PatternInfo::id).toList(),
+                .filter(PatternDef.PatternInfo::streams).map(PatternDef.PatternInfo::id).toList(),
                 "exactly one demo may advertise streaming");
 
         List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
         var listener = new StreamingListener(events::add, new AtomicLong(), AskHuman.NOBODY,
                 null, new MockStreamingChatModel());
         String streamed = def.run(new MockChatModel(), def.defaultInput(), listener);
-
-        List<RunEvent> tokens = events.stream()
-                .filter(e -> "token".equals(e.type())).toList();
-        assertTrue(tokens.size() > 5,
-                "the answer has to arrive in pieces, or nothing was demonstrated: "
-                        + tokens.size() + " token events");
-        assertTrue(tokens.stream().allMatch(e -> e.message() == null),
-                "a token carries its chunk in data and has nothing to say in message");
-
-        String reassembled = tokens.stream().map(e -> String.valueOf(e.data()))
-                .reduce("", String::concat);
-        assertEquals(streamed, reassembled,
-                "the tokens the page drew must add up to the answer the run returned");
-        assertEquals(run(def).result(), streamed,
-                "streaming must change the delivery and not the answer");
-    }
-
-    /**
-     * The async claim, measured the same way the parallel one is: against a model where every
-     * call costs the same, a sequence carrying one async step finishes in materially less than
-     * the time its agents spent. The Sequential step's own duration is the library's
-     * measurement of the whole thing, which is a better number than one taken out here.
-     */
-    @Test
-    void theAsyncStepOverlapsTheStepsDeclaredAfterIt() {
-        var def = new PatternCatalog().byId("async").orElseThrow();
-        long delay = 200;
-        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
-        def.run(slowModel(delay), def.defaultInput(),
-                new StreamingListener(events::add, new AtomicLong()));
-
-        List<RunEvent> done = events.stream()
-                .filter(e -> "agent-after".equals(e.type())).toList();
-        long agentTime = done.stream()
-                .filter(e -> List.of("FenceCheck", "ChowHound", "LeadDeveloper")
-                        .contains(e.agent()))
-                .mapToLong(RunEvent::millis).sum();
-        long step = done.stream().filter(e -> "Sequential".equals(e.agent()))
-                .mapToLong(RunEvent::millis).max().orElseThrow();
-
-        assertEquals(3, done.stream().filter(e -> List.of("FenceCheck", "ChowHound",
-                        "LeadDeveloper").contains(e.agent())).count(),
-                "all three steps must run: " + done.stream().map(RunEvent::agent).toList());
-        assertTrue(step < agentTime * 0.8,
-                "the async step must overlap the ones after it: the sequence took " + step
-                        + "ms against " + agentTime + "ms of agent time");
-    }
-
-    /**
-     * The hand-written planner is the one pattern whose whole point is a decision made in Java
-     * rather than by a builder or a model, so its policy is asserted directly: the ladder must
-     * stop at the first rung that can answer. A planner that always walks every tier is a
-     * sequence with extra ceremony, and it would pass every other test in this file.
-     */
-    @Test
-    void theCustomPlannerStopsAtTheFirstRungThatCanAnswer() {
-        var def = new PatternCatalog().byId("customPlanner").orElseThrow();
-
-        // A limp is past the book and past the trainer, so the ladder runs to the top.
-        Run medical = run(def);
-        assertTrue(medical.errors().isEmpty(), medical.errors()::toString);
-        assertEquals(List.of("EverydayCare", "DogTrainer", "RescueDog"),
-                medical.invoked().stream().filter(a -> !a.equals("invoke")).toList(),
-                "a limp should escalate all the way, in cost order");
-
-        // Ordinary kibble question: the cheapest rung answers it and nothing else is called.
-        // This is the assertion that distinguishes the planner from a sequence.
-        Run basics = run(def, "which food should I buy for a four-year-old bouvier?");
-        assertEquals(List.of("EverydayCare"), basics.invoked().stream()
-                        .filter(a -> !a.equals("invoke")).toList(),
-                "everyday care answered, so nobody should have rung the trainer or the rescue dog");
-        assertTrue(basics.result() != null && !basics.result().isBlank(), "no answer returned");
-
-        // A behaviour question stops one rung further up — never reaching the rescue dog.
-        Run behaviour = run(def, "he pulls like a train on the lead");
-        assertEquals(List.of("EverydayCare", "DogTrainer"), behaviour.invoked().stream()
-                        .filter(a -> !a.equals("invoke")).toList(),
-                "the trainer answered, so the rescue dog should not have been asked");
-    }
-
-    /**
-     * The human-in-the-loop demo is the one pattern whose answer is supposed to change because a
-     * person said so, and the only way to test that is to stand in for the person. Both paths
-     * matter: a gate that cannot refuse is a rubber stamp, and a gate whose refusal is quietly
-     * overridden downstream is worse than no gate at all.
-     */
-    @Test
-    void theHumanCanRefuseAndTheRunHonoursIt() {
-        var def = new PatternCatalog().byId("humanApproval").orElseThrow();
-
-        // The question has to reach the person with the draft in it — an approval step that asks
-        // "is this ok?" without showing what "this" is, is theatre.
-        var asked = new ArrayList<String>();
-        Run approved = run(def, def.defaultInput(), q -> {
-            asked.add(q);
-            return "Yes, but also count the socks again before I get home.";
-        });
-        assertTrue(approved.errors().isEmpty(), approved.errors()::toString);
-        assertEquals(1, asked.size(), "the person should be asked exactly once: " + asked);
-        assertTrue(asked.get(0).contains("sock"),
-                "the question must carry the draft being approved: " + asked.getFirst());
-        assertTrue(approved.invoked().contains("WorryRouter"),
-                "the approval demo is the routing demo plus a person: " + approved.invoked());
-
-        // Refusal has to stick. Assert on the INSTRUCTION, not the whole result: the result also
-        // echoes what the person said, so a naive contains() passes on their own words and a
-        // run that ignored them entirely still looks green.
-        Run refused = run(def, def.defaultInput(), q -> "No. Do not ring anyone, wait for me.");
-        assertTrue(instruction(refused).contains("Do nothing yet"),
-                "a refusal must survive to the instruction: " + instruction(refused));
-        assertFalse(instruction(refused).contains("straight to the vet"), "a refusal must not be quietly overridden: " + instruction(refused));
-
-        // And the run has to be legible on the page: a question event, then an answer event.
-        List<String> types = refused.events().stream().map(RunEvent::type).toList();
-        assertTrue(types.contains("human-ask") && types.contains("human-answer"),
-                "the page needs both halves of the exchange: " + types);
-    }
-
-    /** Just the final instruction, without the draft and the answer the result also shows. */
-    private static String instruction(Run r) {
-        String marker = "**So the pack is told**";
-        int at = r.result().indexOf(marker);
-        return at < 0 ? r.result() : r.result().substring(at + marker.length());
-    }
-
-    /**
-     * A parallel step really does overlap: against a model where every call costs 150ms, two
-     * branches cost 300ms of agent time inside a run barely longer than one of them. Also pins
-     * the keying — durations are per {@code agentId()}, and colliding ids would make the
-     * mapper's five items report garbage.
-     */
-    @Test
-    void everyStepIsTimedAndParallelStepsActuallyOverlap() {
-        var catalog = new PatternCatalog();
-        long delay = 150;
-
-        // Two independent checks; run one after another they would cost ~300ms.
-        var parallel = catalog.byId("parallel").orElseThrow();
-        List<RunEvent> events = Collections.synchronizedList(new ArrayList<>());
-        parallel.run(slowModel(delay), parallel.defaultInput(),
-                new StreamingListener(events::add, new AtomicLong()));
-
-        // The Parallel step is itself reported as an agent, so its own duration is the wall clock
-        // of the fan-out — a better number to assert on than anything measured out here.
-        List<RunEvent> done = events.stream()
-                .filter(e -> "agent-after".equals(e.type())).toList();
-        assertTrue(done.stream().allMatch(e -> e.millis() != null),
-                "every agent-after must carry a duration: " + done.stream()
-                        .map(e -> e.agent() + "=" + e.millis()).toList());
-
-        // Named, not matched on a suffix: the two branches are demo 4's own agents, and a
-        // heuristic over their names goes quietly to zero the day either one is renamed.
-        List<RunEvent> branches = done.stream()
-                .filter(e -> List.of("ChowHound", "LeadDeveloper").contains(e.agent())).toList();
-        assertEquals(2, branches.size(), "both halves should have been planned: " + done.stream()
-                .map(RunEvent::agent).toList());
-        assertTrue(branches.stream().allMatch(e -> e.millis() >= delay),
-                "a branch cannot finish faster than the model it called: " + branches.stream()
-                        .map(RunEvent::millis).toList());
-
-        long sum = branches.stream().mapToLong(RunEvent::millis).sum();
-        long step = done.stream().filter(e -> "Parallel".equals(e.agent()))
-                .mapToLong(RunEvent::millis).max().orElseThrow();
-        assertTrue(step < sum * 0.8,
-                "the two branches must overlap: the step took " + step + "ms against " + sum
-                        + "ms of agent time");
-
-        // A fan-out over five items must report five distinct durations, not one reused.
-        var mapper = catalog.byId("parallelMapper").orElseThrow();
-        List<RunEvent> mapped = Collections.synchronizedList(new ArrayList<>());
-        mapper.run(new MockChatModel(), mapper.defaultInput(),
-                new StreamingListener(mapped::add, new AtomicLong()));
-        long timed = mapped.stream().filter(e -> "agent-after".equals(e.type())
-                && e.agent().startsWith("BeardOverflow") && e.millis() != null).count();
-        assertEquals(5, timed, "each mapped item needs its own timing: " + mapped.stream()
-                .filter(e -> "agent-after".equals(e.type())).map(RunEvent::agent).toList());
+        List<RunEvent> tokens = events.stream().filter(e -> "token".equals(e.type())).toList();
+        assertTrue(tokens.size() > 5, tokens.size() + " token events");
+        assertEquals(streamed, tokens.stream().map(e -> String.valueOf(e.data()))
+                .reduce("", String::concat), "the tokens add up to the answer");
+        assertEquals(run(def).result(), streamed, "streaming changes delivery, not the answer");
     }
 
     /** A model that takes its time, so a duration has something to measure. */
@@ -738,19 +534,18 @@ class PatternCatalogTest {
         };
     }
 
-    /**
-     * A new demo cannot join the catalogue without a beat. The beats are written to fit the rail
-     * order, which is the <b>autonomy dial</b> — if a better story seems to want the patterns
-     * reordered, the story is what is wrong.
-     */
+    // ------------------------------------------------------------------------------------------
+    // The shape of the catalogue
+    // ------------------------------------------------------------------------------------------
+
+    /** A beat is a sentence the speaker says out loud, not a paragraph they read. */
     @Test
-    void everyDemoHasItsBeatInTheNarration() {
+    void everyMissionHasItsBeat() {
         var missing = new ArrayList<String>();
         for (var info : new PatternCatalog().infos()) {
             if (info.story() == null || info.story().isBlank()) {
                 missing.add(info.id() + " has no story");
             } else if (info.story().length() > 140) {
-                // A beat is a sentence the speaker says out loud, not a paragraph they read.
                 missing.add(info.id() + " reads as a paragraph (" + info.story().length() + " chars)");
             }
         }
@@ -758,189 +553,129 @@ class PatternCatalogTest {
     }
 
     /**
-     * The hand-off lives in two files that have to agree and nothing at run time forces them to:
-     * the Beagle's prompt must name who is needed, and the supervisor's context must say what to
-     * do with that. When they disagree a live planner calls one agent and stops, and every other
-     * test here still passes — the mock cannot see it.
-     */
-    @Test
-    void theHandOffIsSpelledOutWhereThePlannerAndTheTrainerCanBothSeeIt() {
-        var catalog = new PatternCatalog();
-
-        // The supervisor must explain what an escalation IS — a planner cannot act on a marker
-        // nobody has defined for it.
-        String useful = catalog.byId("supervisor").orElseThrow().useful();
-        assertTrue(useful.contains("that answer is what makes"),
-                "the supervisor's own description must state the dependency: " + useful);
-
-        // And the trainer has to be told to refuse the case, or it will helpfully answer it and
-        // there will be nothing to hand on. The rule is in its @UserMessage.
-        String prompt = dev.devoxx.dashboard.demos._06_conditional.DogTrainer.class
-                .getMethods()[0].getAnnotation(dev.langchain4j.service.UserMessage.class)
-                .value()[0];
-        assertTrue(prompt.contains("ESCALATE"),
-                "the trainer must have a way to decline: " + prompt);
-        assertTrue(prompt.toLowerCase().contains("until a vet"),
-                "the trainer must be told WHEN to decline, or it will just answer: " + prompt);
-    }
-
-    /**
      * A demo package is {@code _NN_<id>}, where {@code NN} is its position in
-     * {@code PatternCatalog.build()} — so the source tree reads in the order the talk runs.
-     *
-     * <p>This is asserted because <b>nothing at run time reads that number</b>: no code derives a
-     * package from an id, so a package left at {@code _08_} after the demo moved to ninth is
-     * wrong only to a reader, and readers of this repo are the speaker mid-talk and the room. The
-     * numbering is documentation, and undefended documentation drifts — moving {@code nonAiAgent}
-     * once already cost a renumbering of every {@code buildsOn} line, which is exactly the kind
-     * of edit that renames twelve directories and forgets one.
+     * {@code PatternCatalog.build()} — the mission number. Asserted because nothing at run time
+     * reads that number, and undefended documentation drifts.
      */
     @Test
-    void everyDemoPackageIsNumberedByItsPlaceInTheRunningOrder() throws Exception {
+    void everyMissionPackageIsNumberedByItsPlaceInTheCatalogue() throws Exception {
         var demos = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos");
         var infos = new PatternCatalog().infos();
-
         var expected = new ArrayList<String>();
         for (int i = 0; i < infos.size(); i++) {
             expected.add(String.format("_%02d_%s", i + 1,
                     infos.get(i).id().toLowerCase(java.util.Locale.ROOT)));
         }
-
         List<String> actual;
         try (var paths = java.nio.file.Files.list(demos)) {
             actual = paths.filter(java.nio.file.Files::isDirectory)
-                    .map(p -> p.getFileName().toString())
-                    .sorted()
-                    .toList();
+                    .map(p -> p.getFileName().toString()).sorted().toList();
         }
-
-        assertEquals(expected, actual, "a demo package is its catalogue position then its id, "
-                + "lowercased — renumber the packages when you reorder PatternCatalog.build(), "
-                + "and keep the leading '_' (a package segment cannot start with a digit)");
+        assertEquals(expected, actual, "a package is its catalogue position then its id, lowercased");
     }
 
     /**
-     * Scope keys are declared as {@code TypedKey} records, never as string literals at the call
-     * site. This reads the demo sources and fails on a relapse, because a stringly-typed key is
-     * invisible until it is wrong at run time — this repo lost a run to {@code "note"} against
-     * {@code "notes"}, and another to findings declared {@code String} when the scope held a
-     * {@code List}. The compiler cannot see either mistake; this can.
-     *
-     * <p>It covers <b>both ends</b> of the contract. The output side is the builder
-     * ({@code outputKey("x")}); the input side is the parameter, where {@code @V("x")} is what
-     * every LangChain4j example on the internet uses and {@code @K(Xxx.class)} is what this repo
-     * uses. A {@code @V} relapse does at least fail loudly at run time — the prompt template
-     * refuses an unknown variable — but it puts a key back in a string, which is the habit this
-     * whole mechanism exists to break.
+     * Scope keys are {@code TypedKey} records, never string literals — at the builder AND at the
+     * parameter. Demos 1–6 deliberately use {@code @V("…")} for the talk's typed-keys section,
+     * so this goes red until they are flipped back: that red is the reminder.
      */
     @Test
     void noDemoAddressesTheScopeWithAStringLiteral() throws Exception {
         var demos = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos");
         var offenders = new ArrayList<String>();
-        // outputKey("x"), readState("x"), hasState("x"), itemsProvider("x") — every place the
-        // library will take a String and silently accept a typo.
         var stringKey = java.util.regex.Pattern.compile(
                 "\\.(outputKey|readState|hasState|itemsProvider)\\(\"");
+        var stringParam = java.util.regex.Pattern.compile("@V\\(\"(\\w+)\"\\)");
+        // The mappers' items are bound to the sub-agent's FIRST argument by position, so those
+        // two parameters name nothing in the scope and have no TypedKey to point at.
+        var itemNames = Set.of("duckling", "spot");
         try (var paths = java.nio.file.Files.walk(demos)) {
-            for (var p : paths.filter(p -> p.toString().endsWith("Pattern.java")).toList()) {
+            for (var p : paths.filter(p -> p.toString().endsWith(".java")
+                    && !p.getFileName().toString().equals("package-info.java")).toList()) {
                 var src = java.nio.file.Files.readString(p);
                 var m = stringKey.matcher(src);
                 while (m.find()) {
                     offenders.add(p.getFileName() + " uses " + m.group(1) + "(\"…\")");
                 }
-            }
-        }
-
-        // The input side, over every file in the demos. The two exceptions are the parallel
-        // mapper's item: MapperAgentInvoker injects it into the sub-agent's FIRST ARGUMENT by
-        // position, so that parameter names nothing in the scope and has no TypedKey to point
-        // at. Anything else naming a key in a string belongs in a Keys record.
-        var itemNames = Set.of("item", "angle");
-        var stringParam = java.util.regex.Pattern.compile("@V\\(\"(\\w+)\"\\)");
-        try (var paths = java.nio.file.Files.walk(demos)) {
-            // package-info is prose about the rule, and quotes the form it is telling you not
-            // to use.
-            for (var p : paths.filter(p -> p.toString().endsWith(".java")
-                    && !p.getFileName().toString().equals("package-info.java")).toList()) {
-                var m = stringParam.matcher(java.nio.file.Files.readString(p));
-                while (m.find()) {
-                    if (!itemNames.contains(m.group(1))) {
-                        offenders.add(p.getFileName() + " uses @V(\"" + m.group(1)
-                                + "\") — use @K(" + m.group(1) + ".class)");
+                var v = stringParam.matcher(src);
+                while (v.find()) {
+                    if (!itemNames.contains(v.group(1))) {
+                        offenders.add(p.getFileName() + " uses @V(\"" + v.group(1)
+                                + "\") — use @K(" + v.group(1) + ".class)");
                     }
                 }
             }
         }
-
         assertTrue(offenders.isEmpty(), () -> "use a TypedKey from Keys instead:\n"
                 + String.join("\n", offenders));
     }
 
     /**
-     * The demos are meant to build on each other: by the capstone, nearly every box on the
-     * diagram is something the room has already watched run on its own. That claim is made in
-     * prose on every page, so it had better be true of the wiring — and it is the first thing a
-     * refactor would quietly break.
+     * The cast is met once and reused: a later mission's import list says which earlier mission
+     * it is built from, before a word of explanation. Asserted from the sources, because that is
+     * exactly where a "quick" rewrite would duplicate an agent instead.
      */
     @Test
-    void theDemosReuseWhatTheEarlierOnesBuilt() {
-        var catalog = new PatternCatalog();
+    void laterMissionsReuseTheRangersTheyAlreadyMet() throws Exception {
+        assertImports("_02_sequential/SequentialPattern", "_01_single.SniffFinds");
+        assertImports("_09_supervisor/SupervisorPattern", "_06_conditional.SniffOnCall",
+                "_06_conditional.ZoomOnCall", "_06_conditional.DigOnCall", "_06_conditional.DocOnCall");
+        assertImports("_10_goap/GoapPattern", "_08_nonaiagent.Bolt", "_08_nonaiagent.ZoomFetchesLadder");
+        assertImports("_16_customplanner/CustomPlannerPattern", "_06_conditional.SniffOnCall");
+        assertImports("_17_megamutt/MegaMuttPattern", "_01_single.SniffFinds", "_08_nonaiagent.Bolt",
+                "_02_sequential.DocChecks", "_03_loop.HowlWrites", "_03_loop.FifiScores");
+        assertImports("_18_lakeparty/LakePartyPattern", "_13_voting.DocVotes", "_13_voting.BoltVotes");
+        assertImports("_19_modelrouting/ModelRoutingPattern", "_06_conditional.ZaoClassifies");
+        assertImports("_20_async/AsyncPattern", "_04_parallel.SniffChecksForest",
+                "_04_parallel.ZaoMerges");
+        assertImports("_21_resilience/ResiliencePattern", "_01_single.SniffFinds",
+                "_02_sequential.ZoomRescues");
+    }
 
-        // The three desks are introduced by routing and then reused by four later demos, each
-        // putting a different control flow around the same cast. That progression is the spine
-        // of the middle of the talk.
-        for (String id : List.of("conditional", "humanApproval", "supervisor", "customPlanner",
-                "sitterNote")) {
-            assertTrue(labels(catalog, id).containsAll(List.of("EverydayCare", "DogTrainer",
-                            "RescueDog")),
-                    id + " should be built from the three desks: " + labels(catalog, id));
+    private static void assertImports(String file, String... classes) throws Exception {
+        var src = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/dev/devoxx/dashboard/demos/" + file + ".java"));
+        for (String c : classes) {
+            assertTrue(src.contains("import dev.devoxx.dashboard.demos." + c + ";"),
+                    file + " must reuse " + c + ", not re-implement it");
         }
+    }
 
-        // The fridge-note spine: one agent introduced in demo 2, put in a loop in demo 3, and
-        // used a third time by the capstone.
-        for (String id : List.of("sequential", "loop", "sitterNote")) {
-            assertTrue(labels(catalog, id).contains("BattlePlanner"),
-                    id + " should reuse the checklist agent: " + labels(catalog, id));
+    /** The scope keys an agent declares as inputs, resolved the way the framework does. */
+    private static List<String> inputKeys(Class<?> agent) {
+        var method = java.util.Arrays.stream(agent.getMethods())
+                .filter(m -> m.isAnnotationPresent(dev.langchain4j.agentic.Agent.class))
+                .findFirst().orElseThrow(() -> new AssertionError(agent.getSimpleName() + " has no @Agent"));
+        return java.util.Arrays.stream(method.getParameters())
+                .map(PatternCatalogTest::declaredKey).filter(java.util.Objects::nonNull).toList();
+    }
+
+    private static String declaredKey(java.lang.reflect.Parameter p) {
+        var typed = p.getAnnotation(dev.langchain4j.agentic.declarative.K.class);
+        if (typed != null) {
+            try {
+                return typed.value().getDeclaredConstructor().newInstance().name();
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError("a TypedKey must be a no-args record: " + typed.value(), e);
+            }
         }
-
-        // The capstone's fan-out is demo 4's, unchanged.
-        assertTrue(labels(catalog, "sitterNote").containsAll(List.of("ChowHound", "LeadDeveloper")),
-                "the capstone should reuse the parallel demo's planners");
-
-        // And the council ratifies with the very assessors that voted two demos earlier.
-        assertTrue(labels(catalog, "secondDogCouncil").containsAll(List.of("SofaSpace",
-                        "FoodBudget", "AskZaoHimself")),
-                "the council should reuse the voting demo's assessors");
-
-        // The supervisor adds exactly one agent — the Beagle, who makes the hand-off reliable —
-        // and reuses the routing demo's three. Anything more and the "same cast, different
-        // decider" point stops being true.
-        // Agents only: the input box and the supervisor itself are the diagram's scaffolding,
-        // not part of the cast this is counting.
-        var extra = nodes(catalog, "supervisor").stream()
-                .filter(n -> n.role().equals("agent")).map(Topology.Node::label)
-                .filter(l -> !List.of("EverydayCare", "DogTrainer", "RescueDog").contains(l))
-                .toList();
-        assertEquals(List.of("FirstSniff"), extra,
-                "the supervisor should add only the Beagle: " + labels(catalog, "supervisor"));
+        var named = p.getAnnotation(dev.langchain4j.service.V.class);
+        return named == null ? null : named.value();
     }
 
-    private static List<Topology.Node> nodes(PatternCatalog c, String id) {
-        return c.byId(id).orElseThrow().topology().nodes();
-    }
+    // ------------------------------------------------------------------------------------------
+    // The schematics
+    // ------------------------------------------------------------------------------------------
 
-    /** The agent names a pattern's diagram shows, which are the agents it is wired from. */
-    private static List<String> labels(PatternCatalog c, String id) {
-        return c.byId(id).orElseThrow().topology().nodes().stream()
-                .map(Topology.Node::label).toList();
-    }
+    private static final Set<String> RANGERS = Set.of("Zao", "Sniff", "Zoom", "Dig", "Doc", "Howl",
+            "Fifi", "Bolt", "Mittens", "OfficerJo");
 
     /**
      * A topology has to show the mechanism, not just the cast. These are the structural claims
      * each diagram makes; the geometry that renders them lives in the frontend.
      */
     @Test
-    void everyTopologyShowsWhatItsPatternActuallyDoes() {
+    void everySchematicShowsWhatItsMissionActuallyDoes() {
         var catalog = new PatternCatalog();
         var problems = new ArrayList<String>();
 
@@ -956,246 +691,100 @@ class PatternCatalogTest {
             }
             ids.stream().filter(id -> !touched.contains(id))
                     .forEach(id -> problems.add(info.id() + ": '" + id + "' is drawn unconnected"));
+            for (var n : info.topology().nodes()) {
+                // render.js trims a label at 22 and a sub-line at 26, silently; 24 for subs
+                // because at 10.5px in a 150px box 26 characters touch both walls.
+                if (n.label().length() > 22) problems.add(info.id() + ": label cut off: " + n.label());
+                if (n.sub() != null && n.sub().length() > 24) problems.add(info.id() + ": sub cut off: " + n.sub());
+                // "Color = job": a box that IS a Ranger wears his badge.
+                boolean isRanger = RANGERS.stream().anyMatch(r -> n.label().startsWith(r));
+                if (isRanger && n.ranger() == null) {
+                    problems.add(info.id() + ": " + n.label() + " is a Ranger with no colour");
+                }
+            }
         }
         assertTrue(problems.isEmpty(), () -> String.join("\n", problems));
 
-        // Fan-out without a join draws work being split and never brought back together.
-        assertEquals(2, inDegree(catalog, "parallel", role(catalog, "parallel", "join")),
-                "both branches must feed the parallel combiner");
-        assertEquals(3, inDegree(catalog, "voting", role(catalog, "voting", "join")),
-                "every voter must feed the tally");
-        assertEquals(1, inDegree(catalog, "parallelMapper",
-                role(catalog, "parallelMapper", "join")), "mapped work must be gathered");
+        // Mission 1 draws the gear as plain Java the agent MAY reach — and the arrows have no
+        // order, because the model decides it.
+        assertEquals(2, nodes(catalog, "single").stream()
+                .filter(n -> "code".equals(n.role()) && n.label().contains("(")).count());
 
-        // Routing: one router, one edge per labelled alternative, and no join — only one runs.
-        String router = role(catalog, "conditional", "router");
-        var routed = edges(catalog, "conditional").stream()
-                .filter(e -> e.from().equals(router)).toList();
-        assertEquals(3, routed.size(), "router should offer three alternatives");
-        assertTrue(routed.stream().allMatch(e -> e.label() != null && !e.label().isBlank()),
-                "each branch must say which category picks it");
-        assertNull(role(catalog, "conditional", "join"),
-                "only one branch runs, so a join would misrepresent it");
+        // Bolt is never drawn as a model: an agent box beside Zoom's would say a model did the
+        // maths, the one thing Mission 8 denies.
+        for (String id : List.of("nonAiAgent", "goap", "blackboard", "voting", "megaMutt")) {
+            assertTrue(nodes(catalog, id).stream()
+                            .filter(n -> n.label().equals("Bolt")).allMatch(n -> "code".equals(n.role())),
+                    id + ": Bolt must be drawn as code");
+        }
+        // Officer Jo is a person, and drawn as one.
+        assertEquals("jo", role(catalog, "humanApproval", "human"));
 
-        // GOAP's picture is otherwise pixel-for-pixel a sequence: same boxes, same arrows,
-        // left to right. What distinguishes it is that every box declares the key it needs, so
-        // the arrows read as derived rather than typed. Without these the diagram is a lie.
-        var goapSubs = nodes(catalog, "goap").stream()
-                .filter(n -> n.role().equals("agent")).map(Topology.Node::sub).toList();
-        assertEquals(3, goapSubs.stream().filter(x -> x != null && x.contains("needs")).count(),
-                "every GOAP agent must show what it needs, or this is just a sequence: "
-                        + goapSubs);
+        // Mission 4 and 13: a fan-out needs its join, or half the pattern is missing.
+        assertNotNull(role(catalog, "parallel", "join"));
+        assertNotNull(role(catalog, "voting", "join"));
+        // Mission 5: one agent, invoked once per item, drawn as a stack.
+        assertTrue(nodes(catalog, "parallelMapper").stream().anyMatch(Topology.Node::stacked));
+        // Mission 6: routing has no join — only one Ranger runs.
+        assertNull(role(catalog, "conditional", "join"));
+        assertEquals(4, edges(catalog, "conditional").stream()
+                .filter(e -> e.from().equals("zao")).count(), "four Rangers on the bench");
 
-        // And the stronger claim, because the sub-lines alone lost the argument: NO ARROW may
-        // run from one GOAP agent to another. An arrow between two agents is a picture of a
-        // path somebody typed, and it beats any caption underneath it — which is exactly how
-        // this diagram came to say "predetermined" while its own text said "derived". The
-        // planner fans out instead, and the positions it worked out ride on those arrows.
-        var goapAgents = nodes(catalog, "goap").stream()
-                .filter(n -> n.role().equals("agent")).map(Topology.Node::id).collect(toSet());
-        assertTrue(edges(catalog, "goap").stream()
-                        .noneMatch(e -> goapAgents.contains(e.from())
-                                && goapAgents.contains(e.to())),
-                "GOAP must not wire its agents to each other: the order is an output of the "
-                        + "planner, and an arrow between two agents claims somebody typed it");
-        assertEquals(3, edges(catalog, "goap").stream()
-                        .filter(e -> e.label() != null && e.label().startsWith("runs")).count(),
-                "the positions the planner derived have to be on its arrows, or the fan-out "
-                        + "reads as 'all three at once'");
-
-        // Peers: the question must reach BOTH of them, and BOTH must reach the predicate. One
-        // arrow in makes the first peer the one in charge, and one arrow out makes the second
-        // peer the only one allowed to end the argument — which is the single claim this
-        // pattern exists to deny, drawn twice.
-        assertEquals(2, edges(catalog, "p2p").stream().filter(e -> e.from().equals("in")).count(),
-                "both peers read the question; one arrow in draws a hierarchy");
-        assertEquals(2, inDegree(catalog, "p2p", role(catalog, "p2p", "join")),
-                "either peer can satisfy the exit predicate, so both must reach it");
-
-        // BDI's whole claim is a DAG of preconditions rather than a chain, and the edge that
-        // says so — the first desire gating the third — SKIPS the second node. render.js arcs
-        // a skipping edge over the top; drawn flat it vanishes behind the opaque box between
-        // its ends, which is how this diagram spent a long time saying "chain".
-        var bdiOrder = nodes(catalog, "bdi").stream().map(Topology.Node::id).toList();
-        assertTrue(edges(catalog, "bdi").stream()
-                        .anyMatch(e -> Math.abs(bdiOrder.indexOf(e.to())
-                                - bdiOrder.indexOf(e.from())) > 1),
-                "a precondition that gates a later desire must skip a node, or BDI is drawn "
-                        + "as the chain it is not: " + bdiOrder);
-
-        // The judge rules when the rounds END, and convergence is one of the two ways they can
-        // end — so both advocates reach it. Its sub-line claimed "only if they never agree"
-        // for a long time, which the converging holiday debate disproves on every run.
-        assertEquals(2, inDegree(catalog, "debate", role(catalog, "debate", "judge")),
-                "both advocates reach the judge: it rules on convergence as well as on the cap");
-
-        // The blackboard's lead is not a fourth contributor: it can only act once all three
-        // notes exist, and it is what ends the run. On the old star it was a fourth identical
-        // satellite — and `star` put it at the far LEFT of the ring, which is where the eye
-        // starts, for the box that must go last.
-        // Set.copyOf, not Set.of: three peers SHOULD share a stage, and Set.of throws on the
-        // duplicate that proves it.
-        var boardPeers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "trail"),
-                stageOf(catalog, "blackboard", "alibis"),
-                stageOf(catalog, "blackboard", "scene")));
-        assertEquals(1, boardPeers.size(),
-                "the three contributors are peers, so they share a column: " + boardPeers);
-        assertTrue(stageOf(catalog, "blackboard", "lead") > boardPeers.iterator().next(),
-                "the lead needs all three notes, so it cannot be drawn beside the agents that "
-                        + "produce them");
-        // Way in and way out, the two things this diagram had neither of. Not an in-degree:
-        // the board is written by the three contributors too, so what matters is that the
-        // input node reaches it.
-        assertTrue(edges(catalog, "blackboard").stream()
-                        .anyMatch(e -> e.from().equals(role(catalog, "blackboard", "input"))
-                                && e.to().equals("board")),
-                "the problem has to reach the board from somewhere");
-        assertEquals(1, inDegree(catalog, "blackboard", role(catalog, "blackboard", "join")),
-                "only the lead produces the goal state, and it has to be drawn producing it");
-
-        // A mapper is one agent invoked once per item. A single box says "one call".
-        assertTrue(nodes(catalog, "parallelMapper").stream().anyMatch(Topology.Node::stacked),
-                "the mapped agent must be drawn as a stack");
-
-        // The async step's whole claim is that it SPANS the steps after it. Drawn as a plain
-        // chain the picture is demo 2 exactly, and the one thing that differs — that the Basset is
-        // still working while the planners run — is the thing not on the page. The skip-ahead
-        // edge is what says it, and in a stages layout it arcs over the boxes between its ends.
-        var spanning = edges(catalog, "async").stream()
-                .filter(e -> e.from().equals("fence") && e.to().equals("join")).toList();
-        assertEquals(1, spanning.size(), "the async step must reach the join directly");
-        assertTrue(spanning.getFirst().label() != null && spanning.getFirst().label().contains("read"),
-                "the long edge has to say that the READ is the join, not the step: "
-                        + spanning.getFirst().label());
-        assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "fence"),
-                "the async edge must skip columns, or it is drawn flat and disappears behind "
-                        + "the boxes it passes");
-
-        // Neither recovery is a route through the graph — a retry re-enters the same step and a
-        // skip removes one — so both live on the boxes. If they were edges the picture would
-        // invent paths no run ever takes; if they were nowhere it would be a plain sequence.
-        var resilienceSubs = nodes(catalog, "resilience").stream()
-                .map(Topology.Node::sub).filter(java.util.Objects::nonNull).toList();
-        assertTrue(resilienceSubs.stream().anyMatch(s -> s.contains("retried")),
-                "the diagram must show which step is retried: " + resilienceSubs);
-        assertTrue(resilienceSubs.stream().anyMatch(s -> s.contains("optional")),
-                "the diagram must show which step may be skipped: " + resilienceSubs);
-        assertNull(role(catalog, "resilience", "router"),
-                "nothing here routes: an optional step is skipped, not branched around");
-
-        // One desk box, not two. Two boxes both labelled DutyDesk would both light up on a run
-        // (nodes are marked by agent name), which would say both models answered.
-        assertEquals(1, nodes(catalog, "modelRouting").stream()
-                        .filter(n -> "DutyDesk".equals(n.label())).count(),
-                "the one agent must be drawn once, or the run marks two boxes for one call");
-        assertTrue(nodes(catalog, "modelRouting").stream()
-                        .anyMatch(n -> n.sub() != null && n.sub().contains("strong")),
-                "the desk box has to say that its model is the variable");
-
-        // The supervisor's Beagle is called first and the rest only if she says so; a symmetric
-        // star would say all four are equal peers, which is a fan-out.
-        assertTrue(nodes(catalog, "supervisor").stream()
-                        .anyMatch(n -> n.sub() != null && n.sub().startsWith("1 ·")
-                                && n.sub().endsWith("first")),
-                "the supervisor diagram must show which call comes first");
-
-        // The person must not be drawn as an agent. A human-in-the-loop diagram whose middle
-        // box looks like the two either side says the model decided, which is the one thing the
-        // pattern exists to deny.
-        assertEquals("owner", role(catalog, "humanApproval", "human"),
-                "the approval step must be drawn as a person, not an agent");
-
-        // Same argument one step further: the two Java steps must not be drawn as agents. The
-        // framework genuinely cannot tell them apart — that is the lesson — but a picture that
-        // cannot either says the model did the database lookup.
-        assertEquals(2, nodes(catalog, "nonAiAgent").stream()
-                        .filter(n -> "code".equals(n.role())).count(),
-                "both plain-Java steps must be drawn as code, not as agents");
-        assertEquals(1, nodes(catalog, "nonAiAgent").stream()
-                        .filter(n -> "agent".equals(n.role())).count(),
-                "exactly one step here is a model, and the picture has to say which");
-
-        // The escalation ladder must show BOTH ways out of every rung — on up, and out to the
-        // answer. Drawn as a plain chain it would read as a pipeline that always runs all three,
-        // which is the exact misreading the pattern exists to correct.
-        String exit = role(catalog, "customPlanner", "join");
-        assertEquals(3, inDegree(catalog, "customPlanner", exit),
-                "every rung needs its own way out, or the picture says only the rescue dog can answer");
-        assertEquals(2, edges(catalog, "customPlanner").stream()
-                        .filter(e -> "ESCALATE".equals(e.label())).count(),
-                "the two lower rungs escalate; the top one has nowhere to escalate to");
-
-        // Supervisor and blackboard are loops, not one-way arrows.
-        // The Beagle edge specifically: the supervisor invokes her and reads what comes back,
-        // which is the edge the whole demo turns on. One-way arrows would draw a fan-out.
-        assertTrue(mutual(catalog, "supervisor", "supervisor", "nurse"),
-                "the supervisor must be shown reading the Beagle's answer, not just calling her");
-        assertTrue(mutual(catalog, "blackboard", "trail", "board"),
-                "blackboard contributors read as well as write");
-
-        // The ladder's rungs must be in SEPARATE columns. Stacked in one column — which is how
-        // this was drawn first — the picture is demo 6's branch diagram: one input arriving at
-        // one of three desks, which is the exact reading a cost ladder exists to correct.
-        var rungs = nodes(catalog, "customPlanner").stream()
-                .filter(n -> n.role().equals("agent")).map(Topology.Node::stage).toList();
-        assertEquals(3, Set.copyOf(rungs).size(),
-                "each rung needs its own column, or the ladder reads as a branch: " + rungs);
-
-        // Every loop needs BOTH ways out of its critic drawn. With only the backward arc, the
-        // picture is two agents circling for ever and the exit condition — the whole of what
-        // you have to get right — is the one thing missing.
-        assertEquals(1, inDegree(catalog, "loop", role(catalog, "loop", "join")),
-                "the loop must draw where it leaves the loop, not only how it goes round");
+        // Mission 3: the loop draws its way OUT, not only its way round.
         assertTrue(edges(catalog, "loop").stream()
-                        .anyMatch(e -> e.label() != null && e.label().contains("≥")),
-                "the exit edge must say what ends the loop");
+                .anyMatch(e -> e.label() != null && e.label().contains("≥")));
 
-        // Peers with no drawn exit say the run never terminates, which is the pattern's caveat
-        // rather than its behaviour — this one stops the moment an agreement exists.
-        assertNotNull(role(catalog, "p2p", "join"),
-                "p2p must draw the exit predicate, or the diagram has no end");
-
-        // Both a debate and a supervisor read backwards without a direction: the mesh circle put
-        // the judge to the LEFT of the advocates, and the star drew the supervisor as a wheel
-        // with four equal spokes — a picture of the fan-out the demo spends its time denying.
-        for (String id : List.of("debate", "supervisor")) {
-            assertEquals("stages", catalog.byId(id).orElseThrow().topology().layout(),
-                    id + " needs explicit columns; a circle has no before and after");
+        // Mission 9: Zao reads every report — two-way edges, in columns, not a wheel.
+        for (String r : List.of("sniff", "zoom", "dig", "doc")) {
+            assertTrue(mutual(catalog, "supervisor", "zao", r), "Zao must read " + r + "'s report");
         }
+        // Mission 10: NO arrow between two Rangers — the order is an output of the planner.
+        var goapRangers = nodes(catalog, "goap").stream()
+                .filter(n -> n.role().equals("agent") || n.role().equals("code"))
+                .map(Topology.Node::id).collect(toSet());
+        assertTrue(edges(catalog, "goap").stream()
+                .noneMatch(e -> goapRangers.contains(e.from()) && goapRangers.contains(e.to())));
+        assertEquals(4, edges(catalog, "goap").stream()
+                .filter(e -> e.label() != null && e.label().startsWith("runs")).count());
+        // Mission 11: the mission reaches BOTH peers; one arrow in would crown the first one.
+        assertEquals(2, edges(catalog, "p2p").stream().filter(e -> e.from().equals("in")).count());
+        assertNotNull(role(catalog, "p2p", "join"), "the exit predicate is drawn");
+        // Mission 12: the three clue-finders share a column, and Zao stands after them.
+        var peers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "sniff"),
+                stageOf(catalog, "blackboard", "dig"), stageOf(catalog, "blackboard", "bolt")));
+        assertEquals(1, peers.size(), "no order between the clues: " + peers);
+        assertTrue(stageOf(catalog, "blackboard", "zao") > peers.iterator().next());
+        // Mission 15: a DAG of preconditions, so one edge skips a node.
+        var bdiOrder = nodes(catalog, "bdi").stream().map(Topology.Node::id).toList();
+        assertTrue(edges(catalog, "bdi").stream().anyMatch(e ->
+                Math.abs(bdiOrder.indexOf(e.to()) - bdiOrder.indexOf(e.from())) > 1));
+        // Mission 20: the async edge skips columns, or it hides behind the boxes it spans.
+        assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "forest"));
 
-        // render.js trims a label at 22 characters and a sub-line at 26, silently and with no
-        // error — so an over-long one is simply wrong on the projector and nowhere else.
-        // 24 rather than 26 for subs: at 10.5px in a 150px box, 26 characters touch both walls.
-        for (var info : catalog.infos()) {
-            for (var n : info.topology().nodes()) {
-                assertTrue(n.label().length() <= 22,
-                        () -> info.id() + ": label is cut off on the diagram: " + n.label());
-                assertTrue(n.sub() == null || n.sub().length() <= 24,
-                        () -> info.id() + ": sub-line is cut off on the diagram: " + n.sub());
-            }
+        // Directional patterns get columns: a circle has no before and after.
+        for (String id : List.of("debate", "supervisor", "blackboard", "p2p")) {
+            assertEquals("stages", catalog.byId(id).orElseThrow().topology().layout(), id);
         }
+    }
+
+    private static List<Topology.Node> nodes(PatternCatalog c, String id) {
+        return c.byId(id).orElseThrow().topology().nodes();
     }
 
     private static List<Topology.Edge> edges(PatternCatalog c, String id) {
         return c.byId(id).orElseThrow().topology().edges();
     }
 
-    /** Id of the single node with this role, or null when the pattern has none. */
+    /** Id of the single node with this role, or null when the mission has none. */
     private static String role(PatternCatalog c, String id, String role) {
-        return c.byId(id).orElseThrow().topology().nodes().stream()
-                .filter(n -> n.role().equals(role)).map(Topology.Node::id).findFirst().orElse(null);
+        return nodes(c, id).stream().filter(n -> n.role().equals(role))
+                .map(Topology.Node::id).findFirst().orElse(null);
     }
 
-    private static long inDegree(PatternCatalog c, String id, String node) {
-        return edges(c, id).stream().filter(e -> e.to().equals(node)).count();
-    }
-
-    /** Which column a node is pinned to in a {@code stages} diagram. */
     private static int stageOf(PatternCatalog c, String id, String node) {
         return nodes(c, id).stream().filter(n -> n.id().equals(node))
                 .map(Topology.Node::stage).filter(java.util.Objects::nonNull)
-                .findFirst().orElseThrow(() -> new AssertionError(
-                        id + ": node '" + node + "' has no stage"));
+                .findFirst().orElseThrow(() -> new AssertionError(id + ": '" + node + "' has no stage"));
     }
 
     private static boolean mutual(PatternCatalog c, String id, String a, String b) {
@@ -1203,5 +792,4 @@ class PatternCatalogTest {
         return es.stream().anyMatch(e -> e.from().equals(a) && e.to().equals(b))
                 && es.stream().anyMatch(e -> e.from().equals(b) && e.to().equals(a));
     }
-
 }

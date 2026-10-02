@@ -3,87 +3,90 @@ package dev.devoxx.dashboard.demos._14_debate;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn;
+import dev.devoxx.dashboard.demos._14_debate.Keys.MittensTurn;
+import dev.devoxx.dashboard.demos._14_debate.Keys.Transcript;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
-import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>debate</b> demo — two strong cases, and a ruling the room can check.
+ * Wiring for <b>Mission 14</b> — a loop of two debaters and a minute-taker, then a judge.
  */
 public final class DebatePattern {
 
     private DebatePattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    /** The council meets for three rounds, whatever happens. */
+    public static final int ROUNDS = 3;
+
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var take = AgenticServices.agentBuilder(TeamTuscany.class)
-                .chatModel(model)
-                .name("TeamTuscany")
+        var howl = AgenticServices.agentBuilder(HowlArgues.class)
+                .chatModel(model).name("Howl").outputKey(HowlTurn.class).build();
+        var mittens = AgenticServices.agentBuilder(MittensArgues.class)
+                .chatModel(model).name("Mittens").outputKey(MittensTurn.class).build();
+        var bolt = new BoltMinutes();
+        var fifi = AgenticServices.agentBuilder(FifiJudges.class)
+                .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
+
+        Rounds rounds = AgenticServices.loopBuilder(Rounds.class)
+                .name("Loop")
+                .subAgents(howl, mittens, bolt)
+                .maxIterations(ROUNDS)
                 .build();
-        var leave = AgenticServices.agentBuilder(TeamKennels.class)
-                .chatModel(model)
-                .name("TeamKennels")
-                .build();
-        var verdict = AgenticServices.agentBuilder(FinalBoarding.class)
-                .chatModel(model)
-                .name("FinalBoarding")
-                .outputKey(Verdict.class)
-                .build();
-        Debate app = AgenticServices.plannerBuilder(Debate.class)
-                .subAgents(take, leave, verdict) // last sub-agent is the judge
-                .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
+
+        Council app = AgenticServices.sequenceBuilder(Council.class)
+                .name("Sequential")
+                .subAgents(rounds, fifi)
                 .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
-        return app.invoke(input);
+        // The transcript is seeded because both debaters read it from their first turn on.
+        var r = app.meet(input, "(the debate is about to begin)");
+        return "**Fifi's verdict**\n\n" + r.result()
+                + "\n\n---\n\n" + requireNonNullElse(r.agenticScope().readState(Transcript.class), "");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Columns, not a circle: a debate has a direction — motion, argument, ruling. The two
-        // advocates share the middle column, so their rebuttals bow between them.
+        // Columns: motion, three rounds, ruling. The two debaters share a column so their
+        // answers bow between them; Bolt's minutes sit beside them because they happen inside
+        // the same loop; Fifi rules only once the loop is done.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
-                        node("take", "TeamTuscany", "agent", 1).withSub("Labrador · go"),
-                        node("leave", "TeamKennels", "agent", 1).withSub("Bulldog · stay"),
-                        // "only if they never agree" is what this said, and it was simply
-                        // false: DebatePlanner invokes the judge when the rounds END, and
-                        // convergence is one of the two ways they can end — the holiday debate
-                        // converges in round one and is still ruled on. What unanimous()
-                        // changes is how many rounds happen, which belongs on the edge between
-                        // the advocates, not on the judge.
-                        node("verdict", "FinalBoarding", "judge", 2)
-                                .withSub("Golden · rules, last")),
-                List.of(edge("in", "take"), edge("in", "leave"),
-                        edge("take", "leave", "rebut"),
-                        edge("leave", "take", "≤2 rounds · unless unanimous"),
-                        edge("take", "verdict"), edge("leave", "verdict")));
-        return new PatternDef("debate", "Debate", "pattern-zoo",
-                "The human is off to Tuscany for two weeks in August. Does Zao go? The "
-                        + "Labrador and the Bulldog are both certain, and not of the same thing.",
+                        node("howl", "Howl", "agent", 1).withSub("for the dog park").as("howl"),
+                        node("mittens", "Mittens", "agent", 1).withSub("for the cat café").as("mittens"),
+                        node("bolt", "Bolt", "code", 2).withSub("keeps the minutes").as("bolt"),
+                        node("fifi", "Fifi", "judge", 3).withSub("after round 3").as("fifi")),
+                List.of(edge("in", "howl"), edge("in", "mittens"),
+                        edge("howl", "mittens", "answers"),
+                        edge("mittens", "howl", "3 rounds"),
+                        edge("howl", "bolt"), edge("mittens", "bolt", "each turn"),
+                        edge("bolt", "fifi", "transcript")));
+        return new PatternDef("debate", "Debate", "minds",
+                "The town council must decide: the empty lot on Elm Street becomes a dog park, "
+                        + "or a cat café. Mittens has prepared.",
                 null,
-                "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
-                        + "drama: ask one agent and it picks a side and then rationalises it, "
-                        + "whereas a debate forces the case against the winner to be said out "
-                        + "loud first. Both sides here are genuinely strong, which is the only "
-                        + "time it is worth the tokens.",
-                // caveat: eloquence can beat correctness; more rounds cost more tokens.
-                "The most persuasive agent may win over the most correct one — and it is "
-                        + "token-hungry. Check the ruling against the facts yourself; that is why "
-                        + "the motion states them.",
+                "Two agents argue opposing sides for three rounds, each answering the other, and "
+                        + "a judge rules on the transcript. Built from parts the room already "
+                        + "knows: a **loop** of Howl, Mittens and Bolt (who appends each round to "
+                        + "the transcript, word for word), then Fifi in a sequence after it. Ask "
+                        + "one agent and it picks a side and rationalises it; a debate makes the "
+                        + "case against the winner get said out loud first.",
+                "The most persuasive agent may beat the most correct one, and it is token-hungry "
+                        + "— three rounds is six calls before anyone rules. Let the audience vote "
+                        + "before Fifi announces: the interesting moment is when they disagree.",
                 topo,
-                "two weeks in Tuscany in August: does Zao go with the human, or to the kennels? "
-                        + "Twelve hours in the car, a house with no shade, and a black double-coated "
-                        + "dog who has never been left for more than two nights.",
+                "Barkville town council: should the empty lot on Elm Street become a dog park or a "
+                        + "cat café? Howl speaks for the dog park, Mittens for the cat café.",
                 DebatePattern::run);
     }
 }

@@ -2,20 +2,15 @@ package dev.devoxx.dashboard.demos._10_goap;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
 
-/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+/** The Pup Board pins this mission introduces. See {@code demos/package-info.java}. */
 public final class Keys {
 
     private Keys() {
     }
 
-    /** The pushed chair. Written by ChairPusher, needed by CounterSurfer. */
-    public record Chair() implements TypedKey<String> {}
+    /** Dig holding the ladder steady at the foot of the tower. Needed before anyone climbs. */
+    public record LadderSecured() implements TypedKey<String> {}
 
-    /** The human, out of the kitchen. Written by DoorbellDecoy, needed by ChairPusher. */
-    public record Decoy() implements TypedKey<String> {}
-
-    public record Goal() implements TypedKey<String> {}
-
-    /** The sausage, off the counter. Writing this is the goal. */
-    public record Sausage() implements TypedKey<String> {}
+    /** The goal. When this pin exists, the planner stops. */
+    public record CatSafe() implements TypedKey<String> {}
 }

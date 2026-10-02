@@ -3,18 +3,19 @@ package dev.devoxx.dashboard.demos._08_nonaiagent;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static dev.devoxx.dashboard.support.Parsing.firstNumber;
 
 import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Plan;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>non-AI agent</b> demo — Java on both ends, a model in the middle.
+ * Wiring for <b>Mission 8</b> — Java first, a model second, and the sequence cannot tell.
  */
 public final class NonAiAgentPattern {
 
@@ -22,75 +23,62 @@ public final class NonAiAgentPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var diary = new CatsDiary();
-        var check = new CatCheck();
+        var bolt = new Bolt();
 
-        var beagle = AgenticServices.agentBuilder(DigPlanner.class)
+        var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
                 .chatModel(model)
-                .name("DigPlanner")
-                .outputKey(Plan.class)
+                .tools(new ZoomGear())
+                .name("Zoom")
+                .outputKey(Ladder.class)
                 .build();
 
-        DigPipeline app = AgenticServices.sequenceBuilder(DigPipeline.class)
+        LadderRun app = AgenticServices.sequenceBuilder(LadderRun.class)
                 .name("Sequential")
-                .subAgents(diary, beagle, check)
-                .outputKey(Plan.class)
+                .subAgents(bolt, zoom)
+                .outputKey(Ladder.class)
                 .listener(listener)
                 .build();
-        return app.dig(input);
+        // Reading the height out of the sentence is ours, not a model's: plain Java, like Bolt.
+        double height = firstNumber(input, 6.0);
+        return "**Bolt:** the branch is " + height + " m up, so the ladder must be at least "
+                + new Bolt().ladderLength(height) + " m.\n\n**Zoom:** " + app.fetch(height);
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // The two Java steps are NOT drawn as agents, for the same reason the person in demo 7
-        // is not: an identical box either side would say the model did it, which is the one
-        // thing this demo denies. They get the 'code' role and read as what they are.
+        // Bolt is NOT drawn as an agent, for the same reason Officer Jo is not: an identical box
+        // beside Zoom's would say a model did the maths, which is the one thing this denies.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "the request", "input", 0),
-                        node("diary", "CatsDiary", "code", 1)
-                                .withSub("cat · no model · saw it"),
-                        node("write", "DigPlanner", "agent", 2)
-                                .withSub("Beagle · the only model"),
-                        node("check", "CatCheck", "code", 3)
-                                .withSub("cat · no model · checks"),
-                        node("out", "the dig plan", "join", 4)),
-                List.of(edge("in", "diary"),
-                        edge("diary", "write", "where it all is"),
-                        edge("write", "check", "the plan"),
-                        edge("check", "out")));
-        return new PatternDef("nonAiAgent", "Non-AI Agents (plain Java)", "workflow",
-                "The humans want the TV remote back. Nobody in the pack remembers where it was "
-                        + "buried. The cat saw everything.",
-                "Demo 7 said a HumanInTheLoop is a non-AI agent. This is the general "
-                        + "case: your own class, no model, same wiring.",
-                "An agent does not have to be a model. Any object with one `@Agent` method goes "
-                        + "straight into `subAgents(...)` — its `@K` parameters are bound from the "
-                        + "scope and its return value is written to its output key, so **the "
-                        + "sequence cannot tell**. Here Java is on both ends: the cat's diary "
-                        + "supplies the locations, the model writes the plan, and a plain "
-                        + "`String::contains` checks the locations survived — a model asked where "
-                        + "a remote is buried will happily invent a flowerbed. The test for a step is not \"could a model "
-                        + "do this\" — it is \"is this judgement, or is it a lookup\". "
-                        + "`AgenticServices.agentAction(scope -> …)` is the one-line lambda form.\n\n"
-                        + "**Watch the diagram while it runs.** The middle box lights up and the "
-                        + "two Java boxes never do — see the caveat. They are doing the work all "
-                        + "the same: `Facts` appears in the Scope tab, and the cat's finding is "
-                        + "at the bottom of the result.",
-                "**A non-AI agent is invisible to the listener** in `1.20.0-beta30` — it is, "
-                        + "after all, a cat. "
-                        + "`NonAiAgentInstance.setParent` sets the parent and never calls "
-                        + "`registerInheritedParentListener`, which both `AgentInvocationHandler` "
-                        + "and `PlannerBasedInvocationHandler` do — so a plain-Java step inherits "
-                        + "no listener, emits no events, and is never timed. Worth knowing before "
-                        + "you put one on a critical path, and a fair reminder that this module is "
-                        + "experimental.\n\nThe smaller trap: `name` has to go on the "
-                        + "**annotation**. There is no builder to call `.name(\"X\")` on and the "
-                        + "default is the *method* name, so this agent would be called \"lookup\" "
-                        + "everywhere. The lambda form has no answer at all — `agentAction(...)` "
-                        + "comes out named `run`.",
+                List.of(node("in", "treeHeight", "input", 0),
+                        node("bolt", "Bolt", "code", 1).withSub("no brain · never wrong").as("bolt"),
+                        node("zoom", "Zoom", "agent", 2).withSub("fetches the ladder").as("zoom"),
+                        node("t1", "fetch(item)", "code", 3).withSub("gear"),
+                        node("t2", "deliver(item, place)", "code", 3).withSub("gear")),
+                List.of(edge("in", "bolt"),
+                        edge("bolt", "zoom", "ladderLength"),
+                        edge("zoom", "t1", "it decides"), edge("zoom", "t2")));
+        return new PatternDef("nonAiAgent", "Non-AI Agents (plain Java)", "team",
+                "Meet Bolt: the silver robot dog. No brain, never wrong. Zoom has a brain, and "
+                        + "would like a ladder.",
+                "Mission 1's idea — an agent with gear — with a plain Java agent in front of it.",
+                "An agent does not have to be a model. Bolt is a plain class with one `@Agent` "
+                        + "method: its `@K` parameter is bound from the scope and its return "
+                        + "value is written to `ladderLength`, so **the sequence cannot tell**. "
+                        + "The test for a step is not \"could a model do this\" — it is \"is "
+                        + "this judgement, or is it a calculation\". Six metres up means a 7.5 m "
+                        + "ladder; watch Zoom pick that one and not the 5 m. Later, Bolt drops "
+                        + "straight into Mission 2 between Sniff and Zoom — that is Mission 17.",
+                "**A non-AI agent is invisible to the listener** in `1.20.0-beta30` — no brain, no "
+                        + "events. `NonAiAgentInstance.setParent` sets the parent and never calls "
+                        + "`registerInheritedParentListener`, so a plain-Java step inherits no "
+                        + "listener, emits nothing, and is never timed: Bolt's box never lights. "
+                        + "He is doing the work all the same — `LadderLength` appears in the "
+                        + "Scope tab.\n\nThe smaller trap: `name` goes on the **annotation**. "
+                        + "There is no builder to call `.name(\"X\")` on, and the default is the "
+                        + "method name, so Bolt would be called \"ladderLength\" everywhere.",
                 topo,
-                "the humans want the TV remote back before the match starts. Nobody in the pack "
-                        + "remembers where anything is buried.",
+                "Paws up, Rangers! The kitten's branch on the Main Street oak is 6 metres up. "
+                        + "Bolt, how long a ladder? Zoom, go and get it.",
                 NonAiAgentPattern::run);
     }
 }

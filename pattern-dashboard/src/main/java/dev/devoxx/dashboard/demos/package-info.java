@@ -1,16 +1,15 @@
 /**
- * <b>One package per demo</b>, holding its agent contracts, its {@code Keys}, its
- * {@code XxxPattern} and a {@code package-info}. A package is {@code _NN_<id>} — its place in the
- * running order, then the pattern id — so the tree reads in talk order and {@code #/loop} names
- * {@code demos._03_loop}. The leading underscore is Java's: a package segment cannot start with a
- * digit.
+ * <b>One package per mission</b>, holding its agent contracts, its {@code Keys} (the Pup Board
+ * pins it introduces), its {@code XxxPattern} and a {@code package-info}. A package is
+ * {@code _NN_<id>} — the mission number, then the pattern id — so the tree reads in mission order
+ * and {@code #/loop} names {@code demos._03_loop}. The leading underscore is Java's: a package
+ * segment cannot start with a digit.
  *
- * <p><b>Agent names are puns only where the pun is also the accurate name.</b> {@code LeadDeveloper}
- * plans the walks, and the whole question of a walk is the lead; {@code BeardOverflow} judges what
- * came out of the beard; {@code Watchdog} is a plain-Java guard. The name goes on the diagram the
- * room is reading, so where the joke would cost them the mechanism the plain name wins — which is
- * why the three desks and the {@code FirstSniff} are named flatly, and why the GOAP chain is
- * {@code NotTheHoover → NotTheChildren → NotTheCyclists}: the escalation has to be readable at a
- * glance, and the joke is in the escalation rather than in any one name.
+ * <p><b>The agents are the Pawer Rangers</b>, and an agent's {@code .name(...)} is its Ranger:
+ * Sniff finds, Zoom runs, Dig digs, Doc decides what is safe, Howl writes and argues, Fifi
+ * judges, Zao leads, and Bolt — a plain Java class, no model — does the maths. The interface name
+ * says the job in this mission ({@code SniffFinds}, {@code ZoomFetchesLadder}), because the same
+ * Ranger has a different job in different missions; the name on the diagram stays the Ranger's,
+ * so the room learns the cast once and then only has to learn the pattern.
  */
 package dev.devoxx.dashboard.demos;

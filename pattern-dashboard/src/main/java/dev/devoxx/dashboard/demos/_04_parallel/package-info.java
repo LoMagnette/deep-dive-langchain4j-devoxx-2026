@@ -1,8 +1,7 @@
 /**
- * <b>Parallel</b>
+ * <b>Mission 4 · Parallel: Storm Warning</b>
  *
- * <p>Two halves of the operation that plainly do not need each other — the bait and the chase —
- * and both must be back before there is a plan. The join is a decision, not a string
- * concatenation.
+ * <p>Zoom checks the bridge, Sniff the forest, Dig the tunnels — at the same time, on their own
+ * executor — and Zao merges the three into one safety report. Three checks in the time of one.
  */
 package dev.devoxx.dashboard.demos._04_parallel;

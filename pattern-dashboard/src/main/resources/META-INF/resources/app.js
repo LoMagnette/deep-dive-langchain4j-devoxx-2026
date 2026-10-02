@@ -1,17 +1,21 @@
 /* Application: routing, the pattern catalogue, live runs over SSE, the dock and the
    layout chrome. Rendering primitives live in render.js, which loads first. */
 
-const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
-                    "pattern-zoo":"Pattern zoo","composite":"Putting it together",
-                    "production":"Running it for real"};
+/* The spec's four acts, in its running order, then the two groups outside the acts. The rail
+   and the gallery both group by these, so missions 1 and 8 sit together in Act 1 without the
+   catalogue (or the package numbers) being reordered. */
+const CAT_LABELS = {"team":"Act 1 · Meet the team","workflow":"Act 2 · Workflows",
+                    "planner":"Act 3 · Planners","minds":"Act 4 · Many minds, custom brains",
+                    "composite":"The Mega Mutt","production":"Running it for real"};
 /* One line per group, in the talk's own words (see the through-line diagram in the root README).
    The gallery separates the categories physically instead of tagging every card, and a heading
    that says what the group MEANS is the reason the separation is worth having — otherwise it is
    just the same cards with more whitespace. */
-const CAT_NOTES = {"workflow":"You decide the path",
-                   "pure-agent":"The model decides the path",
-                   "pattern-zoo":"The middle ground — a planner decides the turns",
-                   "composite":"Several patterns wired into one system",
+const CAT_NOTES = {"team":"An agent is a pup with a job — and some don't need a brain",
+                   "workflow":"You decide the order — Rangers combine into the Mega Mutt",
+                   "planner":"The system decides: Zao, a plan, or the pups themselves",
+                   "minds":"You can write the rules yourself",
+                   "composite":"Several missions wired into one bigger Ranger",
                    /* Not a position on the dial — a modifier you can bolt onto any of the above,
                       which is why this group sits outside the ordering rather than inside it. */
                    "production":"Not where on the dial — what it takes to run it"};
@@ -193,7 +197,7 @@ function log(ev){
      lines that say nothing about the shape of the run, and it buries the six that do. */
   if(ev.type==='token') return;
   const c=document.getElementById('console');
-  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','run-result':'--c-result','run-done':'--c-done'};
+  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','tool-call':'--c-tool','tool-result':'--c-tool','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
   const took = ev.millis==null ? '' : `<span class="took">${fmtMs(ev.millis)}</span>`;
@@ -294,6 +298,10 @@ function run(){
     log(ev); updateScope(ev.scope);
     if(ev.type==='run-start'){ runId=ev.data||null; agentMsSum=0; }
     else if(ev.type==='human-ask'){ showAsk(ev.message); markNode(ev.agent,'active'); }
+    /* A Ranger reaching for his gear: the tool's box is labelled "sniff(place)", whose leading
+       token is the tool name, so the message's name lights it — the model's choice, made visible. */
+    else if(ev.type==='tool-call') markNode(String(ev.message||'').split('(')[0],'active');
+    else if(ev.type==='tool-result') markNode(String(ev.message||'').split(' ')[0],'done', ev.millis);
     else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
     else if(ev.type==='agent-before') markNode(ev.agent,'active');
     /* Tokens land as TEXT, not markdown: a half-arrived answer is usually half-way through a

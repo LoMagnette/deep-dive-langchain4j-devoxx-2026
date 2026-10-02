@@ -3,70 +3,94 @@ package dev.devoxx.dashboard.demos._02_sequential;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.demos._01_single.SinglePattern.BEAGLE_REPORT;
 
 import java.util.List;
 import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Message;
-import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._01_single.NoteRetriever;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.Orders;
+import dev.devoxx.dashboard.demos._01_single.Keys.Location;
+import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
+import dev.devoxx.dashboard.demos._01_single.SniffFinds;
+import dev.devoxx.dashboard.demos._01_single.SniffGear;
+import dev.devoxx.dashboard.demos._02_sequential.Keys.Article;
+import dev.devoxx.dashboard.demos._02_sequential.Keys.HealthReport;
+import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>sequential</b> demo — the same facts, rewritten for a different reader.
+ * Wiring for <b>Mission 2</b> — four Rangers, one after another.
  */
 public final class SequentialPattern {
 
     private SequentialPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    /** Shared with Missions 17 and 21, which put the same kitten up the same tree. */
+    public static final String KITTEN =
+            "Paws up, Rangers! A kitten is stuck in the oak tree on Main Street and has been "
+                    + "meowing since breakfast. The Mayor would like it down before the parade.";
+
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
+        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
                 .chatModel(model)
-                .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .tools(new SniffGear())
+                .name("Sniff")
+                .outputKey(Location.class)
                 .build();
-        var list = AgenticServices.agentBuilder(BattlePlanner.class)
+        var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
                 .chatModel(model)
-                .name("BattlePlanner")
-                .outputKey(Orders.class)
+                .name("Zoom")
+                .outputKey(RescueStatus.class)
+                .build();
+        var doc = AgenticServices.agentBuilder(DocChecks.class)
+                .chatModel(model)
+                .name("Doc")
+                .outputKey(HealthReport.class)
+                .build();
+        var howl = AgenticServices.agentBuilder(HowlWritesStory.class)
+                .chatModel(model)
+                .name("Howl")
+                .outputKey(Article.class)
                 .build();
 
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                                          .subAgents(clerk, list)
-                                          .outputKey(Orders.class)
+                                          .subAgents(sniff, zoom, doc, howl)
+                                          .outputKey(Article.class)
                                           .listener(listener)
                                           .build();
-
-        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
+        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
         return String.valueOf(r.result());
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
+        // Every edge carries the pin, because the pin IS the seam: Doc never sees the location
+        // and Howl never sees the rescue, and the labels are how the room sees that they don't.
         Topology.Graph topo = graph("chain",
-                List.of(node("in", "Beagle's report", "input"),
-                        node("clerk", "NoteRetriever", "agent").withSub("Golden · fetches facts"),
-                        node("list", "BattlePlanner", "agent").withSub("Collie · the plan")),
-                List.of(edge("in", "clerk"), edge("clerk", "list", "notes")));
+                List.of(node("in", "mission", "input"),
+                        node("sniff", "Sniff", "agent").withSub("finds the kitten").as("sniff"),
+                        node("zoom", "Zoom", "agent").withSub("brings the ladder").as("zoom"),
+                        node("doc", "Doc", "agent").withSub("checks the kitten").as("doc"),
+                        node("howl", "Howl", "agent").withSub("writes the Gazette").as("howl")),
+                List.of(edge("in", "sniff"), edge("sniff", "zoom", "location"),
+                        edge("zoom", "doc", "rescueStatus"), edge("doc", "howl", "healthReport")));
         return new PatternDef("sequential", "Sequential", "workflow",
-                "Nobody in the pack reads a card. At 06:59 six dogs will be at the back door, "
-                        + "and every one of them needs to know where to stand.",
-                "Demo 1's NoteRetriever, unchanged — this adds the second step.",
-                "Deterministic pipeline: each agent's output feeds the next. The second step "
-                        + "cannot start before the first — it needs the card — and it writes for "
-                        + "a different reader, six dogs at the back door at 06:59. That is "
-                        + "why it is a second agent and not a longer prompt.",
-                "Rigid order; a bad hand-off midway derails the whole chain. Watch the Scope tab: "
-                        + "'card' is the seam, and the second agent trusts it completely.",
-                topo, BEAGLE_REPORT, SequentialPattern::run);
+                "Paws up! A kitten up the oak on Main Street. Four Rangers, one after another, "
+                        + "each reading only the last pin.",
+                "Mission 1's Sniff, gear and all — this adds three Rangers after him.",
+                "Deterministic pipeline: each agent's output key is the next one's input, and "
+                        + "nothing else crosses. Sniff pins `location`, Zoom reads only that and "
+                        + "pins `rescueStatus`, Doc reads only that, Howl reads only Doc's report "
+                        + "— so the Gazette story is exactly as good as the hand-offs before it. "
+                        + "Watch the Scope tab fill in, one pin per Ranger.",
+                "Rigid order, and a bad hand-off midway derails everything after it: if Doc "
+                        + "forgets to say where the kitten was, Howl cannot know. That is why "
+                        + "Doc's prompt tells him to repeat it — the seam is a key, and the key "
+                        + "is all the next agent has.",
+                topo, KITTEN, SequentialPattern::run);
     }
 }

@@ -39,7 +39,15 @@ public class ChatCallLog implements ChatModelListener {
     @Override
     public void onResponse(ChatModelResponseContext ctx) {
         ChatResponse response = ctx.chatResponse();
-        LOG.infof("← %s  [%s, %s]", trim(response.aiMessage().text()),
+        // A reply that is only tool calls has no text at all — log what the model asked for
+        // instead, or the most interesting line of Mission 1 prints as an empty arrow.
+        var ai = response.aiMessage();
+        String said = ai.hasToolExecutionRequests()
+                ? "tool call: " + ai.toolExecutionRequests().stream()
+                        .map(t -> t.name() + "(" + t.arguments() + ")")
+                        .collect(java.util.stream.Collectors.joining(", "))
+                : ai.text();
+        LOG.infof("← %s  [%s, %s]", trim(said),
                 elapsed(ctx.attributes().get(STARTED_AT)), tokens(response.tokenUsage()));
     }
 
