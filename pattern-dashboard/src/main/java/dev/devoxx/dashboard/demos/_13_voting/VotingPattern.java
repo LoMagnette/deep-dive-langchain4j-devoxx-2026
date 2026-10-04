@@ -49,10 +49,10 @@ public final class VotingPattern {
                 .chatModel(model).name("Sniff").outputKey(Vote1.class).build();
         var doc = AgenticServices.agentBuilder(DocVotes.class)
                 .chatModel(model).name("Doc").outputKey(Vote2.class).build();
-        var bolt = new BoltVotes();
+        var rivet = new RivetVotes();
 
         IceVote app = AgenticServices.plannerBuilder(IceVote.class)
-                .subAgents(sniff, doc, bolt)
+                .subAgents(sniff, doc, rivet)
                 // VotingPlanner calls every voter at once, collects what each returned, and
                 // hands the collection to the strategy — whose answer is the verdict.
                 .planner(() -> new VotingPlanner(VETO))
@@ -82,7 +82,7 @@ public final class VotingPattern {
                 + "is ice.\n\n"
                 + "- Sniff: " + votes.get(0) + "\n"
                 + "- Doc: " + votes.get(1) + "\n"
-                + "- Bolt: " + votes.get(2) + "\n\n"
+                + "- Rivet: " + votes.get(2) + "\n\n"
                 + "*`VotingStrategy.majority()` on the same three votes would have said " + majority
                 + ". That rule is fine for naming the HQ mascot.*";
     }
@@ -106,13 +106,13 @@ public final class VotingPattern {
                         node("plan", "VotingPlanner", "planner", 1).withSub("all three at once"),
                         node("sniff", "Sniff", "agent", 2).withSub("nose and eyes").as("sniff"),
                         node("doc", "Doc", "agent", 2).withSub("the medic").as("doc"),
-                        node("bolt", "Bolt", "code", 2).withSub("the ruler · ≥ 10 cm").as("bolt"),
+                        node("rivet", "Rivet", "code", 2).withSub("the ruler · ≥ 10 cm").as("rivet"),
                         node("vote", "VETO", "join", 3).withSub("one NOT SAFE wins")),
                 List.of(edge("in", "plan"),
                         edge("plan", "sniff"), edge("plan", "doc", "votes independently"),
-                        edge("plan", "bolt"),
+                        edge("plan", "rivet"),
                         edge("sniff", "vote", "vote1"), edge("doc", "vote", "vote2"),
-                        edge("bolt", "vote", "vote3")));
+                        edge("rivet", "vote", "vote3")));
         return new PatternDef("voting", "Voting / Ensemble", "minds",
                 "The Mayor wants a skating party on the lake. Twelve centimetres of ice, a dark "
                         + "patch by the reeds, and some very confident ducks.",
@@ -121,7 +121,7 @@ public final class VotingPattern {
                         + "`VotingPlanner` calls every voter at once, collects what each returned, "
                         + "and hands the lot to a `VotingStrategy` — `majority()`, `average()`, "
                         + "`highest()`, or your own, because it is a one-method interface. Sniff "
-                        + "judges by nose, Doc by what could go wrong, Bolt by a ruler. **The "
+                        + "judges by nose, Doc by what could go wrong, Rivet by a ruler. **The "
                         + "strategy is part of the design**: here it is a veto — one NOT SAFE "
                         + "wins — and the result shows what `majority()` would have said instead "
                         + "(2 of 3 say SAFE).",

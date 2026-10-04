@@ -92,7 +92,7 @@ public final class AiServicePattern {
                         + "an LLM call — no agentic module at all. Three things on the builder: "
                         + "**`.tools(...)`**, which the model chooses to call (watch the Run events "
                         + "pane); **`.inputGuardrails(...)`**, which runs BEFORE the model and can "
-                        + "stop the call entirely — send a letter signed by Mittens and the model is "
+                        + "stop the call entirely — send a letter signed by Marmalade and the model is "
                         + "never called; and **`.outputGuardrails(...)`**, which runs AFTER and can "
                         + "send the answer back with an instruction (`reprompt`) — a reply too long "
                         + "for the noticeboard comes back shorter. Notice what is missing: no Pup "
@@ -107,7 +107,7 @@ public final class AiServicePattern {
                 topo,
                 // Asks for "everything", so a live model writes far too much and PawSized sends it
                 // back — the output guardrail fires on the first click. For the input guardrail,
-                // sign a letter "Mittens".
+                // sign a letter "Marmalade".
                 "Dear Pup HQ, I have lost my reading glasses again. Please tell me everything: "
                         + "which Ranger can find them, all about how he works, his whole history "
                         + "with Barkville, and exactly when he can come. Leave nothing out! — The Mayor",

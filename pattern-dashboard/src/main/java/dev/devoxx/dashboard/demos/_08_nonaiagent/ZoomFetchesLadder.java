@@ -9,7 +9,7 @@ import dev.langchain4j.service.UserMessage;
 public interface ZoomFetchesLadder {
     @Agent(description = "Zoom the Greyhound: fetches the shortest ladder that is long enough, and delivers it")
     @UserMessage("""
-            Bolt says the ladder must be at least {{LadderLength}} metres. Fetch the shortest
+            Rivet says the ladder must be at least {{LadderLength}} metres. Fetch the shortest
             ladder in the shed that is at least that long — never a shorter one — and deliver it
             to the rescue. One plain sentence: which ladder, and where it is now.""")
     String fetch(@K(LadderLength.class) double ladderLength);

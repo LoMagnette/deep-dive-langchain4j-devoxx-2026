@@ -146,7 +146,7 @@ public final class Parsing {
             "Puddle — last seen at the duck pond", "Pickle — last seen by the bakery bins",
             "Waddles — last seen on the town hall steps", "Biscuit — last seen in the fountain",
             "Noodle — last seen under the bandstand", "Pip — last seen at the bus stop",
-            "Socks — last seen in the Mayor's roses", "Bean — last seen following Mittens");
+            "Socks — last seen in the Mayor's roses", "Bean — last seen following Marmalade");
 
     /**
      * Splits the user's typed input into items for the parallel mapper.

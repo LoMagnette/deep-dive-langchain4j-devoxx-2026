@@ -34,14 +34,14 @@ public final class BlackboardPattern {
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Each Ranger's @K parameters are its PRECONDITION: the planner will not pick an agent
-        // until every pin it reads is on the board. Sniff and Bolt need only the crime; Dig needs
-        // Sniff's scent; Doc needs Bolt's cameras; Zao needs Dig's prints and Doc's crumb.
+        // until every pin it reads is on the board. Sniff and Rivet need only the crime; Dig needs
+        // Sniff's scent; Doc needs Rivet's cameras; Zao needs Dig's prints and Doc's crumb.
         var sniff = AgenticServices.agentBuilder(SniffTrails.class)
                 .chatModel(model)
                 .name("Sniff")
                 .outputKey(ScentClue.class)
                 .build();
-        var bolt = new BoltCameras();
+        var rivet = new RivetCameras();
         var dig = AgenticServices.agentBuilder(DigTunnels.class)
                 .chatModel(model)
                 .name("Dig")
@@ -63,7 +63,7 @@ public final class BlackboardPattern {
                 // would rule on an empty board. It is not: it is only the tie-break among the
                 // Rangers who are able to act at that moment — that is what the conflict
                 // resolution strategy is for.
-                .subAgents(zao, doc, dig, bolt, sniff)
+                .subAgents(zao, doc, dig, rivet, sniff)
                 .planner(() -> new BlackboardPlanner(solved,
                         ConflictResolutionStrategy.declarationOrder()))
                 .outputKey(Culprit.class)
@@ -79,11 +79,11 @@ public final class BlackboardPattern {
     private static String ruling(AgenticScope scope, String culprit) {
         String order = scope.agentInvocations().stream()
                 .map(i -> i.agentName())
-                .filter(n -> List.of("Sniff", "Bolt", "Dig", "Doc", "Zao").contains(n))
+                .filter(n -> List.of("Sniff", "Rivet", "Dig", "Doc", "Zao").contains(n))
                 .collect(joining(" → "));
         return Objects.requireNonNullElse(culprit, "(no ruling)").strip()
                 + "\n\n*Clues went up in this order: " + order
-                + " — registered as Zao, Doc, Dig, Bolt, Sniff. The board decided.*";
+                + " — registered as Zao, Doc, Dig, Rivet, Sniff. The board decided.*";
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -95,7 +95,7 @@ public final class BlackboardPattern {
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "the crime", "input", 0),
                         node("sniff", "Sniff", "agent", 1).withSub("needs: the crime").as("sniff"),
-                        node("bolt", "Bolt", "code", 1).withSub("needs: the crime").as("bolt"),
+                        node("rivet", "Rivet", "code", 1).withSub("needs: the crime").as("rivet"),
                         node("board", "Pup Board", "board", 2).withSub("every clue pinned here"),
                         node("dig", "Dig", "agent", 3).withSub("needs: the scent").as("dig"),
                         node("doc", "Doc", "agent", 3).withSub("needs: the cameras").as("doc"),
@@ -103,7 +103,7 @@ public final class BlackboardPattern {
                         node("out", "culprit", "join", 5).withSub("the goal state")),
                 List.of(edge("in", "board"),
                         edge("board", "sniff"), edge("sniff", "board", "the scent"),
-                        edge("board", "bolt"), edge("bolt", "board", "cameras"),
+                        edge("board", "rivet"), edge("rivet", "board", "cameras"),
                         edge("board", "dig"), edge("dig", "board", "paw prints"),
                         edge("board", "doc"), edge("doc", "board", "the crumb"),
                         edge("board", "zao", "prints + crumb"),
@@ -114,9 +114,9 @@ public final class BlackboardPattern {
                 null,
                 "Specialists watch a shared board and contribute **whenever what they need is on "
                         + "it** — the AgenticScope is the Pup Board, and an agent's inputs are "
-                        + "its precondition. Sniff and Bolt can start at once; Dig can only "
+                        + "its precondition. Sniff and Rivet can start at once; Dig can only "
                         + "crawl a drain once Sniff has pinned which one; Doc can only test the "
-                        + "crumb once Bolt's cameras are up; Zao rules once the prints and the "
+                        + "crumb once Rivet's cameras are up; Zao rules once the prints and the "
                         + "crumb are both there. The order the clues go up in is not written "
                         + "anywhere — the Rangers are even registered backwards — it emerges "
                         + "from what is on the board, one contribution at a time.",

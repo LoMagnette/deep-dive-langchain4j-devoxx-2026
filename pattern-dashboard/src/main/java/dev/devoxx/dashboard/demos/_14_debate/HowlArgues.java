@@ -9,7 +9,7 @@ public interface HowlArgues {
     @UserMessage("""
             You are Howl, at the Barkville town council, arguing FOR the dog park. Take your turn
             for this round. If the last round below is empty, the debate has just begun: open your
-            case. Otherwise answer the strongest thing Mittens said, then make one new point. Two or three sentences, dramatic but on the subject.
+            case. Otherwise answer the strongest thing Marmalade said, then make one new point. Two or three sentences, dramatic but on the subject.
 
             The motion: {{Motion}}
             Last round: {{debateContext}}""")

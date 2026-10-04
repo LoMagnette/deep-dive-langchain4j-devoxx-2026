@@ -9,7 +9,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._13_voting.BoltVotes;
+import dev.devoxx.dashboard.demos._13_voting.RivetVotes;
 import dev.devoxx.dashboard.demos._13_voting.DocVotes;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Vote1;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Vote2;
@@ -58,7 +58,7 @@ public final class LakePartyPattern {
         var doc = AgenticServices.agentBuilder(DocVotes.class)
                 .chatModel(model).name("Doc").outputKey(Vote2.class).build();
         IceBallot ballot = AgenticServices.plannerBuilder(IceBallot.class)
-                .subAgents(sniff, doc, new BoltVotes())
+                .subAgents(sniff, doc, new RivetVotes())
                 .planner(() -> new VotingPlanner(VotingPattern.VETO))
                 .outputKey(IceVerdict.class)
                 .build();
@@ -87,14 +87,14 @@ public final class LakePartyPattern {
                         node("report", "IceReport", "code", 2).withSub("glue · spots → mission"),
                         node("vsniff", "SniffVote", "agent", 3).withSub("Mission 13").as("sniff"),
                         node("doc", "Doc", "agent", 3).withSub("Mission 13").as("doc"),
-                        node("bolt", "Bolt", "code", 3).withSub("Mission 13").as("bolt"),
+                        node("rivet", "Rivet", "code", 3).withSub("Mission 13").as("rivet"),
                         node("veto", "VETO", "join", 4).withSub("VotingPlanner's strategy"),
                         node("howl", "Howl", "agent", 5).withSub("tells the town").as("howl")),
                 List.of(edge("in", "spot", "4 spots"),
                         edge("spot", "report", "findings"),
                         edge("report", "vsniff"), edge("report", "doc", "the full report"),
-                        edge("report", "bolt"),
-                        edge("vsniff", "veto"), edge("doc", "veto"), edge("bolt", "veto"),
+                        edge("report", "rivet"),
+                        edge("vsniff", "veto"), edge("doc", "veto"), edge("rivet", "veto"),
                         edge("veto", "howl", "iceVerdict")));
         return new PatternDef("lakeParty", "The Lake Party (composite)", "composite",
                 "The Mayor will not take a vote for an answer. Sniff checks the ice spot by spot, "
@@ -108,7 +108,7 @@ public final class LakePartyPattern {
                         + "visibly doing the deciding.",
                 "Most of this system is glue. The voters read `Mission`, because that is the key "
                         + "they declared — so the inspection is written back INTO the mission, "
-                        + "original words first, or Bolt's ruler loses the measured thickness. "
+                        + "original words first, or Rivet's ruler loses the measured thickness. "
                         + "Reusing an agent means accepting the key it already declared.",
                 topo, VotingPattern.LAKE, LakePartyPattern::run);
     }

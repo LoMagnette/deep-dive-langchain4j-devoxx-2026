@@ -12,7 +12,7 @@ public interface DocTestsTheCrumb {
             sausage the crumb came from and when Zao ate it, and where Zao was while the
             sausages were being stolen.
 
-            Bolt's cameras:
+            Rivet's cameras:
             {{CameraClue}}""")
     String clue(@K(Keys.CameraClue.class) String cameras);
 }

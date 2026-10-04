@@ -8,7 +8,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 
 /**
- * Glue, and the reason it exists is the lesson of every composite: Sniff pins a SENTENCE, Bolt
+ * Glue, and the reason it exists is the lesson of every composite: Sniff pins a SENTENCE, Rivet
  * needs a NUMBER, and neither of them is wrong. Reading "6 metres up the oak" into 6.0 is plain
  * Java, so it is a plain Java step — the two missions were never designed to meet.
  */

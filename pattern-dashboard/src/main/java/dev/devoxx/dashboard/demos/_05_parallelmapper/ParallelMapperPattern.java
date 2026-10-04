@@ -64,7 +64,7 @@ public final class ParallelMapperPattern {
                         edge("sniff", "gather", "one result each")));
         return new PatternDef("parallelMapper", "Parallel Mapper", "workflow",
                 "Mrs Mallard has lost all eight ducklings at once. Each was last seen somewhere "
-                        + "different. One of them is following Mittens.",
+                        + "different. One of them is following Marmalade.",
                 "Mission 4 sent three different Rangers. This sends one Ranger eight times.",
                 "Map one agent over a collection in parallel (scatter / gather): the same Sniff "
                         + "search, once per duckling, all at once. The contrast with Mission 4 is "
@@ -79,7 +79,7 @@ public final class ParallelMapperPattern {
                         + "Waddles — last seen on the town hall steps; Biscuit — last seen in the "
                         + "fountain; Noodle — last seen under the bandstand; Pip — last seen at the "
                         + "bus stop; Socks — last seen in the Mayor's roses; Bean — last seen "
-                        + "following Mittens",
+                        + "following Marmalade",
                 ParallelMapperPattern::run);
     }
 }

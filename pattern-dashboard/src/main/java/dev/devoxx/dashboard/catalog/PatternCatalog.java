@@ -63,7 +63,7 @@ public class PatternCatalog {
                 // The Mega Mutt — missions combined into a bigger Ranger.
                 MegaMuttPattern.define(),        // 17
                 LakePartyPattern.define(),       // 18
-                // Running it for real — modifiers you can bolt onto any mission above, which is
+                // Running it for real — modifiers you can rivet onto any mission above, which is
                 // why they sit outside the four acts rather than inside them.
                 ModelRoutingPattern.define(),    // 19
                 AsyncPattern.define(),           // 20

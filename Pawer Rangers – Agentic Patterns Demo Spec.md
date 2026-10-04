@@ -24,12 +24,12 @@ Eight Rangers: seven AI agents and one plain Java robot. Zao leads and appears i
 | White | **Doc** | St. Bernard | Medic, decides what's safe | `checkHealth(animal)`, `isSafe(thing)` | AI | Careful, says no often |
 | Purple | **Howl** | Husky | Writes and argues | none | AI | Loud and dramatic |
 | Pink | **Fifi** | Poodle | Critic and judge | none | AI | Nothing is ever perfect |
-| Silver | **Bolt** | Robot dog | Math and lookups | Java methods only | Non-AI (plain Java) | No brain, never wrong |
+| Silver | **Rivet** | Robot dog | Math and lookups | Java methods only | Non-AI (plain Java) | No brain, never wrong |
 
 **Supporting cast**
 
 - **Officer Jo**: the human who runs Pup HQ. She approves risky actions (human in the loop).
-- **Mittens the cat**: the villain. Argues against the dogs in the debate and is the prime suspect in every crime.
+- **Marmalade the cat**: the villain. Argues against the dogs in the debate and is the prime suspect in every crime.
 - **The Mayor of Barkville**: loses things, owns a prize rose garden, sends most of the missions.
 
 ## Shared world
@@ -42,12 +42,12 @@ Two metaphors carry the langchain4j concepts through the whole talk.
 | --- | --- | --- |
 | `mission` | The Mayor / Officer Jo | "Kitten stuck in the oak tree on Main Street" |
 | `location` | Sniff | "Oak tree, 6 m up, north branch" |
-| `ladderLength` | Bolt | 7.5 |
+| `ladderLength` | Rivet | 7.5 |
 | `healthReport` | Doc | "Scared but fine" |
 | `article` / `draft` | Howl | Newspaper story or poster text |
 | `score` | Fifi | 0.0 to 1.0 |
 | `approved` | Officer Jo | true / false |
-| `clues` | Sniff, Dig, Bolt | List of clues (blackboard mission) |
+| `clues` | Sniff, Dig, Rivet | List of clues (blackboard mission) |
 | `energy` | Each Ranger | 0 to 100 (custom planner mission) |
 
 **The Mega Mutt = composition.** When Rangers combine, they form a bigger Ranger. In langchain4j, a workflow (sequence, loop, parallel, conditional) is itself an agent, so it can be plugged into a bigger workflow. Use it on slides whenever one pattern is nested in another, for example the Loop mission inside the Sequential mission.
@@ -119,14 +119,14 @@ Each mission lists the Rangers involved, the flow, what goes on the Pup Board, w
 - **Building block:** human-in-the-loop agent inside a sequence.
 - **On stage:** type the answer in the console live. Say no once to show the fallback.
 
-### 8. Non-AI Agent: Bolt's Ladder Math
+### 8. Non-AI Agent: Rivet's Ladder Math
 
-- **Rangers:** Bolt.
-- **Flow:** Bolt computes the ladder length from the tree height (plain Java, no LLM), then Zoom fetches the right ladder.
+- **Rangers:** Rivet.
+- **Flow:** Rivet computes the ladder length from the tree height (plain Java, no LLM), then Zoom fetches the right ladder.
 - **Pup Board:** in `treeHeight` → out `ladderLength`.
 - **Stops when:** the method returns.
 - **Building block:** a plain Java class with an `@Agent` method, used in a workflow next to AI agents.
-- **On stage:** "Not every dog needs a brain." Drop Bolt into Mission 2 between Sniff and Zoom.
+- **On stage:** "Not every dog needs a brain." Drop Rivet into Mission 2 between Sniff and Zoom.
 
 ## Missions 9 to 16
 
@@ -141,10 +141,10 @@ From here the patterns are about who decides what happens next: an LLM, a plan, 
 - **Building block:** supervisor agent with sub-agents.
 - **On stage:** run it twice. The order can change, because the LLM decides, not the code.
 
-### 10. GOAP: Mittens on the Water Tower
+### 10. GOAP: Marmalade on the Water Tower
 
-- **Rangers:** Zoom, Bolt, Dig, Doc.
-- **Flow:** goal = `catSafe`. Each Ranger declares what it needs and what it produces. The planner works backward from the goal: Doc climbs (needs `ladderSecured`) ← Dig steadies the ladder (needs `ladder`) ← Zoom fetches it (needs `ladderLength`) ← Bolt computes it (needs `towerHeight`).
+- **Rangers:** Zoom, Rivet, Dig, Doc.
+- **Flow:** goal = `catSafe`. Each Ranger declares what it needs and what it produces. The planner works backward from the goal: Doc climbs (needs `ladderSecured`) ← Dig steadies the ladder (needs `ladder`) ← Zoom fetches it (needs `ladderLength`) ← Rivet computes it (needs `towerHeight`).
 - **Pup Board:** `towerHeight` → `ladderLength` → `ladder` → `ladderSecured` → `catSafe`.
 - **Stops when:** the goal pin exists.
 - **Building block:** goal-oriented planner; agents chained by their input and output keys.
@@ -161,16 +161,16 @@ From here the patterns are about who decides what happens next: an LLM, a plan, 
 
 ### 12. Blackboard: The Great Sausage Heist
 
-- **Rangers:** Sniff, Dig, Bolt add clues; Zao concludes.
-- **Flow:** the town's sausages are stolen. Each Ranger pins a clue when they can add one: Sniff a scent trail, Dig paw prints in a tunnel, Bolt camera timestamps. When enough clues are up, Zao names the culprit.
+- **Rangers:** Sniff, Dig, Rivet add clues; Zao concludes.
+- **Flow:** the town's sausages are stolen. Each Ranger pins a clue when they can add one: Sniff a scent trail, Dig paw prints in a tunnel, Rivet camera timestamps. When enough clues are up, Zao names the culprit.
 - **Pup Board:** `clues` (list) grows → `culprit`.
 - **Stops when:** `culprit` is set.
 - **Building block:** shared AgenticScope as the board plus a custom planner that picks whoever can add a clue.
-- **On stage:** the twist: a sausage crumb is found in Zao's beard. He's innocent. It was Mittens.
+- **On stage:** the twist: a sausage crumb is found in Zao's beard. He's innocent. It was Marmalade.
 
 ### 13. Voting / Ensemble: Is the Lake Ice Safe?
 
-- **Rangers:** Sniff, Doc, Bolt vote independently.
+- **Rangers:** Sniff, Doc, Rivet vote independently.
 - **Flow:** each Ranger judges "safe" or "not safe" without seeing the others.
 - **Pup Board:** `vote1`, `vote2`, `vote3` → `verdict`.
 - **Stops when:** all votes are counted.
@@ -179,8 +179,8 @@ From here the patterns are about who decides what happens next: an LLM, a plan, 
 
 ### 14. Debate: Dog Park vs. Cat Café
 
-- **Rangers:** Howl (for the dog park), Mittens (for the cat café), Fifi (moderator).
-- **Flow:** at the town council, Howl and Mittens argue for 3 rounds, each answering the other. Fifi reads the transcript and declares a winner with reasons.
+- **Rangers:** Howl (for the dog park), Marmalade (for the cat café), Fifi (moderator).
+- **Flow:** at the town council, Howl and Marmalade argue for 3 rounds, each answering the other. Fifi reads the transcript and declares a winner with reasons.
 - **Pup Board:** `transcript` grows → `verdict`.
 - **Stops when:** 3 rounds are done.
 - **Building block:** loop workflow over two debaters, then a judge agent.
@@ -224,7 +224,7 @@ Run the missions in four acts, from code-controlled to LLM-controlled to fully c
 
 - Introduce the cast once with one slide per Ranger, then only use their color and face as a badge on each mission slide.
 - Keep the same slide layout for every mission: mission sentence, Rangers involved, flow picture, code.
-- Reuse missions to show composition: put Bolt (Mission 8) into the Kitten in a Tree sequence, and the Poster loop (Mission 3) inside a bigger sequence.
+- Reuse missions to show composition: put Rivet (Mission 8) into the Kitten in a Tree sequence, and the Poster loop (Mission 3) inside a bigger sequence.
 - Running gag: Zao's beard. Reveal something new stuck in it at the end of each act (a twig, a duckling, the sausage crumb).
 - "Pawer Rangers" is a nod to Power Rangers. Keep logos, suits and catchphrases your own and let the pun do the work.
 

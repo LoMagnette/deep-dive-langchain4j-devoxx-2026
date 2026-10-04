@@ -38,7 +38,7 @@ public final class Topology {
 
         /**
          * Which Pawer Ranger this box is — "Color = job", so the page draws the Ranger's colour
-         * as a badge on the box. Lowercase name ({@code sniff}, {@code zao}, {@code bolt}, …);
+         * as a badge on the box. Lowercase name ({@code sniff}, {@code zao}, {@code rivet}, …);
          * {@code render.js} turns it into {@code var(--r-<name>)}.
          */
         public Node as(String rangerName) {

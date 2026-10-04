@@ -40,8 +40,8 @@
    carries an outline, which is what keeps both visible on either canvas. */
 :root{
   --r-zao:#1d2120; --r-sniff:#2f6fdb; --r-zoom:#f2c230; --r-dig:#3d9b47; --r-doc:#ffffff;
-  --r-howl:#8a4fd6; --r-fifi:#e86aa6; --r-bolt:#aab4bd;
-  --r-mittens:#e0873a; --r-jo:#5f6663;
+  --r-howl:#8a4fd6; --r-fifi:#e86aa6; --r-rivet:#aab4bd;
+  --r-marmalade:#e0873a; --r-jo:#5f6663;
 }
 .node circle.ranger{stroke:var(--edge-line);stroke-width:1.4}
 /* The event/log panes are dark in BOTH themes, so their inks must not follow the theme. */

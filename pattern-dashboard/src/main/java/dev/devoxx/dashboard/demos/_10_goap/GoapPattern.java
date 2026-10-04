@@ -10,7 +10,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Bolt;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.LadderLength;
 import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomFetchesLadder;
@@ -31,7 +31,7 @@ public final class GoapPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var bolt = new Bolt();
+        var rivet = new Rivet();
         var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
                 .chatModel(model)
                 .tools(new ZoomGear())
@@ -52,7 +52,7 @@ public final class GoapPattern {
         GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
                 // Scrambled on purpose: the planner works backwards from CatSafe through what
                 // each Ranger needs, so this order is never the order they run in.
-                .subAgents(doc, bolt, dig, zoom)
+                .subAgents(doc, rivet, dig, zoom)
                 .planner(GoalOrientedPlanner::new)
                 .outputKey(CatSafe.class)
                 .listener(listener)
@@ -60,7 +60,7 @@ public final class GoapPattern {
 
         var r = app.invoke(firstNumber(input, 12.0));
         var s = r.agenticScope();
-        return "**Bolt** — the ladder must be " + s.readState(LadderLength.class) + " m"
+        return "**Rivet** — the ladder must be " + s.readState(LadderLength.class) + " m"
                 + "\n\n**Zoom** — " + requireNonNullElse(s.readState(Ladder.class), "")
                 + "\n\n**Dig** — " + requireNonNullElse(s.readState(LadderSecured.class), "")
                 + "\n\n**Doc** — " + requireNonNullElse(s.readState(CatSafe.class), "");
@@ -78,30 +78,30 @@ public final class GoapPattern {
                         node("plan", "GoalOrientedPlanner", "planner", 1)
                                 .withSub("works back from the goal"),
                         node("doc", "Doc", "agent", 2).withSub("needs 'LadderSecured'").as("doc"),
-                        node("bolt", "Bolt", "code", 2).withSub("needs 'Height'").as("bolt"),
+                        node("rivet", "Rivet", "code", 2).withSub("needs 'Height'").as("rivet"),
                         node("dig", "Dig", "agent", 2).withSub("needs 'Ladder'").as("dig"),
                         node("zoom", "Zoom", "agent", 2).withSub("needs 'LadderLength'").as("zoom")),
                 List.of(edge("in", "plan", "4 Rangers, scrambled"),
                         edge("plan", "doc", "runs 4th"),
-                        edge("plan", "bolt", "runs 1st"),
+                        edge("plan", "rivet", "runs 1st"),
                         edge("plan", "dig", "runs 3rd"),
                         edge("plan", "zoom", "runs 2nd")));
         return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "planner",
-                "Mittens is stuck on the water tower. Again. The Rangers are registered in the "
+                "Marmalade is stuck on the water tower. Again. The Rangers are registered in the "
                         + "wrong order, and the planner does not care.",
-                "Mission 8's Bolt and Zoom, unchanged, plus Dig and Doc.",
+                "Mission 8's Rivet and Zoom, unchanged, plus Dig and Doc.",
                 "Goal = `CatSafe`. Each Ranger declares what it needs and what it pins, and the "
                         + "planner works backwards: Doc climbs (needs `LadderSecured`) ← Dig "
                         + "steadies the ladder (needs `Ladder`) ← Zoom fetches it (needs "
-                        + "`LadderLength`) ← Bolt computes it (needs `Height`). The Rangers are "
-                        + "handed over scrambled — Doc, Bolt, Dig, Zoom — and they still run "
-                        + "Bolt, Zoom, Dig, Doc. **The order is an output.**",
+                        + "`LadderLength`) ← Rivet computes it (needs `Height`). The Rangers are "
+                        + "handed over scrambled — Doc, Rivet, Dig, Zoom — and they still run "
+                        + "Rivet, Zoom, Dig, Doc. **The order is an output.**",
                 "Only as good as the declared keys: a missing link makes the goal unreachable, and "
                         + "the failure is silence, not an error. Take Dig out of `subAgents(...)` "
                         + "and nobody can ever secure the ladder, so Doc never climbs — no "
-                        + "exception, just Mittens, still on the tower, looking smug.",
+                        + "exception, just Marmalade, still on the tower, looking smug.",
                 topo,
-                "Paws up, Rangers! Mittens is stuck on top of the water tower — 12 metres up — and "
+                "Paws up, Rangers! Marmalade is stuck on top of the water tower — 12 metres up — and "
                         + "is yowling at the whole of Barkville.",
                 GoapPattern::run);
     }

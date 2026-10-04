@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.declarative.K;
 /**
  * The adapter, and the price of reuse said out loud: Mission 13's voters read {@code Mission},
  * because that is the key they declared. So the inspection is written back INTO the mission —
- * the original words first, so Bolt's ruler still finds the measured thickness, then every spot.
+ * the original words first, so Rivet's ruler still finds the measured thickness, then every spot.
  */
 public class IceReport {
 

@@ -22,7 +22,7 @@ import dev.devoxx.dashboard.demos._03_loop.HowlWrites;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Draft;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Feedback;
 import dev.devoxx.dashboard.demos._03_loop.LoopPattern;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Bolt;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.LadderLength;
 import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomFetchesLadder;
 import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomGear;
@@ -50,8 +50,8 @@ public final class MegaMuttPattern {
                 .name("Sniff").outputKey(Location.class).build();
         // Glue: a sentence in, a number out.
         var tape = new TapeMeasure();
-        // Mission 8's Bolt, dropped in between Sniff and Zoom — exactly what the spec asks.
-        var bolt = new Bolt();
+        // Mission 8's Rivet, dropped in between Sniff and Zoom — exactly what the spec asks.
+        var rivet = new Rivet();
         // Mission 8's Zoom. Its output key is chosen HERE, by the wiring: in this sequence the
         // ladder Zoom brings is the rescue Doc reads, so it pins RescueStatus — the key is the
         // contract between two agents, and the composite is where the contract is written.
@@ -78,7 +78,7 @@ public final class MegaMuttPattern {
 
         MegaMutt app = AgenticServices.sequenceBuilder(MegaMutt.class)
                 .name("Sequential")
-                .subAgents(sniff, tape, bolt, zoom, doc, brief, gazette)
+                .subAgents(sniff, tape, rivet, zoom, doc, brief, gazette)
                 .outputKey(Draft.class)
                 .listener(listener)
                 .build();
@@ -86,7 +86,7 @@ public final class MegaMuttPattern {
         var s = r.agenticScope();
         return "**The Barkville Gazette**\n\n" + r.result()
                 + "\n\n---\n\n*Sniff:* " + requireNonNullElse(s.readState(Location.class), "")
-                + "\n\n*Bolt:* the ladder must be " + s.readState(LadderLength.class) + " m"
+                + "\n\n*Rivet:* the ladder must be " + s.readState(LadderLength.class) + " m"
                 + "\n\n*Zoom:* " + requireNonNullElse(s.readState(RescueStatus.class), "")
                 + "\n\n*Doc:* " + requireNonNullElse(s.readState(HealthReport.class), "")
                 + "\n\n*Fifi's last word:* " + requireNonNullElse(s.readState(Feedback.class), "");
@@ -100,7 +100,7 @@ public final class MegaMuttPattern {
                 List.of(node("in", "mission", "input", 0).withSub("kitten up the oak"),
                         node("sniff", "Sniff", "agent", 1).withSub("Mission 1").as("sniff"),
                         node("tape", "TapeMeasure", "code", 2).withSub("glue · sentence → m"),
-                        node("bolt", "Bolt", "code", 3).withSub("Mission 8 · dropped in").as("bolt"),
+                        node("rivet", "Rivet", "code", 3).withSub("Mission 8 · dropped in").as("rivet"),
                         node("zoom", "Zoom", "agent", 4).withSub("Mission 8").as("zoom"),
                         node("doc", "Doc", "agent", 5).withSub("Mission 2").as("doc"),
                         node("brief", "GazetteBrief", "code", 6).withSub("glue · pins → brief"),
@@ -108,8 +108,8 @@ public final class MegaMuttPattern {
                         node("fifi", "Fifi", "agent", 7).withSub("score ≥ 0.8 to exit").as("fifi")),
                 List.of(edge("in", "sniff"),
                         edge("sniff", "tape", "location"),
-                        edge("tape", "bolt", "height"),
-                        edge("bolt", "zoom", "ladderLength"),
+                        edge("tape", "rivet", "height"),
+                        edge("rivet", "zoom", "ladderLength"),
                         edge("zoom", "doc", "rescueStatus"),
                         edge("doc", "brief", "healthReport"),
                         edge("brief", "howl", "brief"),
@@ -118,14 +118,14 @@ public final class MegaMuttPattern {
         return new PatternDef("megaMutt", "The Mega Mutt (composite)", "composite",
                 "Rangers combine! The kitten is back up the oak, and this time the whole team "
                         + "goes — as one very large dog.",
-                "Mission 2's chain, with Mission 8's Bolt and Zoom dropped in and Mission 3's loop "
+                "Mission 2's chain, with Mission 8's Rivet and Zoom dropped in and Mission 3's loop "
                         + "nested at the end.",
                 "A system, not a pattern, and it exists to show that **the builders nest**: a "
                         + "loop is an agent, so it sits in a sequence like any Ranger. Mission 2's "
-                        + "kitten rescue, with Bolt between Sniff and Zoom so the ladder is the "
+                        + "kitten rescue, with Rivet between Sniff and Zoom so the ladder is the "
                         + "right length, and Mission 3's write-and-score loop polishing the "
                         + "Gazette story — same Howl, same Fifi, different rules.",
-                "Most of a composite is glue. Sniff pins a sentence and Bolt needs a number; the "
+                "Most of a composite is glue. Sniff pins a sentence and Rivet needs a number; the "
                         + "rescue pins a health report and the loop needs a brief — so two plain "
                         + "Java steps, `TapeMeasure` and `GazetteBrief`, do the joining. And Zoom's "
                         + "output key is chosen by this wiring, not by Zoom: the key is the "

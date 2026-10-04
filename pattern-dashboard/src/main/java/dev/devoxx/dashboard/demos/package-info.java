@@ -7,7 +7,7 @@
  *
  * <p><b>The agents are the Pawer Rangers</b>, and an agent's {@code .name(...)} is its Ranger:
  * Sniff finds, Zoom runs, Dig digs, Doc decides what is safe, Howl writes and argues, Fifi
- * judges, Zao leads, and Bolt — a plain Java class, no model — does the maths. The interface name
+ * judges, Zao leads, and Rivet — a plain Java class, no model — does the maths. The interface name
  * says the job in this mission ({@code SniffFinds}, {@code ZoomFetchesLadder}), because the same
  * Ranger has a different job in different missions; the name on the diagram stays the Ranger's,
  * so the room learns the cast once and then only has to learn the pattern.

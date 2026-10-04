@@ -17,7 +17,7 @@ const CAT_NOTES = {"classic":"A plain AI service: tools and guardrails, no agent
                    "planner":"The system decides: Zao, a plan, or the pups themselves",
                    "minds":"You can write the rules yourself",
                    "composite":"Several missions wired into one bigger Ranger",
-                   /* Not a position on the dial — a modifier you can bolt onto any of the above,
+                   /* Not a position on the dial — a modifier you can rivet onto any of the above,
                       which is why this group sits outside the ordering rather than inside it. */
                    "production":"Not where on the dial — what it takes to run it"};
 let patterns = [], current = null, es = null;

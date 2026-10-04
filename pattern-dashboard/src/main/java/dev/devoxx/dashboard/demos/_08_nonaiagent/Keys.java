@@ -10,11 +10,11 @@ public final class Keys {
 
     /**
      * How high the ladder has to reach, in metres. A tree here, a water tower in Mission 10 —
-     * Bolt does not care which, which is why the pin is not called treeHeight.
+     * Rivet does not care which, which is why the pin is not called treeHeight.
      */
     public record Height() implements TypedKey<Double> {}
 
-    /** Bolt's answer, in metres. A number, because Bolt is Java and Java can promise one. */
+    /** Rivet's answer, in metres. A number, because Rivet is Java and Java can promise one. */
     public record LadderLength() implements TypedKey<Double> {}
 
     /** Which ladder Zoom brought, and where it is now. */

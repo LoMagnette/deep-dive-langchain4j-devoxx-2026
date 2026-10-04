@@ -28,8 +28,8 @@ public final class Keys {
     /** Howl's latest statement. */
     public record HowlTurn() implements TypedKey<String> {}
 
-    /** Mittens' latest statement. */
-    public record MittensTurn() implements TypedKey<String> {}
+    /** Marmalade's latest statement. */
+    public record MarmaladeTurn() implements TypedKey<String> {}
 
     /** Fifi's ruling. */
     public record Verdict() implements TypedKey<String> {}

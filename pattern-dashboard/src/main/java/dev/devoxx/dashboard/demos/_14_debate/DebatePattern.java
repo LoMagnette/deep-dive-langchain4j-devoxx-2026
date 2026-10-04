@@ -9,7 +9,7 @@ import java.util.List;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn;
-import dev.devoxx.dashboard.demos._14_debate.Keys.MittensTurn;
+import dev.devoxx.dashboard.demos._14_debate.Keys.MarmaladeTurn;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -33,15 +33,15 @@ public final class DebatePattern {
     static String run(ChatModel model, String input, StreamingListener listener) {
         var howl = AgenticServices.agentBuilder(HowlArgues.class)
                 .chatModel(model).name("Howl").outputKey(HowlTurn.class).build();
-        var mittens = AgenticServices.agentBuilder(MittensArgues.class)
-                .chatModel(model).name("Mittens").outputKey(MittensTurn.class).build();
+        var marmalade = AgenticServices.agentBuilder(MarmaladeArgues.class)
+                .chatModel(model).name("Marmalade").outputKey(MarmaladeTurn.class).build();
         var fifi = AgenticServices.agentBuilder(FifiJudges.class)
                 .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
 
         Debate app = AgenticServices.plannerBuilder(Debate.class)
                 // Every sub-agent but the LAST is a debater; the last one is the judge. That is
                 // the whole configuration of who plays which part — the order is the contract.
-                .subAgents(howl, mittens, fifi)
+                .subAgents(howl, marmalade, fifi)
                 // unanimous() ends the debate early only when both say exactly the same thing,
                 // which two sides of an argument never do — so it runs all three rounds.
                 .planner(() -> new DebatePlanner(ROUNDS, ConvergenceStrategy.unanimous()))
@@ -60,7 +60,7 @@ public final class DebatePattern {
      */
     private static String transcript(AgenticScope scope) {
         List<AgentInvocation> turns = scope.agentInvocations().stream()
-                .filter(i -> List.of("Howl", "Mittens").contains(i.agentName())).toList();
+                .filter(i -> List.of("Howl", "Marmalade").contains(i.agentName())).toList();
         StringBuilder out = new StringBuilder();
         int round = 0;
         for (int i = 0; i < turns.size(); i++) {
@@ -83,15 +83,15 @@ public final class DebatePattern {
                 List.of(node("in", "motion", "input", 0),
                         node("plan", "DebatePlanner", "planner", 1).withSub("3 rounds · unanimous()"),
                         node("howl", "Howl", "agent", 2).withSub("for the dog park").as("howl"),
-                        node("mittens", "Mittens", "agent", 2).withSub("for the cat café").as("mittens"),
+                        node("marmalade", "Marmalade", "agent", 2).withSub("for the cat café").as("marmalade"),
                         node("fifi", "Fifi", "judge", 3).withSub("the LAST sub-agent").as("fifi")),
                 List.of(edge("in", "plan"),
                         edge("plan", "howl"), edge("howl", "plan", "each round"),
-                        edge("plan", "mittens"), edge("mittens", "plan"),
+                        edge("plan", "marmalade"), edge("marmalade", "plan"),
                         edge("plan", "fifi", "closing statements")));
         return new PatternDef("debate", "Debate", "minds",
                 "The town council must decide: the empty lot on Elm Street becomes a dog park, "
-                        + "or a cat café. Mittens has prepared.",
+                        + "or a cat café. Marmalade has prepared.",
                 null,
                 "Two agents argue opposing sides for N rounds; a judge rules. LangChain4j's "
                         + "`DebatePlanner` runs it: **every sub-agent but the last is a debater, "
@@ -111,7 +111,7 @@ public final class DebatePattern {
                         + "is token-hungry: three rounds is six calls before anyone rules.",
                 topo,
                 "Barkville town council: should the empty lot on Elm Street become a dog park or a "
-                        + "cat café? Howl speaks for the dog park, Mittens for the cat café.",
+                        + "cat café? Howl speaks for the dog park, Marmalade for the cat café.",
                 DebatePattern::run);
     }
 }

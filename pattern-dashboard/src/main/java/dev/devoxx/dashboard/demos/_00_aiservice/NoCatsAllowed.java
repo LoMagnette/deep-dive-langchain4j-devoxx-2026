@@ -16,7 +16,7 @@ public class NoCatsAllowed implements InputGuardrail {
     @Override
     public InputGuardrailResult validate(UserMessage letter) {
         String text = letter.singleText().toLowerCase(Locale.ROOT);
-        if (text.contains("mittens")) {
+        if (text.contains("marmalade")) {
             return fatal("Pup HQ does not take letters from cats.");
         }
         if (text.contains("ignore your instructions") || text.contains("ignore all previous")

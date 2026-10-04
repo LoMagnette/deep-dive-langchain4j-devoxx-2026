@@ -17,7 +17,7 @@ public final class Keys {
     /** Sniff: where the scent goes. Dig cannot start without it. */
     public record ScentClue() implements TypedKey<String> {}
 
-    /** Bolt: the camera log. Doc cannot start without it. */
+    /** Rivet: the camera log. Doc cannot start without it. */
     public record CameraClue() implements TypedKey<String> {}
 
     /** Dig: what the prints in the drain say. */

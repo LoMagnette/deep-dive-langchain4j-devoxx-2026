@@ -145,7 +145,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   already an agent, so **any plain object with one `@Agent` method goes straight into
   `subAgents(...)`** — `@K` parameters bound from the scope, return value written to the output
   key, the sequence unable to tell. `HumanInTheLoop` (demo 7) is the library's own instance of
-  this; `demos/_08_nonaiagent/Bolt` is your own class, in front of an LLM step. **It is Mission
+  this; `demos/_08_nonaiagent/Rivet` is your own class, in front of an LLM step. **It is Mission
   8, and the spec puts it in Act 1** beside Mission 1 — "not every dog needs a brain" — which the
   `team` category does without renumbering. Three things it pinned down:
   - **A non-AI agent is INVISIBLE to the listener in `1.20.0-beta30`.**
@@ -155,13 +155,13 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     `composeWithInherited` are all there; the one call is missing. So a plain-Java step emits no
     `agent-before`/`agent-after`, is never timed, and **its node never lights on the diagram**.
     The demo makes that the lesson rather than hiding it, and
-    `boltDoesTheMathsWithNoBrainAndNoEvents` pins the current
+    `rivetDoesTheMathsWithNoBrainAndNoEvents` pins the current
     behaviour: **if that assertion goes red on a version bump the library fixed it — delete the
     assertion and rewrite the demo's caveat, which will have become wrong.** (This is also why
     `humanApproval` works: `StreamingListener.askHuman` emits `human-ask`/`human-answer` by hand,
     so that demo never depended on the inheritance that is missing here.)
   - **`name` goes on the annotation, not a builder.** There is no builder for a POJO, and the
-    default is the *method* name — `Bolt` would be called `ladderLength` everywhere. Same trap
+    default is the *method* name — `Rivet` would be called `ladderLength` everywhere. Same trap
     as `.name("X")` one layer down. `agentAction(scope -> …)` has no answer at all: it comes out
     named `run`, which is why anything you want on a diagram is better as a class.
   - **`typedOutputKey = Keys.Facts.class`** is the annotation's `outputKey(Facts.class)`, so a
@@ -339,7 +339,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     throws `InputGuardrailException` too — and the model is never called (no tool events).
   - **The default letter asks for "everything"** so a live model writes 110–220 words and
     `PawSized` fires on the first click; a polite short letter passes first time and shows nothing.
-    For the input guardrail, sign a letter "Mittens".
+    For the input guardrail, sign a letter "Marmalade".
 - **The missions build on each other: the cast is met once and reused.** Each `PatternDef`
   carries a `story` (the mission in one sentence, as the speaker says it) and a `buildsOn` naming
   what it inherits; the gallery cards show the story so the grid reads as Barkville's week. An
@@ -351,7 +351,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **The four Rangers on call** (`_06_conditional.SniffOnCall/DigOnCall/DocOnCall/ZoomOnCall`,
     all reading `Call`) — routing picks one (6), Zao supervises them (9), the nap schedule
     rations them (16). Mission 19 reuses Zao's classifier.
-  - **Bolt and Zoom's ladder** (`_08_nonaiagent.Bolt`, `ZoomFetchesLadder` with `ZoomGear`) —
+  - **Rivet and Zoom's ladder** (`_08_nonaiagent.Rivet`, `ZoomFetchesLadder` with `ZoomGear`) —
     GOAP chains them (10), the Mega Mutt drops them into Mission 2 (17), exactly as the spec's
     presenter notes ask.
   - **Howl and Fifi's loop** (`_03_loop`) — the poster (3), and nested inside the Mega Mutt for
@@ -373,9 +373,13 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   | White | **Doc** | St. Bernard | medic, decides what is safe, says no often | 2, 6, 10, 13, 19, 21 |
   | Purple | **Howl** | Husky | writes and argues, loud | 2, 3, 14, 18 |
   | Pink | **Fifi** | Poodle | critic and judge | 3, 14 |
-  | Silver | **Bolt** | robot dog | maths and lookups — **plain Java, no model** | 8, 10, 12, 13, 17, 18 |
-  Supporting cast: **Officer Jo** (the human, Mission 7), **Mittens the cat** (the villain — an AI
+  | Silver | **Rivet** | robot dog | maths and lookups — **plain Java, no model** | 8, 10, 12, 13, 17, 18 |
+  Supporting cast: **Officer Jo** (the human, Mission 7), **Marmalade the cat** (the villain — an AI
   agent in the debate, the prime suspect in every crime), **the Mayor** (loses things, owns roses).
+  **Rivet and Marmalade were Bolt and Mittens until 2026-10-04**, renamed because a super-powered
+  dog called Bolt next to a cat called Mittens is the cast of Disney's *Bolt* (2008). When naming
+  any new character, check it is not a well-known one first — and avoid Disney's cats in
+  particular (Duchess, Figaro, Lucifer).
   Rules that fell out of building it:
   - **An agent's `.name(...)` is its Ranger; its interface name is its job in this mission**
     (`SniffFinds`, `ZoomFetchesLadder`, `DigSteadies`). The diagram label is the Ranger, so the room
@@ -386,8 +390,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     `render.js` draws a badge in the box corner in `var(--r-sniff)` (`app.css`). A badge, not a
     tinted stroke, because Doc is WHITE and vanishes on the light canvas. The schematic test fails
     any box labelled as a Ranger without a colour.
-  - **Bolt is always drawn as `code`**, never as an agent — wherever he appears. And **a non-AI
-    agent is invisible to the listener in a sequence** (see the non-AI note above), so Bolt's box
+  - **Rivet is always drawn as `code`**, never as an agent — wherever he appears. And **a non-AI
+    agent is invisible to the listener in a sequence** (see the non-AI note above), so Rivet's box
     never lights there; his effect is on the Scope tab. Oddly, whether he is reported depends on how he
     is nested: invisible as a direct sub-agent of a sequence or of Mission 13's top-level
     VotingPlanner, but reported when that planner is nested one level down (Mission 18). Do not
@@ -425,18 +429,18 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     planner and strategy as one step of its sequence. `theVetoOverrulesTheMajorityOnIce` asserts
     both use `VotingPlanner` and neither uses `parallelBuilder`.
   - **Mission 14 is LangChain4j's `DebatePlanner`, not a loop dressed as one** — it was a
-    `loopBuilder` of Howl, Mittens and a Bolt minute-taker for a while, which showed a loop and
+    `loopBuilder` of Howl, Marmalade and a Rivet minute-taker for a while, which showed a loop and
     called it a debate. How the real planner works, read from its bytecode in `1.20.0-beta30`:
     **every sub-agent but the LAST is a debater and the last is the judge** (so `subAgents(howl,
-    mittens, fifi)` is the whole casting); each round it calls ALL debaters together — they run
+    marmalade, fifi)` is the whole casting); each round it calls ALL debaters together — they run
     concurrently, so within a round nobody hears the other — then writes the previous round's
-    statements into the scope as `debateContext` ("Howl: …\nMittens: …"), which is what the next
+    statements into the scope as `debateContext` ("Howl: …\nMarmalade: …"), which is what the next
     round answers; after each round it asks the `ConvergenceStrategy` (`unanimous()` = word for
     word identical, so prose never converges; `unanimousLastWord()` = both end on the same word),
     and on convergence or `maxRounds` it calls the judge once with that context. Consequences:
     `debateContext` holds ONLY the last round, so Fifi rules on closing statements and the result
     rebuilds the full transcript from `scope.agentInvocations()`; round 1's context is EMPTY, so
-    the debaters are told an empty last round means "open your case" (live, Mittens otherwise
+    the debaters are told an empty last round means "open your case" (live, Marmalade otherwise
     opened with "Howl has yet to offer an argument"); and `debateContext` is the library's key,
     so `Keys.DebateContext` is the one `TypedKey` that overrides `name()` — with the library's
     constant, `DebatePlanner.DEBATE_CONTEXT_KEY`. `theCouncilArguesThreeRoundsBeforeFifiRules`
@@ -462,10 +466,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     - **Blackboard (sausage heist): preconditions, not a fan-out.** `BlackboardPlanner` picks,
       each step, ONE agent whose inputs are all on the board and that has not fired since they
       last changed, using a `ConflictResolutionStrategy` when several qualify. So the inputs ARE
-      the preconditions: Sniff and Bolt need the crime; Dig needs Sniff's `ScentClue`; Doc needs
-      Bolt's `CameraClue`; Zao needs `TunnelClue` + `CrumbClue` and writing `Culprit` is the goal.
-      They are registered **backwards** (Zao, Doc, Dig, Bolt, Sniff) and `declarationOrder()`
-      only breaks ties among the eligible, so the run goes Bolt → Doc → Sniff → Dig → Zao —
+      the preconditions: Sniff and Rivet need the crime; Dig needs Sniff's `ScentClue`; Doc needs
+      Rivet's `CameraClue`; Zao needs `TunnelClue` + `CrumbClue` and writing `Culprit` is the goal.
+      They are registered **backwards** (Zao, Doc, Dig, Rivet, Sniff) and `declarationOrder()`
+      only breaks ties among the eligible, so the run goes Rivet → Doc → Sniff → Dig → Zao —
       interleaving two chains nobody wrote — and the result prints that order beside the
       registration order. The diagram has NO agent→agent edge (the test pins it): every arrow
       goes into or out of the board, which sits in the middle column.
@@ -594,9 +598,9 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   and pins `Energy`, `LastOnMission`, `MissionQueue` and `Schedule` so the Scope tab shows the
   planner thinking. The result is the day's log, with FEED / GO / NAP in words — no emoji.
 - **`megaMutt` (17) is the spec's "Mega Mutt" made literal**: Mission 2's kitten rescue with
-  Bolt (8) dropped in between Sniff and Zoom, and Mission 3's loop nested at the end to polish the
+  Rivet (8) dropped in between Sniff and Zoom, and Mission 3's loop nested at the end to polish the
   Gazette story. It exists to show that **the builders nest** — a loop is an agent, so it sits in a
-  sequence like any Ranger. Its lesson is the glue: Sniff pins a sentence and Bolt needs a number,
+  sequence like any Ranger. Its lesson is the glue: Sniff pins a sentence and Rivet needs a number,
   so `TapeMeasure` (plain Java) reads the metres; the rescue pins a health report and the loop
   needs a brief, so `GazetteBrief` (plain Java) writes one. And **the wiring chooses Zoom's output
   key** (`RescueStatus`, so Doc can read it) — the key is the contract between two agents, and a
@@ -605,7 +609,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Java) writes the findings back INTO `Mission` — because that is the key Mission 13's voters
   declared, and reusing an agent means accepting its key — then the same vote with the same veto
   (`VotingPattern.count`, public so it can be reused), and Howl announces it. The original words go
-  first in the rewritten mission, or Bolt's ruler loses the measured thickness.
+  first in the rewritten mission, or Rivet's ruler loses the measured thickness.
 - **`demos/_NN_<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@K`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
@@ -796,7 +800,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   **This rule is about the chrome, not about the writing.** The `story` beats are the one place
   the humour belongs — they are what the speaker says out loud, the talk is three hours long, and
   the room needs the laughs. The register is dry and observational (Zao "would like it known that
-  this proves nothing"; Mittens "has prepared"), and every punchline earns its place twice:
+  this proves nothing"; Marmalade "has prepared"), and every punchline earns its place twice:
   `p2p`'s "nobody is in charge — not even Zao, who is outside, eating corn" **is** why it is not a
   supervisor, `bdi`'s "Squirrel. Kid. Squirrel." is the preempt-and-resume, `customPlanner`'s "Zoom is
   hungry" is the first rule the planner fires. A joke you have to stop and explain
@@ -873,7 +877,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     notes exist, and is the step that *ends the run* — sat at the far **left**, where the eye
     starts, reading as a fourth peer. Plus eight arrows radiating from one box, no way in and
     no way out. It is `stages` now, with the board in the **middle** column and the Rangers
-    either side of it: the column a Ranger stands in is the earliest it CAN act (Sniff and Bolt
+    either side of it: the column a Ranger stands in is the earliest it CAN act (Sniff and Rivet
     need only the crime; Dig and Doc need a clue; Zao needs two), every arrow goes into or out
     of the board, and each box's sub-line says what it needs (`needs: the scent`). The problem
     and the goal state are both on the page.
@@ -975,7 +979,7 @@ stream back as `RunEvent`s → the page animates the topology and updates the sc
    for the Ranger's job here, built with `.name("<Ranger>")`), a `Keys.java` for the pins it
    introduces, an `XxxPattern`, and a `package-info.java`. Reuse a Ranger from the mission that
    introduced him rather than writing a new one. Give every Ranger box `.as("<ranger>")` so it
-   wears his colour, draw Bolt and gear as `code`, and pick a category from the four acts. Then
+   wears his colour, draw Rivet and gear as `code`, and pick a category from the four acts. Then
    add one line to `PatternCatalog.build()`.
 3. If running under the mock, add a rule to `MockChatModel`'s table — and mind where you put it:
    the table is ordered, and a rule keyed on a word that appears in quoted content will hijack

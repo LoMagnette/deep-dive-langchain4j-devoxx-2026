@@ -12,16 +12,16 @@ import dev.langchain4j.agentic.declarative.K;
  * it does for an LLM agent.
  *
  * <p>Ladder math is the job a model is worst at and Java is best at: a model asked for a ladder
- * length is plausible, and Bolt is right.
+ * length is plausible, and Rivet is right.
  */
-public class Bolt {
+public class Rivet {
 
     /** A ladder stands at 75°, and needs a metre above the branch to climb off safely. */
     private static final double ANGLE = Math.toRadians(75);
     private static final double OVERHANG = 1.0;
 
-    @Agent(name = "Bolt",
-           description = "Bolt the robot dog: computes the ladder length, in plain Java",
+    @Agent(name = "Rivet",
+           description = "Rivet the robot dog: computes the ladder length, in plain Java",
            typedOutputKey = LadderLength.class)
     public double ladderLength(@K(Height.class) double height) {
         double needed = height / Math.sin(ANGLE) + OVERHANG;

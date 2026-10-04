@@ -50,7 +50,7 @@ public class MockChatModel implements ChatModel {
             "Sniff has his nose on it.",
             "Nothing to report, and Zoom has gone after a squirrel.",
             "Fifi has read it and finds it… adequate.",
-            "Bolt has filed it. Bolt files everything."
+            "Rivet has filed it. Rivet files everything."
     };
 
     private final List<ChatModelListener> listeners;
@@ -114,9 +114,9 @@ public class MockChatModel implements ChatModel {
             } else {
                 plan.add(tool("sniff", "{\"place\":\"" + jsonEscape(mission.strip()) + "\"}"));
             }
-        } else if (p.contains("bolt says the ladder must be at least")) {
-            // The FIRST "at least" carries Bolt's number; the prompt says it twice.
-            String size = ladderFor(firstNumber(after(p, "bolt says the ladder must be at least")));
+        } else if (p.contains("rivet says the ladder must be at least")) {
+            // The FIRST "at least" carries Rivet's number; the prompt says it twice.
+            String size = ladderFor(firstNumber(after(p, "rivet says the ladder must be at least")));
             plan.add(tool("fetch", "{\"item\":\"" + size + " ladder\"}"));
             plan.add(tool("deliver",
                     "{\"item\":\"the " + size + " ladder\",\"place\":\"the rescue\"}"));
@@ -225,7 +225,7 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("write what the brief below asks for"),
                         MockChatModel::howlDraft),
 
-                // --- Missions 13 and 18. The two model voters; Bolt votes in Java.
+                // --- Missions 13 and 18. The two model voters; Rivet votes in Java.
                 new Rule(p -> p.contains("judge only by who is already out on the ice"),
                         p -> "SAFE — the ducks are walking on it and it smells of nothing but duck."),
                 new Rule(p -> p.contains("you are the medic and you look for what could go wrong"),
@@ -279,7 +279,7 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("officer jo has answered"), MockChatModel::digActs),
 
                 // --- Missions 8, 10, 17. Zoom with the ladder (gear first, then this).
-                new Rule(p -> p.contains("bolt says the ladder must be at least"),
+                new Rule(p -> p.contains("rivet says the ladder must be at least"),
                         p -> "Fetched " + ladderFetched(p) + " from the fire-station shed and "
                                 + "delivered it, leaning against the trunk, ready to climb."),
 
@@ -287,8 +287,8 @@ public class MockChatModel implements ChatModel {
                 new Rule(p -> p.contains("dig its feet into the ground and hold it steady"),
                         p -> "Feet dug in twenty centimetres, me sitting on the bottom rung. It "
                                 + "is not going anywhere: secure."),
-                new Rule(p -> p.contains("climb it, bring mittens down"),
-                        p -> "Up the ladder, Mittens under one paw, down again. She is unhurt, "
+                new Rule(p -> p.contains("climb it, bring marmalade down"),
+                        p -> "Up the ladder, Marmalade under one paw, down again. She is unhurt, "
                                 + "ungrateful, and has scratched my nose."),
 
                 // --- Mission 11. The maze. Three peers, and the rules only read what the OTHER
@@ -319,11 +319,11 @@ public class MockChatModel implements ChatModel {
 
                 // --- Mission 12. Zao FIRST: his prompt quotes Dig's and Doc's clues.
                 new Rule(p -> p.contains("read the clues on the board and name the culprit"),
-                        p -> "The culprit is Mittens: four-toed, clawless prints run from the "
+                        p -> "The culprit is Marmalade: four-toed, clawless prints run from the "
                                 + "drain to her garden at number 9. The crumb in my beard is from "
                                 + "the sausage dropped on our mat at 02:33, which I ate at 07:02 — "
                                 + "at 02:20 I was asleep in my basket, on camera. I am innocent. "
-                                + "It was Mittens."),
+                                + "It was Marmalade."),
                 new Rule(p -> p.contains("examine the crumb in zao's beard"),
                         p -> "The crumb is from the sausage dropped on Pup HQ's mat at 02:33, "
                                 + "which Zao ate at 07:02.\nAt 02:20, while the sausages were "
@@ -338,7 +338,7 @@ public class MockChatModel implements ChatModel {
                 // --- Mission 14. Fifi FIRST: her prompt quotes the whole transcript.
                 new Rule(p -> p.contains("moderating the barkville town council"),
                         p -> "Winner: the dog park. 1. Howl showed the lot is the only green space "
-                                + "on Elm Street. 2. Mittens conceded a café is open eight hours "
+                                + "on Elm Street. 2. Marmalade conceded a café is open eight hours "
                                 + "and a park all day. 3. Nobody answered Howl's point about the "
                                 + "school next door. Howl's weakest moment: the howling."),
                 new Rule(p -> p.contains("you are howl, at the barkville town council"),
@@ -346,11 +346,11 @@ public class MockChatModel implements ChatModel {
                                 "The lot on Elm Street is the only green on the street, and a dog "
                                         + "park keeps it green. Every dog in Barkville needs room "
                                         + "to RUN!",
-                                "Mittens says a café brings visitors — a park brings every family "
+                                "Marmalade says a café brings visitors — a park brings every family "
                                         + "in Barkville, every single day, for free.",
                                 "And the school next door gets a park to look at, not a window "
                                         + "full of cats looking back."})),
-                new Rule(p -> p.contains("you are mittens the cat"),
+                new Rule(p -> p.contains("you are marmalade the cat"),
                         p -> round(p, new String[] {
                                 "Green? It is mud with ideas. A cat café brings visitors, pays "
                                         + "rent, and is quiet, which is more than can be said for "
@@ -492,7 +492,7 @@ public class MockChatModel implements ChatModel {
                 : d.contains("noodle") ? "under the bandstand, stuck behind a drum — pulled out"
                 : d.contains("pip") ? "at the bus stop, waiting for the number 7"
                 : d.contains("socks") ? "in the Mayor's roses, eating them"
-                : d.contains("bean") ? "on Mittens' doorstep, being watched very closely — rescued "
+                : d.contains("bean") ? "on Marmalade's doorstep, being watched very closely — rescued "
                 + "just in time"
                 : "by the duck pond, perfectly fine";
         return "Found " + where + ".";
@@ -531,7 +531,7 @@ public class MockChatModel implements ChatModel {
                     + "missing; I was not involved.";
         }
         if (c.contains("bouncy castle")) {
-            return "Crawled inside the bouncy castle and found the hole — a Mittens-sized claw "
+            return "Crawled inside the bouncy castle and found the hole — a Marmalade-sized claw "
                     + "mark. Patched it with the Mayor's sash.";
         }
         if (c.contains("glasses")) {
