@@ -46,8 +46,20 @@ public final class LoopPattern {
                 .outputKey("Feedback")
                 .build();
 
-        // TODO live: loopBuilder
-        return "TODO live: loopBuilder";
+        PosterLoop app = AgenticServices.loopBuilder(PosterLoop.class)
+                .name("Loop")
+                .subAgents(howl, fifi)
+                .maxIterations(TREATS)
+                .exitCondition(scope -> reviewScore(scope.readState("Feedback", "")) >= 0.8)
+                .testExitAtLoopEnd(true)
+                .outputKey("Draft")
+                .listener(listener)
+                .build();
+
+        // Feedback is seeded because Howl's first pass reads it too: there is nothing to fix
+        // yet, and an absent input would stop the loop before the first word was written.
+        var r = app.refine(input, POSTER_RULES, "(none yet — this is the first draft)");
+        return everyPass(r.agenticScope(), String.valueOf(r.result()));
     }
 
     // ---- how the result is presented; the wiring above is the demo ----
