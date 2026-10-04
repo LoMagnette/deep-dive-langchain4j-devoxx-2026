@@ -213,6 +213,17 @@ body:not(.on-grid) .gallery{display:none}
 :root[data-theme="dark"] .graphwrap{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='215' height='215'%3E%3Cg fill='%237fb3cc' fill-opacity='0.055'%3E%3Cg transform='rotate(-18 38 42)'%3E%3Cellipse cx='38' cy='48' rx='11' ry='9'/%3E%3Cellipse cx='27' cy='34' rx='4.6' ry='6'/%3E%3Cellipse cx='36' cy='30' rx='4.6' ry='6'/%3E%3Cellipse cx='45' cy='31' rx='4.6' ry='6'/%3E%3Cellipse cx='53' cy='37' rx='4.6' ry='6'/%3E%3C/g%3E%3Cg transform='rotate(14 108 116)'%3E%3Cellipse cx='108' cy='122' rx='11' ry='9'/%3E%3Cellipse cx='97' cy='108' rx='4.6' ry='6'/%3E%3Cellipse cx='106' cy='104' rx='4.6' ry='6'/%3E%3Cellipse cx='115' cy='105' rx='4.6' ry='6'/%3E%3Cellipse cx='123' cy='111' rx='4.6' ry='6'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
 svg#graph{width:100%;height:100%;display:block;position:relative}
+/* Zoom. The canvas takes the pointer for panning, so touch-action is off on it; the cursor says
+   "draggable" only once there is somewhere to drag to. */
+svg#graph{touch-action:none}
+.graphwrap.zoomed svg#graph{cursor:grab}
+.graphwrap.panning svg#graph{cursor:grabbing}
+.zoombar{position:absolute;right:12px;bottom:12px;display:flex;gap:2px;padding:3px;border-radius:999px;
+  background:var(--panel);box-shadow:var(--shadow)}
+.zoombar button{border:none;background:none;color:var(--muted);font-size:15px;font-weight:700;min-width:34px;
+  padding:5px 10px;border-radius:999px;cursor:pointer;font-variant-numeric:tabular-nums}
+.zoombar button:hover{background:var(--panel2);color:var(--ink)}
+.zoombar #zoom-reset{font-size:12.5px;min-width:56px}
 /* Scope pane: a debugger's variables table — name, type, value, and what just changed. */
 #scope{padding:0}
 #scope .empty{display:block;padding:10px 14px}

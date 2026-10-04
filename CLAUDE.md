@@ -768,6 +768,14 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   not pin). **The view itself is never switched for the viewer**: on the diagram they are usually
   pointing at the timings the run left behind, so a finished result, or a WARN/ERROR in the log,
   puts a dot on the Data button instead.
+  **The diagram zooms** (wheel or trackpad pinch toward the pointer, drag to pan once zoomed,
+  double-click or `0` to fit, `+`/`−` keys and a corner −/%/+ bar). It is done on the **viewBox**,
+  so it stays vector-sharp, and the fitted view is kept apart in `svg.dataset.base` (set by
+  `drawGraph`) because zooming rewrites the live one. `fitEdgeLabels` measures against that BASE
+  view, on purpose: measured against the zoomed viewBox it would shrink the labels straight back
+  while everything else grew. A new diagram starts fitted; a run does not redraw, so you can zoom
+  into the part about to be discussed and THEN press Run. Panning is clamped so at least half
+  the drawing stays on the canvas.
 - **`[hidden]{display:none !important}` is declared once in `app.css`, and it has to be.** The
   `hidden` attribute is only `[hidden]{display:none}` in the browser's own stylesheet, so any
   author rule that sets `display` on the same element silently beats it. The runtime badge

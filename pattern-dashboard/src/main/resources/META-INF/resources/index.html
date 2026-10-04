@@ -104,7 +104,15 @@
         <button class="btn-run" id="ask-send">Send</button>
       </div>
     </div>
-    <div class="graphwrap" id="view-diagram"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <!-- Zoomable: wheel or pinch zooms toward the pointer, drag pans, double-click resets.
+         Keys + − 0 do the same while the diagram is showing. -->
+    <div class="graphwrap" id="view-diagram"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="zoombar" role="group" aria-label="Zoom the diagram">
+        <button id="zoom-out" title="Zoom out (−)">−</button>
+        <button id="zoom-reset" title="Fit the diagram (0, or double-click it)">100%</button>
+        <button id="zoom-in" title="Zoom in (+)">+</button>
+      </div>
+    </div>
     <!-- The data view: what the run produced on top, how it got there underneath. Each half has
          its own tabs, so the scope and the event log can be read side by side in time. -->
     <div class="dataview" id="view-data" hidden>

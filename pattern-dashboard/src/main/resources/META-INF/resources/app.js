@@ -156,6 +156,7 @@ function select(id){
   showPane('scope');
   showPane('console');
   drawGraph(current.topology);
+  zoomReset();   // a new diagram starts fitted, and the zoom readout must say so
 }
 
 function reset(){
@@ -527,6 +528,99 @@ document.getElementById('rail-toggle').onclick = () =>
   setView(p.view === 'data' ? 'data' : 'diagram', false);
   setRailHidden(!!p.railHidden, false);
 })();
+
+/* ---------- zooming the diagram ----------
+   Done on the viewBox, so the drawing stays vector-sharp at any size: the live viewBox is a
+   window onto the fitted one (svg.dataset.base, set by drawGraph), ZOOM_MAX times smaller at
+   most. A new diagram resets it, because drawGraph rewrites both. Running does not redraw, so a
+   zoom set up before Run survives the run — zoom into the part of the topology you are about to
+   talk about, then press Run. */
+const ZOOM_MAX = 6, ZOOM_STEP = 1.25;
+const graphSvg = document.getElementById('graph');
+function baseBox(){
+  const b = (graphSvg.dataset.base || '').split(' ').map(Number);
+  return b.length === 4 && b[2] > 0 ? {x:b[0], y:b[1], w:b[2], h:b[3]} : null;
+}
+function viewBox(){ const v = graphSvg.viewBox.baseVal; return {x:v.x, y:v.y, w:v.width, h:v.height}; }
+function zoomLevel(){ const b = baseBox(); return b ? b.w / viewBox().w : 1; }
+/* Keep at least half the drawing on the canvas, so a pan can never lose it entirely. */
+function clampView(v, b){
+  const x = Math.min(b.x + b.w - v.w/2, Math.max(b.x - v.w/2, v.x));
+  const y = Math.min(b.y + b.h - v.h/2, Math.max(b.y - v.h/2, v.y));
+  return {x, y, w:v.w, h:v.h};
+}
+function setViewBox(v){
+  const b = baseBox(); if(!b) return;
+  const z = b.w / v.w;
+  if(z <= 1.0001) v = b; else v = clampView(v, b);
+  graphSvg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+  const zoomed = b.w / v.w > 1.0001;
+  document.getElementById('view-diagram').classList.toggle('zoomed', zoomed);
+  document.getElementById('zoom-reset').textContent = Math.round(100 * b.w / v.w) + '%';
+}
+/* The point under the pointer, in drawing units; the view centre when there is no pointer. */
+function svgPoint(clientX, clientY){
+  const v = viewBox();
+  const ctm = graphSvg.getScreenCTM();
+  if(clientX == null || !ctm) return {x: v.x + v.w/2, y: v.y + v.h/2};
+  const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+  return {x:p.x, y:p.y};
+}
+/* Zoom by a factor, keeping the point under the pointer exactly where it is on screen. */
+function zoomBy(factor, clientX, clientY){
+  const b = baseBox(); if(!b) return;
+  const v = viewBox();
+  const z = Math.min(ZOOM_MAX, Math.max(1, (b.w / v.w) * factor));
+  const w = b.w / z, h = b.h / z, r = w / v.w;
+  const p = svgPoint(clientX, clientY);
+  setViewBox({x: p.x - (p.x - v.x) * r, y: p.y - (p.y - v.y) * r, w, h});
+}
+function zoomReset(){ const b = baseBox(); if(b) setViewBox(b); }
+
+graphSvg.addEventListener('wheel', e=>{
+  e.preventDefault();
+  /* A trackpad pinch arrives as a wheel event with ctrlKey and small deltas; a mouse wheel as
+     ±100-ish. Scaling by the delta makes both feel proportionate. */
+  const delta = Math.max(-100, Math.min(100, e.deltaY * (e.deltaMode === 1 ? 33 : 1)));
+  zoomBy(Math.exp(-delta * (e.ctrlKey ? 0.01 : 0.0025)), e.clientX, e.clientY);
+}, {passive:false});
+(function panning(){
+  let from = null;
+  graphSvg.addEventListener('pointerdown', e=>{
+    if(e.button !== 0 || zoomLevel() <= 1.0001) return;
+    from = {x:e.clientX, y:e.clientY, v:viewBox()};
+    graphSvg.setPointerCapture?.(e.pointerId);
+    document.getElementById('view-diagram').classList.add('panning');
+  });
+  graphSvg.addEventListener('pointermove', e=>{
+    if(!from) return;
+    const ctm = graphSvg.getScreenCTM(); if(!ctm) return;
+    setViewBox({x: from.v.x - (e.clientX - from.x) / ctm.a,
+                y: from.v.y - (e.clientY - from.y) / ctm.d, w: from.v.w, h: from.v.h});
+  });
+  const stop = e=>{
+    if(!from) return;
+    from = null;
+    try{ graphSvg.releasePointerCapture?.(e.pointerId); }catch(_){}
+    document.getElementById('view-diagram').classList.remove('panning');
+  };
+  graphSvg.addEventListener('pointerup', stop);
+  graphSvg.addEventListener('pointercancel', stop);
+})();
+graphSvg.addEventListener('dblclick', zoomReset);
+document.getElementById('zoom-in').onclick = ()=>zoomBy(ZOOM_STEP);
+document.getElementById('zoom-out').onclick = ()=>zoomBy(1/ZOOM_STEP);
+document.getElementById('zoom-reset').onclick = zoomReset;
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if(document.body.classList.contains('on-grid') || currentView() !== 'diagram') return;
+  if(e.key === '+' || e.key === '=') zoomBy(ZOOM_STEP);
+  else if(e.key === '-' || e.key === '_') zoomBy(1/ZOOM_STEP);
+  else if(e.key === '0') zoomReset();
+  else return;
+  e.preventDefault();
+});
 
 /* The diagram is a viewBox scaled to fit its pane, so switching views, collapsing the rail or
    resizing the window all change how far it is scaled down — and with it how big the edge labels

@@ -148,6 +148,9 @@ function drawGraph(topo){
   svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--edge-line)"/></marker></defs>';
   const {nodes,idx,cw,ch}=layout(topo);
   svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);
+  /* The fitted view, kept apart from the live viewBox because zooming (app.js) rewrites that.
+     A new diagram always starts unzoomed. */
+  svg.dataset.base = `0 0 ${cw} ${ch}`;
   const order={}; topo.nodes.forEach((n,i)=>order[n.id]=i);
   /* A->B and B->A drawn as straight lines land exactly on top of each other, so a mutual
      relationship (debate rebuttals, supervisor invoke/result, blackboard read/write) rendered
@@ -331,7 +334,10 @@ function placeEdgeLabels(svg, pending, nodes){
 const EDGE_FS = 12, EDGE_FS_MAX = 18;
 function fitEdgeLabels(svg){
   const box = svg.getBoundingClientRect();
-  const vb = svg.viewBox.baseVal;
+  /* Measured against the FITTED view, not the zoomed one: zooming in is asking for everything
+     to get bigger, labels included, and measuring the live viewBox would shrink them back. */
+  const base = (svg.dataset.base || '').split(' ').map(Number);
+  const vb = base.length === 4 ? {width: base[2], height: base[3]} : svg.viewBox.baseVal;
   if(!box.width || !vb || !vb.width) return;
   const scale = Math.min(box.width/vb.width, box.height/vb.height);
   if(!isFinite(scale) || scale <= 0) return;
