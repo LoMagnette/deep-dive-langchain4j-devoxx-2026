@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import dev.devoxx.dashboard.catalog.PatternDef.PatternInfo;
+import dev.devoxx.dashboard.demos._00_aiservice.AiServicePattern;
 import dev.devoxx.dashboard.demos._01_single.SinglePattern;
 import dev.devoxx.dashboard.demos._02_sequential.SequentialPattern;
 import dev.devoxx.dashboard.demos._03_loop.LoopPattern;
@@ -37,10 +38,12 @@ public class PatternCatalog {
     private final List<PatternDef> patterns = build();
 
     private static List<PatternDef> build() {
-        // In mission-number order, so _NN_ in every package name is its place here. The rail and
+        // In mission-number order — starting at 0 — so _NN_ in every package name is its index
+        // here. The rail and
         // the gallery group these by the spec's four ACTS (the category), which is how missions
         // 1 and 8 end up side by side in Act 1 without anything being renumbered.
         return List.of(
+                AiServicePattern.define(),       // 0  · Before the pack — a plain AI service
                 SinglePattern.define(),          // 1  · Act 1, Meet the team
                 SequentialPattern.define(),      // 2  · Act 2, Workflows — you decide the order
                 LoopPattern.define(),            // 3

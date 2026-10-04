@@ -115,6 +115,7 @@ body:not(.on-grid) .gallery{display:none}
 .group-head .dot{flex:0 0 auto;width:9px;height:9px;border-radius:3px;background:var(--muted);
   align-self:center}
 .group-head .dot.pure-agent{background:var(--accent)}
+.group-head .dot.classic{background:var(--r-zao)}
 .group-head .dot.team{background:var(--r-sniff)}
 .group-head .dot.planner{background:var(--accent)}
 .group-head .dot.minds{background:var(--r-howl)}

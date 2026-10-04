@@ -69,43 +69,6 @@ public class StreamingListener implements AgentListener {
         this.streaming = streaming;
     }
 
-    /**
-     * The streaming model for this run, or null when the viewer did not ask for one. Null is the
-     * signal, not a flag beside it: a demo that can stream branches on having somewhere to
-     * stream to, and every other run gets the ordinary path with no extra argument to ignore.
-     */
-    public StreamingChatModel streamingModel() {
-        return streaming;
-    }
-
-    /** One chunk of an answer, on its way to the Result pane as it is generated. */
-    public void emitToken(String agent, String chunk) {
-        emit("token", agent, null, null, chunk);
-    }
-
-    /**
-     * The two models this run may choose between, falling back to the one it was given for both
-     * tiers. The fallback is what lets {@code mvn test} run the model-routing demo with no
-     * plumbing at all — and {@link ModelTiers#distinct()} is false there, so nothing claims a
-     * choice was made.
-     */
-    public ModelTiers tiers(ChatModel fallback) {
-        return tiers != null ? tiers : ModelTiers.single(fallback, "the live model");
-    }
-
-    /**
-     * Puts a question to whoever is watching this run and blocks until they answer.
-     */
-    public String askHuman(String agent, String question) {
-        emit("human-ask", agent, question, null, null);
-        long from = System.nanoTime();
-        String answer = human.ask(question);
-        // Worth timing too, and worth showing: it is the honest cost of putting a person in the
-        // loop, and it is always the largest number on the page.
-        emit("human-answer", agent, answer, null, null, (System.nanoTime() - from) / 1_000_000);
-        return answer;
-    }
-
     @Override
     public boolean inheritedBySubagents() {
         return true;
@@ -155,6 +118,61 @@ public class StreamingListener implements AgentListener {
                 exec.request().name() + " → " + exec.result(), null, null, took);
     }
 
+    @Override
+    public void afterAgenticScopeCreated(AgenticScope agenticScope) {
+        emit("scope-created", null, null, agenticScope, null);
+    }
+
+    @Override
+    public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+        emit("scope-detroyed", null, null, agenticScope, null);
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+        emit("scope-suspended", null, null, agenticScope, null);
+    }
+
+
+    /**
+     * The streaming model for this run, or null when the viewer did not ask for one. Null is the
+     * signal, not a flag beside it: a demo that can stream branches on having somewhere to
+     * stream to, and every other run gets the ordinary path with no extra argument to ignore.
+     */
+    public StreamingChatModel streamingModel() {
+        return streaming;
+    }
+
+    /** One chunk of an answer, on its way to the Result pane as it is generated. */
+    public void emitToken(String agent, String chunk) {
+        emit("token", agent, null, null, chunk);
+    }
+
+    /**
+     * The two models this run may choose between, falling back to the one it was given for both
+     * tiers. The fallback is what lets {@code mvn test} run the model-routing demo with no
+     * plumbing at all — and {@link ModelTiers#distinct()} is false there, so nothing claims a
+     * choice was made.
+     */
+    public ModelTiers tiers(ChatModel fallback) {
+        return tiers != null ? tiers : ModelTiers.single(fallback, "the live model");
+    }
+
+    /**
+     * Puts a question to whoever is watching this run and blocks until they answer.
+     */
+    public String askHuman(String agent, String question) {
+        emit("human-ask", agent, question, null, null);
+        long from = System.nanoTime();
+        String answer = human.ask(question);
+        // Worth timing too, and worth showing: it is the honest cost of putting a person in the
+        // loop, and it is always the largest number on the page.
+        emit("human-answer", agent, answer, null, null, (System.nanoTime() - from) / 1_000_000);
+        return answer;
+    }
+
+
+
     /** Milliseconds since this invocation started, or null if we never saw it start. */
     private Long elapsed(String agentId) {
         Long from = startedNanos.remove(agentId);
@@ -164,6 +182,15 @@ public class StreamingListener implements AgentListener {
     /** Manually push an error event (used when a pattern run throws). */
     public void emitError(String agent, String message) {
         emit("agent-error", agent, message, null, null);
+    }
+
+    /**
+     * Push an event that did not come from the agentic listener — Mission 0's plain AI service
+     * reports through LangChain4j's AiService observability API instead (see AiServiceBridge),
+     * and lands here so the page animates it exactly like an agent.
+     */
+    public void emitEvent(String type, String agent, String message, Long millis) {
+        emit(type, agent, message, null, null, millis);
     }
 
     private void emit(String type, String agent, String message, AgenticScope scope, Object data) {

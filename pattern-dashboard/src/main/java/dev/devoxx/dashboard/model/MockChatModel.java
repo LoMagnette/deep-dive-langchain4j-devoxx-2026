@@ -97,7 +97,14 @@ public class MockChatModel implements ChatModel {
 
     private List<ToolExecutionRequest> toolPlan(String p) {
         List<ToolExecutionRequest> plan = new ArrayList<>();
-        if (p.contains("find what this mission is looking for")) {
+        if (p.contains("answering letters at the pup hq front desk")
+                && !p.contains("rewrite this answer to fit the noticeboard")) {
+            // Mission 0: look up who does the job, then whether that Ranger is awake.
+            boolean digging = p.contains("dig") && !p.contains("glasses") || p.contains("hole");
+            plan.add(tool("rangerFor", digging ? "{\"job\":\"digging\"}"
+                    : "{\"job\":\"finding something lost\"}"));
+            plan.add(tool("onDuty", digging ? "{\"ranger\":\"Dig\"}" : "{\"ranger\":\"Sniff\"}"));
+        } else if (p.contains("find what this mission is looking for")) {
             String mission = after(p, "mission:");
             if (mission.contains("hat")) {
                 plan.add(tool("sniff", "{\"place\":\"the park bench\"}"));
@@ -192,6 +199,22 @@ public class MockChatModel implements ChatModel {
                 // descriptions of all four Rangers and would otherwise trip their rules.
                 new Rule(p -> p.contains("planner expert") || p.contains("agent invocation"),
                         this::supervisorPlan),
+
+                // --- Mission 0. The front desk. The REPROMPT first: it arrives with the same
+                // system message, so the long-answer rule below would claim it too. The first
+                // answer is deliberately too long for PawSized, so the output guardrail fires
+                // offline every time and the room sees the reprompt.
+                new Rule(p -> p.contains("rewrite this answer to fit the noticeboard"),
+                        p -> "Sniff will find your glasses, Mr Mayor — he is on duty and can be "
+                                + "with you in ten minutes. Paws up!"),
+                new Rule(p -> p.contains("answering letters at the pup hq front desk"),
+                        p -> "Dear Mr Mayor, thank you so very much for your letter to Pup HQ, "
+                                + "which we have pinned to the wall and read aloud to the whole "
+                                + "team twice. I have checked the duty roster most carefully: the "
+                                + "Ranger for finding lost things is Sniff, our Beagle, whose nose "
+                                + "has never once let Barkville down, and I am delighted to report "
+                                + "that he is on duty, nose ready, and can be with you in about "
+                                + "ten minutes. Warmest regards from all of us at Pup HQ, Zao."),
 
                 // --- Missions 3 and 17. Fifi before Howl: her prompt quotes his draft.
                 new Rule(p -> p.contains("score this draft against the four rules"),

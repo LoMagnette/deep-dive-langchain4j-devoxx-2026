@@ -71,6 +71,7 @@ demos/_NN_<id>/  EVERYTHING for one mission, and nothing else:
                    its XxxPattern — topology + Runner
                    package-info.java — what this mission is for
                  NN is the spec's mission number, so the tree reads in mission order
+  Before the pack              _00_aiservice/   (a plain AI service — not agentic)
   Act 1 · Meet the team        _01_single/ _08_nonaiagent/
   Act 2 · Workflows            _02_sequential/ _03_loop/ _04_parallel/ _05_parallelmapper/
                                _06_conditional/ _07_humanapproval/
@@ -313,6 +314,32 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   What it buys, concretely: the mapper's gathered verdicts read as a `List<String>` with no cast
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
+- **Mission 0 (`aiService`) is a plain `AiServices` interface — deliberately NOT agentic.** It is
+  the baseline the room needs before an `@Agent` means anything: one model call, with
+  `.tools(new DutyRoster())`, `.inputGuardrails(new NoCatsAllowed())` and
+  `.outputGuardrails(new PawSized())` on the builder. Category `classic` ("Before the pack"), at
+  catalogue index 0 — which is why the package-numbering test counts from ZERO. Five things it
+  pinned down:
+  - **An AI service is invisible to the agentic listener.** It reports through a different
+    API — `AiServices.registerListeners(...)` with one listener per event type (started, tool
+    executed, input/output guardrail executed, completed, error). `run/AiServiceBridge` maps those
+    onto the run's `StreamingListener` (via its public `emitEvent`), so the page animates Mission 0
+    like any agent; guardrails report as type `guardrail` under their class name, which is their
+    box's label. `ToolExecutedEvent` only fires AFTER the tool ran, so call and result are emitted
+    together.
+  - **There is no scope.** No Pup Board, no Scope tab rows — the test asserts it. That absence is
+    the bridge to Mission 1: the scope is what the agentic module adds.
+  - **A reprompt is sent WITHOUT the conversation** unless the service has chat memory. The first
+    version re-prompted with "answer the letter again, shorter", and a live model replied
+    "please provide the letter you would like me to answer". `PawSized` now puts its own draft in
+    the reprompt text, so the instruction is self-contained.
+  - **Output retries are capped, and the cap throws.** Two reprompts by default; past that the
+    call throws `OutputGuardrailException`. The wiring sets it out loud
+    (`outputGuardrailsConfig(...maxRetries(3))`) and catches it. An input guardrail that fails
+    throws `InputGuardrailException` too — and the model is never called (no tool events).
+  - **The default letter asks for "everything"** so a live model writes 110–220 words and
+    `PawSized` fires on the first click; a polite short letter passes first time and shows nothing.
+    For the input guardrail, sign a letter "Mittens".
 - **The missions build on each other: the cast is met once and reused.** Each `PatternDef`
   carries a `story` (the mission in one sentence, as the speaker says it) and a `buildsOn` naming
   what it inherits; the gallery cards show the story so the grid reads as Barkville's week. An

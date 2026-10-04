@@ -4,14 +4,15 @@
 /* The spec's four acts, in its running order, then the two groups outside the acts. The rail
    and the gallery both group by these, so missions 1 and 8 sit together in Act 1 without the
    catalogue (or the package numbers) being reordered. */
-const CAT_LABELS = {"team":"Act 1 · Meet the team","workflow":"Act 2 · Workflows",
+const CAT_LABELS = {"classic":"Before the pack","team":"Act 1 · Meet the team","workflow":"Act 2 · Workflows",
                     "planner":"Act 3 · Planners","minds":"Act 4 · Many minds, custom brains",
                     "composite":"The Mega Mutt","production":"Running it for real"};
 /* One line per group, in the talk's own words (see the through-line diagram in the root README).
    The gallery separates the categories physically instead of tagging every card, and a heading
    that says what the group MEANS is the reason the separation is worth having — otherwise it is
    just the same cards with more whitespace. */
-const CAT_NOTES = {"team":"An agent is a pup with a job — and some don't need a brain",
+const CAT_NOTES = {"classic":"A plain AI service: tools and guardrails, no agentic system",
+                   "team":"An agent is a pup with a job — and some don't need a brain",
                    "workflow":"You decide the order — Rangers combine into the Mega Mutt",
                    "planner":"The system decides: Zao, a plan, or the pups themselves",
                    "minds":"You can write the rules yourself",
@@ -64,8 +65,8 @@ function route(){
 window.addEventListener('hashchange', route);
 
 function buildGallery(){
-  const n = patterns.filter(p => p.category !== 'composite').length;
-  const composites = patterns.length - n;
+  const n = patterns.filter(p => p.category !== 'composite' && p.category !== 'classic').length;
+  const composites = patterns.filter(p => p.category === 'composite').length;
   document.querySelector('.gallery-head h2').textContent = `${n} agentic patterns`;
   document.querySelector('.gallery-head p').textContent = composites
     ? `Each one runs live against a real model — plus ${composites === 1 ? 'a system that combines'
@@ -197,7 +198,7 @@ function log(ev){
      lines that say nothing about the shape of the run, and it buries the six that do. */
   if(ev.type==='token') return;
   const c=document.getElementById('console');
-  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','tool-call':'--c-tool','tool-result':'--c-tool','run-result':'--c-result','run-done':'--c-done'};
+  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','tool-call':'--c-tool','tool-result':'--c-tool','guardrail':'--c-tool','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
   const took = ev.millis==null ? '' : `<span class="took">${fmtMs(ev.millis)}</span>`;
@@ -302,6 +303,8 @@ function run(){
        token is the tool name, so the message's name lights it — the model's choice, made visible. */
     else if(ev.type==='tool-call') markNode(String(ev.message||'').split('(')[0],'active');
     else if(ev.type==='tool-result') markNode(String(ev.message||'').split(' ')[0],'done', ev.millis);
+    /* Mission 0's guardrails report under their class name, which is their box's label. */
+    else if(ev.type==='guardrail') markNode(ev.agent,'done', ev.millis);
     else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
     else if(ev.type==='agent-before') markNode(ev.agent,'active');
     /* Tokens land as TEXT, not markdown: a half-arrived answer is usually half-way through a
