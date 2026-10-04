@@ -10,8 +10,8 @@ import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._03_loop.Keys.Draft;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Feedback;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgentInvocation;
@@ -35,30 +35,11 @@ public final class LoopPattern {
                     + "3. it says entry is free; 4. it is under 40 words";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var howl = AgenticServices.agentBuilder(HowlWrites.class)
-                .chatModel(model)
-                .name("Howl")
-                .outputKey(Draft.class)
-                .build();
-        var fifi = AgenticServices.agentBuilder(FifiScores.class)
-                .chatModel(model)
-                .name("Fifi")
-                .outputKey(Feedback.class)
-                .build();
-
-        PosterLoop app = AgenticServices.loopBuilder(PosterLoop.class)
-                .name("Loop")
-                .subAgents(howl, fifi)
-                .maxIterations(TREATS)
-                .exitCondition(scope -> reviewScore(scope.readState(Feedback.class)) >= 0.8)
-                .testExitAtLoopEnd(true)
-                .outputKey(Draft.class)
-                .listener(listener)
-                .build();
-
         // Feedback is seeded because Howl's first pass reads it too: there is nothing to fix
         // yet, and an absent input would stop the loop before the first word was written.
-        var r = app.refine(input, POSTER_RULES, "(none yet — this is the first draft)");
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(PosterLoop.class, model)
+                        .refine(input, POSTER_RULES, "(none yet — this is the first draft)"));
         return everyPass(r.agenticScope(), String.valueOf(r.result()));
     }
 

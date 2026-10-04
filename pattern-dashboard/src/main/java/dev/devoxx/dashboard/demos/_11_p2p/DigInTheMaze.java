@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DigInTheMaze {
-    @Agent(description = "Dig the Dachshund: checks under the hedges where Sniff's scent goes")
+    @Agent(name = "Dig",
+           typedOutputKey = Keys.Burrows.class,
+           description = "Dig the Dachshund: checks under the hedges where Sniff's scent goes")
     @UserMessage("""
             You are Dig, in a giant corn maze with Sniff and Zoom, looking for the Mayor's goat.
             Nobody is in charge: you only dig where Sniff's nose points. Answer in one or two

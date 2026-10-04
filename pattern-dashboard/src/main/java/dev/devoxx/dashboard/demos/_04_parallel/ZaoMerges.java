@@ -6,7 +6,9 @@ import dev.langchain4j.service.UserMessage;
 
 /** Zao the Bouvier, black Ranger: the leader, who decides who goes where. */
 public interface ZaoMerges {
-    @Agent(description = "Zao the Bouvier: merges the three inspections into one safety report")
+    @Agent(name = "Zao",
+           typedOutputKey = Keys.SafetyReport.class,
+           description = "Zao the Bouvier: merges the three inspections into one safety report")
     @UserMessage("""
             Merge the three inspections into one safety report for Barkville: one line per
             place with OPEN or CLOSED, then one line saying which way everyone should go

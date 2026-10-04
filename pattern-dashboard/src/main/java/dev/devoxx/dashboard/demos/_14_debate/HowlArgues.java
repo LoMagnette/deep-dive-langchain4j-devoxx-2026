@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface HowlArgues {
-    @Agent(description = "Howl the Husky: argues for the dog park, loudly")
+    @Agent(name = "Howl",
+           typedOutputKey = Keys.HowlTurn.class,
+           description = "Howl the Husky: argues for the dog park, loudly")
     @UserMessage("""
             You are Howl, at the Barkville town council, arguing FOR the dog park. Take your turn
             for this round. If the last round below is empty, the debate has just begun: open your

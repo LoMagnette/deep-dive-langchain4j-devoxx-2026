@@ -6,7 +6,6 @@ import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -14,11 +13,10 @@ import java.util.concurrent.TimeoutException;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Location;
 import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.TokenStream;
 
@@ -32,22 +30,12 @@ public final class SinglePattern {
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
-            return streamed(listener, input);
+            return streamed(model, listener, input);
         }
-        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
-                .chatModel(model)
-                .tools(new SniffGear())
-                .name("Sniff")
-                .outputKey(Location.class)
-                .build();
-
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                                          .subAgents(sniff)
-                                          .outputKey(Location.class)
-                                          .listener(listener)
-                                          .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
-        return String.valueOf(r.result());
+        // The whole topology is on HatSearch's annotations. What is left here is the two things
+        // the framework cannot know: which model this run is against, and which run is watching.
+        return CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(HatSearch.class, model).find(input));
     }
 
     /**
@@ -55,19 +43,9 @@ public final class SinglePattern {
      * that return type is what makes it stream, not the builder. It reaches the screen only
      * because it is the LAST agent: put a step after it and the framework drains it internally.
      */
-    private static String streamed(StreamingListener listener, String input) {
-        var sniff = AgenticServices.agentBuilder(StreamingSniffFinds.class)
-                .streamingChatModel(listener.streamingModel())
-                .tools(new SniffGear())
-                .name("Sniff")
-                .outputKey(Location.class)
-                .build();
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(sniff).outputKey(Location.class).listener(listener).build();
-        Object result = app.invokeWithAgenticScope(Map.of(new Mission().name(), input)).result();
-        if (!(result instanceof TokenStream stream)) {
-            return String.valueOf(result);   // right answer, just not streamed
-        }
+    private static String streamed(ChatModel model, StreamingListener listener, String input) {
+        TokenStream stream = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(StreamingHatSearch.class, model).find(input));
 
         var done = new CompletableFuture<String>();
         var text = new StringBuilder();

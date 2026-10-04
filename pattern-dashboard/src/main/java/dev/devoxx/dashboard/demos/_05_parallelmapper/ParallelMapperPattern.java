@@ -12,9 +12,7 @@ import java.util.stream.IntStream;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Ducklings;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.FoundDucklings;
-import dev.devoxx.dashboard.demos._05_parallelmapper.Keys.Sighting;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -28,22 +26,10 @@ public final class ParallelMapperPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var sniff = AgenticServices.agentBuilder(SniffSearches.class)
-                .chatModel(model)
-                .name("Sniff")
-                .outputKey(Sighting.class)
-                .build();
-        DucklingSearch app = AgenticServices.parallelMapperBuilder(DucklingSearch.class)
-                .name("ParallelMapper")
-                .subAgents(sniff)
-                .itemsProvider(new Ducklings().name())
-                .outputKey(FoundDucklings.class)
-                .listener(listener)
-                .build();
-
         List<String> ducklings = items(input);
-        List<String> found = requireNonNullElse(app.search(ducklings), List.of());
-        
+        List<String> found = requireNonNullElse(CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(DucklingSearch.class, model).search(ducklings)), List.of());
+
         return IntStream.range(0, found.size())
                 .mapToObj(i -> "- **" + (i < ducklings.size() ? ducklings.get(i) : "duckling " + i)
                         + "** — " + found.get(i))

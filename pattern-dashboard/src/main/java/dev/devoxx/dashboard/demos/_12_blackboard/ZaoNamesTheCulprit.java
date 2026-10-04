@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZaoNamesTheCulprit {
-    @Agent(description = "Zao the Bouvier: reads the board and names the culprit")
+    @Agent(name = "Zao",
+           typedOutputKey = Keys.Culprit.class,
+           description = "Zao the Bouvier: reads the board and names the culprit")
     @UserMessage("""
             You are Zao, leader of the Pawer Rangers. Read the clues on the board and name the
             culprit — the suspects are the Rangers and Marmalade, the cat who lives at number 9 —

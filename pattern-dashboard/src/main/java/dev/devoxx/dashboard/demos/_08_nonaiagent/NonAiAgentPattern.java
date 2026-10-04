@@ -9,7 +9,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -23,25 +23,12 @@ public final class NonAiAgentPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var rivet = new Rivet();
-
-        var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
-                .chatModel(model)
-                .tools(new ZoomGear())
-                .name("Zoom")
-                .outputKey(Ladder.class)
-                .build();
-
-        LadderRun app = AgenticServices.sequenceBuilder(LadderRun.class)
-                .name("Sequential")
-                .subAgents(rivet, zoom)
-                .outputKey(Ladder.class)
-                .listener(listener)
-                .build();
         // Reading the height out of the sentence is ours, not a model's: plain Java, like Rivet.
         double height = firstNumber(input, 6.0);
+        String zoom = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(LadderRun.class, model).fetch(height));
         return "**Rivet:** the branch is " + height + " m up, so the ladder must be at least "
-                + new Rivet().ladderLength(height) + " m.\n\n**Zoom:** " + app.fetch(height);
+                + Rivet.ladderLength(height) + " m.\n\n**Zoom:** " + zoom;
     }
 
     /** How the page draws it, and what the catalogue shows. */

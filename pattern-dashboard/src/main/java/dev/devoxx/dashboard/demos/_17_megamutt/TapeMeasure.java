@@ -17,7 +17,7 @@ public class TapeMeasure {
     @Agent(name = "TapeMeasure",
            description = "Reads the height out of Sniff's location, in plain Java",
            typedOutputKey = Height.class)
-    public double measure(@K(Location.class) String location) {
+    public static double measure(@K(Location.class) String location) {
         return firstNumber(location, 6.0);
     }
 }

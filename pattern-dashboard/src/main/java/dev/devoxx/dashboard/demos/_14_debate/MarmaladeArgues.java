@@ -6,7 +6,9 @@ import dev.langchain4j.service.UserMessage;
 
 /** Marmalade the cat: the villain. Not a Ranger, but very much an AI agent. */
 public interface MarmaladeArgues {
-    @Agent(description = "Marmalade the cat: argues for the cat café, and against everything dog")
+    @Agent(name = "Marmalade",
+           typedOutputKey = Keys.MarmaladeTurn.class,
+           description = "Marmalade the cat: argues for the cat café, and against everything dog")
     @UserMessage("""
             You are Marmalade the cat, at the Barkville town council, arguing FOR the cat café and
             against the dog park. Take your turn for this round. If the last round below is

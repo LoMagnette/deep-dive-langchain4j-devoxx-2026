@@ -13,6 +13,7 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Approved;
 import dev.devoxx.dashboard.demos._07_humanapproval.Keys.DigPlan;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.observability.AgentMonitor;
@@ -30,38 +31,8 @@ public final class HumanApprovalPattern {
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         var monitor = new AgentMonitor();
-
-        var plan = AgenticServices.agentBuilder(DigPlans.class)
-                .chatModel(model)
-                .name("Dig")
-                .outputKey(DigPlan.class)
-                .build();
-
-        var jo = AgenticServices.humanInTheLoopBuilder()
-                .description("Officer Jo, who runs Pup HQ and approves anything risky")
-                .inputKey(String.class, new DigPlan().name())
-                .outputKey(new Approved().name())
-                .responseProvider(scope -> listener.askHuman("OfficerJo", """
-                        Dig wants to tunnel under the Mayor's prize roses. Yes, no, or yes-but? \
-                        Nothing is dug until you say.
-
-                        """ + requireNonNullElse(scope.readState(DigPlan.class), "")))
-                .build();
-
-        var act = AgenticServices.agentBuilder(DigActs.class)
-                .chatModel(model)
-                .name("DigActs")
-                .outputKey(RescueStatus.class)
-                .build();
-
-        RoseRescue app = AgenticServices.sequenceBuilder(RoseRescue.class)
-                .name("Sequential")
-                .subAgents(plan, jo, act)
-                .outputKey(RescueStatus.class)
-                .listener(listener)
-                .listener(monitor)
-                .build();
-        var r = app.rescue(input);
+        var r = CurrentRun.with(listener, monitor, () ->
+                AgenticServices.createAgenticSystem(RoseRescue.class, model).rescue(input));
 
         HtmlReportGenerator.generateReport(monitor, Path.of("human-in-the-loop.html"));
 

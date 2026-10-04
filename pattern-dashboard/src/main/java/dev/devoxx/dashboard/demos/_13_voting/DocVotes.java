@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DocVotes {
-    @Agent(description = "Doc the St. Bernard: votes on the ice as the medic, who says no often")
+    @Agent(name = "Doc",
+           typedOutputKey = Keys.Vote2.class,
+           description = "Doc the St. Bernard: votes on the ice as the medic, who says no often")
     @UserMessage("""
             Is the lake ice safe for the skating party? You are the medic and you look for
             what could go wrong: weak spots, dark patches, running water underneath. One weak

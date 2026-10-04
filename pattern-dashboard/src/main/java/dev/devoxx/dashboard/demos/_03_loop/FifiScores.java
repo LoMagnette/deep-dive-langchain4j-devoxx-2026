@@ -6,7 +6,9 @@ import dev.langchain4j.service.UserMessage;
 
 /** Fifi the Poodle, pink Ranger: critic and judge. Nothing is ever perfect. */
 public interface FifiScores {
-    @Agent(description = "Fifi the Poodle: scores the draft against four rules and says what is wrong")
+    @Agent(name = "Fifi",
+           typedOutputKey = Keys.Feedback.class,
+           description = "Fifi the Poodle: scores the draft against four rules and says what is wrong")
     @UserMessage("""
             Score this draft against the four rules below, and nothing else. Reply in exactly
             two lines:

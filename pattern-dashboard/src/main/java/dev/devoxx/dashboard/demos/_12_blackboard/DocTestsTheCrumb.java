@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DocTestsTheCrumb {
-    @Agent(description = "Doc the Saint Bernard: tests the crumb in Zao's beard against the cameras")
+    @Agent(name = "Doc",
+           typedOutputKey = Keys.CrumbClue.class,
+           description = "Doc the Saint Bernard: tests the crumb in Zao's beard against the cameras")
     @UserMessage("""
             You are Doc, a Saint Bernard on the Pawer Rangers. Examine the crumb in Zao's beard
             using the camera log below, and say in two short plain sentences, no headings: which

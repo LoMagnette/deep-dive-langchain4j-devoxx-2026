@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface SniffTrails {
-    @Agent(description = "Sniff the Beagle: pins where the sausage scent goes")
+    @Agent(name = "Sniff",
+           typedOutputKey = Keys.ScentClue.class,
+           description = "Sniff the Beagle: pins where the sausage scent goes")
     @UserMessage("""
             You are Sniff, a beagle on the Pawer Rangers. Report what your nose found, in two
             short plain sentences, no headings: the sausage scent runs from the butcher's back

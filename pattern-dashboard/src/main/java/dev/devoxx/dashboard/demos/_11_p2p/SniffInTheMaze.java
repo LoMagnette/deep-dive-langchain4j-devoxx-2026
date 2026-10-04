@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface SniffInTheMaze {
-    @Agent(description = "Sniff the Beagle: reads the scent, and says where it leads")
+    @Agent(name = "Sniff",
+           typedOutputKey = Keys.Scent.class,
+           description = "Sniff the Beagle: reads the scent, and says where it leads")
     @UserMessage("""
             You are Sniff, in a giant corn maze with Zoom and Dig, looking for the Mayor's goat.
             Nobody is in charge: you only hear what the others report. Answer in one or two

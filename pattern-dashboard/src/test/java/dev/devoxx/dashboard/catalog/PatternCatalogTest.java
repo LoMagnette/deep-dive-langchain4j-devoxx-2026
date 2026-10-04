@@ -729,11 +729,21 @@ class PatternCatalogTest {
                 "_02_sequential.ZoomRescues");
     }
 
+    /**
+     * Reads the whole mission package, not one file: declared, a mission's Rangers are named in
+     * its system interface's {@code subAgents = {...}}, so the import sits there rather than in
+     * the {@code XxxPattern} — and either place is the mission reusing the agent.
+     */
     private static void assertImports(String file, String... classes) throws Exception {
-        var src = java.nio.file.Files.readString(java.nio.file.Path.of(
-                "src/main/java/dev/devoxx/dashboard/demos/" + file + ".java"));
+        var dir = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos/" + file).getParent();
+        var src = new StringBuilder();
+        try (var paths = java.nio.file.Files.list(dir)) {
+            for (var p : paths.filter(p -> p.toString().endsWith(".java")).toList()) {
+                src.append(java.nio.file.Files.readString(p));
+            }
+        }
         for (String c : classes) {
-            assertTrue(src.contains("import dev.devoxx.dashboard.demos." + c + ";"),
+            assertTrue(src.toString().contains("import dev.devoxx.dashboard.demos." + c + ";"),
                     file + " must reuse " + c + ", not re-implement it");
         }
     }

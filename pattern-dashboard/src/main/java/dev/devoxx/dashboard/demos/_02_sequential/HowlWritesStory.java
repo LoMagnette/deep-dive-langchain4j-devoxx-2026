@@ -6,7 +6,9 @@ import dev.langchain4j.service.UserMessage;
 
 /** Howl the Husky, purple Ranger: writes and argues. Loud and dramatic. */
 public interface HowlWritesStory {
-    @Agent(description = "Howl the Husky: writes the Barkville Gazette story of the rescue")
+    @Agent(name = "Howl",
+           typedOutputKey = Keys.Article.class,
+           description = "Howl the Husky: writes the Barkville Gazette story of the rescue")
     @UserMessage("""
             Write the Barkville Gazette story of this rescue: a headline, then three sentences.
             Be as dramatic as you like, but every fact must come from the report below — you

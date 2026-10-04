@@ -1,11 +1,14 @@
 package dev.devoxx.dashboard.demos._07_humanapproval;
 
+import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DigActs {
-    @Agent(description = "Dig the Dachshund: digs if Officer Jo said yes, and finds another way if she said no")
+    @Agent(name = "DigActs",
+           typedOutputKey = RescueStatus.class,
+           description = "Dig the Dachshund: digs if Officer Jo said yes, and finds another way if she said no")
     @UserMessage("""
             Officer Jo has answered. Honour her answer exactly. If she said yes, dig as planned
             and say how the rescue went. If she said yes-but, dig with her change. If she said

@@ -1,7 +1,7 @@
-package dev.devoxx.dashboard.demos._08_nonaiagent;
+package dev.devoxx.dashboard.demos._01_single;
 
-import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Height;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
+import dev.devoxx.dashboard.demos._01_single.Keys.Location;
+import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
 import dev.devoxx.dashboard.run.CurrentRun;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.K;
@@ -9,15 +9,15 @@ import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 
 /**
- * Rivet → Zoom, declared. Rivet is a plain class and Zoom an LLM agent, and the list cannot tell
- * them apart: both are named by class.
+ * Mission 1, declared: a sequence of one. Sniff is named by CLASS — his name, output key and gear
+ * are on {@link SniffFinds} itself, so nothing about him is repeated here.
  */
-public interface LadderRun {
+public interface HatSearch {
 
     @SequenceAgent(name = "Sequential",
-                   subAgents = {Rivet.class, ZoomFetchesLadder.class},
-                   typedOutputKey = Ladder.class)
-    String fetch(@K(Height.class) double height);
+                   subAgents = SniffFinds.class,
+                   typedOutputKey = Location.class)
+    String find(@K(Mission.class) String mission);
 
     /** The run's listener. A static no-arg method is the only hook, hence {@link CurrentRun}. */
     @AgentListenerSupplier

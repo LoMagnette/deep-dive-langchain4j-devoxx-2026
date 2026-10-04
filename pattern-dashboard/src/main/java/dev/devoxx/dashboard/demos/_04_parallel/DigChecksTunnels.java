@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DigChecksTunnels {
-    @Agent(description = "Dig the Dachshund: inspects the old drainage tunnels before the storm")
+    @Agent(name = "Dig",
+           typedOutputKey = Keys.TunnelReport.class,
+           description = "Dig the Dachshund: inspects the old drainage tunnels before the storm")
     @UserMessage("""
             Inspect the old drainage tunnels before the storm. Two plain lines: what you found, then OPEN or
             CLOSED. Only the old drainage tunnels — the other Rangers are checking everything else.

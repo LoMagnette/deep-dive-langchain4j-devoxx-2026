@@ -16,7 +16,7 @@ public class GazetteBrief {
     @Agent(name = "GazetteBrief",
            description = "Turns the rescue's pins into the brief the Gazette loop expects",
            typedOutputKey = Brief.class)
-    public String brief(@K(Location.class) String location,
+    public static String brief(@K(Location.class) String location,
                         @K(HealthReport.class) String health) {
         return "The Barkville Gazette story of today's rescue: a headline, then three sentences. "
                 + "Where: " + location + " How: " + health;

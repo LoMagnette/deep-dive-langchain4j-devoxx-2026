@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface FifiJudges {
-    @Agent(description = "Fifi the Poodle: hears the closing statements and declares the winner")
+    @Agent(name = "Fifi",
+           typedOutputKey = Keys.Verdict.class,
+           description = "Fifi the Poodle: hears the closing statements and declares the winner")
     @UserMessage("""
             You are Fifi, moderating the Barkville town council. The debate is over; below are
             the closing statements. Declare a winner — dog park or cat café — with exactly three

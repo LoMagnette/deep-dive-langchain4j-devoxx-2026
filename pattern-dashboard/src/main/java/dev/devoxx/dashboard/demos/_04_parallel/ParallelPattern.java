@@ -3,18 +3,12 @@ package dev.devoxx.dashboard.demos._04_parallel;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.BridgeReport;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.ForestReport;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.SafetyReport;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.TunnelReport;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -28,46 +22,8 @@ public final class ParallelPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var zoom = AgenticServices.agentBuilder(ZoomChecksBridge.class)
-                .chatModel(model)
-                .name("Zoom")
-                .outputKey(BridgeReport.class)
-                .build();
-        var sniff = AgenticServices.agentBuilder(SniffChecksForest.class)
-                .chatModel(model)
-                .name("Sniff")
-                .outputKey(ForestReport.class)
-                .build();
-        var dig = AgenticServices.agentBuilder(DigChecksTunnels.class)
-                .chatModel(model)
-                .name("Dig")
-                .outputKey(TunnelReport.class)
-                .build();
-        var zao = AgenticServices.agentBuilder(ZaoMerges.class)
-                .chatModel(model)
-                .name("Zao")
-                .outputKey(SafetyReport.class)
-                .build();
-
-        var inspections = AgenticServices.parallelBuilder(Inspections.class)
-                .name("Parallel")
-                .subAgents(zoom, sniff, dig)
-                .executor(Executors.newFixedThreadPool(3))
-                .build();
-
-
-        StormWarning app = AgenticServices.sequenceBuilder(StormWarning.class)
-                .name("Sequential")
-                .subAgents(inspections, zao)
-                // The report is built from the scope by the workflow itself, so the caller
-                // gets the finished answer and never has to read the scope back.
-                .output(scope -> "**Safety report**\n\n" + scope.readState(SafetyReport.class)
-                        + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
-                        + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
-                        + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), ""))
-                .listener(listener)
-                .build();
-        return app.warn(input).result();
+        return CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(StormWarning.class, model).warn(input).result());
     }
 
     /**

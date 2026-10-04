@@ -17,7 +17,7 @@ public class IceReport {
     @Agent(name = "IceReport",
            description = "Writes the spot checks into the mission the voters read, in plain Java",
            typedOutputKey = Mission.class)
-    public String report(@K(Mission.class) String mission, @K(Keys.Findings.class) List<String> findings,
+    public static String report(@K(Mission.class) String mission, @K(Keys.Findings.class) List<String> findings,
                          @K(Keys.Spots.class) List<String> spots) {
         StringBuilder out = new StringBuilder(mission).append("\nSpot checks:");
         IntStream.range(0, findings.size()).forEach(i -> out.append("\n- ")

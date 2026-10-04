@@ -22,7 +22,7 @@ public class RivetCameras {
     @Agent(name = "Rivet",
            description = "Rivet the robot dog: pins the camera log, in plain Java",
            typedOutputKey = CameraClue.class)
-    public String clue(@K(Mission.class) String mission) {
+    public static String clue(@K(Mission.class) String mission) {
         // The parameter is the precondition: Rivet can contribute as soon as the crime is on the
         // board, and not before. One town, one night, so it is the same footage every time.
         return LOG;

@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomTreesTheSquirrel {
-    @Agent(description = "Zoom, squirrel plan step 2: chase it up a tree")
+    @Agent(name = "ZoomTreesIt",
+           typedOutputKey = Keys.Treed.class,
+           description = "Zoom, squirrel plan step 2: chase it up a tree")
     @UserMessage("""
             You are Zoom the Greyhound, back on the squirrel: step two, chase it up a tree.
             One or two plain lines: which tree, and whether you caught it (you did not).

@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomInTheMaze {
-    @Agent(description = "Zoom the Greyhound: runs the paths Sniff's scent points along")
+    @Agent(name = "Zoom",
+           typedOutputKey = Keys.Clearing.class,
+           description = "Zoom the Greyhound: runs the paths Sniff's scent points along")
     @UserMessage("""
             You are Zoom, in a giant corn maze with Sniff and Dig, looking for the Mayor's goat.
             Nobody is in charge: you only run where Sniff's nose points. Answer in one or two

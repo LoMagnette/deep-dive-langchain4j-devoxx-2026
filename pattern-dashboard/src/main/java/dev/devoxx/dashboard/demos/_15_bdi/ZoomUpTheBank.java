@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomUpTheBank {
-    @Agent(description = "Zoom, squirrel plan step 1: chase it up the riverbank")
+    @Agent(name = "ZoomUpTheBank",
+           typedOutputKey = Keys.Lookout.class,
+           description = "Zoom, squirrel plan step 1: chase it up the riverbank")
     @UserMessage("""
             You are Zoom the Greyhound, and you are chasing a squirrel: step one, chase it up
             the riverbank. From the top of the bank you can see across the river. Say what you

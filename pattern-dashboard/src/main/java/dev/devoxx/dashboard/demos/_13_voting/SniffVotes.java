@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface SniffVotes {
-    @Agent(description = "Sniff the Beagle: votes on the ice from what his nose and eyes tell him")
+    @Agent(name = "Sniff",
+           typedOutputKey = Keys.Vote1.class,
+           description = "Sniff the Beagle: votes on the ice from what his nose and eyes tell him")
     @UserMessage("""
             Is the lake ice safe for the skating party? Judge ONLY by who is already out on the
             ice right now and whether it is holding them — nothing else: not its colour, not any

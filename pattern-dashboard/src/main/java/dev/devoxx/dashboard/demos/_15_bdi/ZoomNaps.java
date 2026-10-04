@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomNaps {
-    @Agent(description = "Zoom: naps")
+    @Agent(name = "ZoomNaps",
+           typedOutputKey = Keys.Napped.class,
+           description = "Zoom: naps")
     @UserMessage("""
             You are Zoom the Greyhound, and everything that matters is done. Nap. One plain
             line: where, and for how long.

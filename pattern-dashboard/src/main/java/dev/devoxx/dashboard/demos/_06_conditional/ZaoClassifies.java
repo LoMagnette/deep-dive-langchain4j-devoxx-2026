@@ -5,7 +5,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZaoClassifies {
-    @Agent(description = "Zao the Bouvier: decides which kind of emergency the call is")
+    @Agent(name = "Zao",
+           typedOutputKey = Keys.Category.class,
+           description = "Zao the Bouvier: decides which kind of emergency the call is")
     @UserMessage("""
             Classify this emergency call into exactly one of: lost, underground, hurt, urgent.
             lost — something or someone is missing. underground — someone is stuck in a hole,

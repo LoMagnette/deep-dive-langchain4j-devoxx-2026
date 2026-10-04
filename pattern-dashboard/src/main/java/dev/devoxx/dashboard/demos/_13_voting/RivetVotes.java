@@ -15,7 +15,7 @@ public class RivetVotes {
     @Agent(name = "Rivet",
            description = "Rivet the robot dog: votes on the measured thickness, in plain Java",
            typedOutputKey = Vote3.class)
-    public String vote(@K(Mission.class) String mission) {
+    public static String vote(@K(Mission.class) String mission) {
         double cm = firstNumber(mission, 0);
         return (cm >= SAFE_CM ? "SAFE" : "NOT SAFE") + " — measured " + cm + " cm, and the rule is "
                 + SAFE_CM + " cm.";

@@ -6,7 +6,9 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomChecksBridge {
-    @Agent(description = "Zoom the Greyhound: inspects the river bridge before the storm")
+    @Agent(name = "Zoom",
+           typedOutputKey = Keys.BridgeReport.class,
+           description = "Zoom the Greyhound: inspects the river bridge before the storm")
     @UserMessage("""
             Inspect the river bridge before the storm. Two plain lines: what you found, then OPEN or
             CLOSED. Only the river bridge — the other Rangers are checking everything else.

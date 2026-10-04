@@ -5,20 +5,13 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
-import java.util.Map;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Location;
 import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
-import dev.devoxx.dashboard.demos._01_single.SniffFinds;
-import dev.devoxx.dashboard.demos._01_single.SniffGear;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.Article;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.HealthReport;
-import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -35,35 +28,8 @@ public final class SequentialPattern {
                     + "meowing since breakfast. The Mayor would like it down before the parade.";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
-                .chatModel(model)
-                .tools(new SniffGear())
-                .name("Sniff")
-                .outputKey(Location.class)
-                .build();
-        var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
-                .chatModel(model)
-                .name("Zoom")
-                .outputKey(RescueStatus.class)
-                .build();
-        var doc = AgenticServices.agentBuilder(DocChecks.class)
-                .chatModel(model)
-                .name("Doc")
-                .outputKey(HealthReport.class)
-                .build();
-        var howl = AgenticServices.agentBuilder(HowlWritesStory.class)
-                .chatModel(model)
-                .name("Howl")
-                .outputKey(Article.class)
-                .build();
-
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                                          .subAgents(sniff, zoom, doc, howl)
-                                          .outputKey(Article.class)
-                                          .listener(listener)
-                                          .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
-        return String.valueOf(r.result());
+        return CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(KittenRescue.class, model).rescue(input));
     }
 
     /** How the page draws it, and what the catalogue shows. */

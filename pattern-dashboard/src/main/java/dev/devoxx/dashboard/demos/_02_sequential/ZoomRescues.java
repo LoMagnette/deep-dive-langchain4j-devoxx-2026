@@ -7,7 +7,9 @@ import dev.langchain4j.service.UserMessage;
 
 /** Zoom the Greyhound, yellow Ranger: runs, fetches, delivers. */
 public interface ZoomRescues {
-    @Agent(description = "Zoom the Greyhound: brings the ladder to where Sniff found them and gets them down")
+    @Agent(name = "Zoom",
+           typedOutputKey = Keys.RescueStatus.class,
+           description = "Zoom the Greyhound: brings the ladder to where Sniff found them and gets them down")
     @UserMessage("""
             Bring the ladder from Pup HQ to the place below, put it up, and get whoever is
             stuck down. Two plain sentences: what you did, and the state they were in when
