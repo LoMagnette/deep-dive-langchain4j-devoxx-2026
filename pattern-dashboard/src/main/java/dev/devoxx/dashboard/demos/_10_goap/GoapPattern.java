@@ -10,13 +10,12 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.LadderLength;
-import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomFetchesLadder;
-import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomGear;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._10_goap.Keys.CatSafe;
 import dev.devoxx.dashboard.demos._10_goap.Keys.LadderSecured;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
@@ -31,32 +30,8 @@ public final class GoapPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var rivet = new Rivet();
-        var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
-                .chatModel(model)
-                .tools(new ZoomGear())
-                .name("Zoom")
-                .outputKey(Ladder.class)
-                .build();
-        var dig = AgenticServices.agentBuilder(DigSteadies.class)
-                .chatModel(model)
-                .name("Dig")
-                .outputKey(LadderSecured.class)
-                .build();
-        var doc = AgenticServices.agentBuilder(DocClimbs.class)
-                .chatModel(model)
-                .name("Doc")
-                .outputKey(CatSafe.class)
-                .build();
-
-        GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
-                .subAgents(doc, rivet, dig, zoom)
-                .planner(GoalOrientedPlanner::new)
-                .outputKey(CatSafe.class)
-                .listener(listener)
-                .build();
-
-        var r = app.invoke(firstNumber(input, 12.0));
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(GoapMission.class, model).invoke(firstNumber(input, 12.0)));
         var s = r.agenticScope();
         return "**Rivet** — the ladder must be " + s.readState(LadderLength.class) + " m"
                 + "\n\n**Zoom** — " + requireNonNullElse(s.readState(Ladder.class), "")

@@ -13,6 +13,7 @@ import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._11_p2p.Keys.Burrows;
 import dev.devoxx.dashboard.demos._11_p2p.Keys.Clearing;
 import dev.devoxx.dashboard.demos._11_p2p.Keys.Scent;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.p2p.P2PPlanner;
@@ -28,24 +29,13 @@ public final class P2pPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var sniff = AgenticServices.agentBuilder(SniffInTheMaze.class)
-                .chatModel(model).name("Sniff").outputKey(Scent.class).build();
-        var zoom = AgenticServices.agentBuilder(ZoomInTheMaze.class)
-                .chatModel(model).name("Zoom").outputKey(Clearing.class).build();
-        var dig = AgenticServices.agentBuilder(DigInTheMaze.class)
-                .chatModel(model).name("Dig").outputKey(Burrows.class).build();
-
-        MazeSearch app = AgenticServices.plannerBuilder(MazeSearch.class)
-                .subAgents(zoom, dig, sniff)
-                .planner(() -> new P2PPlanner(20, P2pPattern::goatFound))
-                .outputKey(Scent.class)
-                .listener(listener)
-                .build();
         // Seeding Zoom's and Dig's pins is load-bearing: a pup only activates once every pin it
         // reads exists, so without them Sniff could never take the first turn — and with Sniff
         // silent, nobody else ever wakes up. The run would end "stable" with nobody having moved.
-        var r = app.invoke(input, "(nothing yet — we have just walked in)",
-                "(nothing yet — we have just walked in)");
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(MazeSearch.class, model)
+                        .invoke(input, "(nothing yet — we have just walked in)",
+                                "(nothing yet — we have just walked in)"));
         return roll(r.agenticScope());
     }
 

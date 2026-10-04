@@ -8,9 +8,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn;
-import dev.devoxx.dashboard.demos._14_debate.Keys.MarmaladeTurn;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
@@ -31,20 +29,8 @@ public final class DebatePattern {
     public static final int ROUNDS = 3;
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var howl = AgenticServices.agentBuilder(HowlArgues.class)
-                .chatModel(model).name("Howl").outputKey(HowlTurn.class).build();
-        var marmalade = AgenticServices.agentBuilder(MarmaladeArgues.class)
-                .chatModel(model).name("Marmalade").outputKey(MarmaladeTurn.class).build();
-        var fifi = AgenticServices.agentBuilder(FifiJudges.class)
-                .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
-
-        Debate app = AgenticServices.plannerBuilder(Debate.class)
-                .subAgents(howl, marmalade, fifi)
-                .planner(() -> new DebatePlanner(ROUNDS, ConvergenceStrategy.unanimous()))
-                .outputKey(Verdict.class)
-                .listener(listener)
-                .build();
-        var r = app.invoke(input);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(Debate.class, model).invoke(input));
         return "**Fifi's verdict**\n\n" + r.result() + "\n\n---\n\n" + transcript(r.agenticScope());
     }
 

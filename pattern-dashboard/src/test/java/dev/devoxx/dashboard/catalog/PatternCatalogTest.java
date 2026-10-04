@@ -409,8 +409,7 @@ class PatternCatalogTest {
     void theVetoOverrulesTheMajorityOnIce() throws Exception {
         // LangChain4j's VotingPlanner with a strategy — not a parallel workflow and a hand count.
         for (String file : List.of("_13_voting/VotingPattern", "_18_lakeparty/LakePartyPattern")) {
-            var src = java.nio.file.Files.readString(java.nio.file.Path.of(
-                    "src/main/java/dev/devoxx/dashboard/demos/" + file + ".java"));
+            var src = missionSource(file);
             assertTrue(src.contains("new VotingPlanner(") && !src.contains("parallelBuilder"),
                     file + " must vote through VotingPlanner");
         }
@@ -430,9 +429,9 @@ class PatternCatalogTest {
      */
     @Test
     void theCouncilArguesThreeRoundsBeforeFifiRules() throws Exception {
-        assertImports("_14_debate/DebatePattern", "_14_debate.Keys.HowlTurn");
-        var src = java.nio.file.Files.readString(java.nio.file.Path.of(
-                "src/main/java/dev/devoxx/dashboard/demos/_14_debate/DebatePattern.java"));
+        assertEquals(dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn.class,
+                declaredOutputKey(dev.devoxx.dashboard.demos._14_debate.HowlArgues.class));
+        var src = missionSource("_14_debate/DebatePattern");
         assertTrue(src.contains("new DebatePlanner(") && !src.contains("loopBuilder"),
                 "the debate must be run by DebatePlanner");
         assertEquals(List.of("Motion", "debateContext"),
@@ -735,17 +734,35 @@ class PatternCatalogTest {
      * the {@code XxxPattern} — and either place is the mission reusing the agent.
      */
     private static void assertImports(String file, String... classes) throws Exception {
+        var src = missionSource(file);
+        for (String c : classes) {
+            assertTrue(src.contains("import dev.devoxx.dashboard.demos." + c + ";"),
+                    file + " must reuse " + c + ", not re-implement it");
+        }
+    }
+
+    /**
+     * Every source file in a mission's package, concatenated. Declared, a mission's wiring lives
+     * in its system interface rather than its {@code XxxPattern}, so a claim about the wiring has
+     * to read the package — {@code file} only says which mission.
+     */
+    private static String missionSource(String file) throws Exception {
         var dir = java.nio.file.Path.of("src/main/java/dev/devoxx/dashboard/demos/" + file).getParent();
         var src = new StringBuilder();
         try (var paths = java.nio.file.Files.list(dir)) {
-            for (var p : paths.filter(p -> p.toString().endsWith(".java")).toList()) {
+            for (var p : paths.filter(p -> p.toString().endsWith(".java")).sorted().toList()) {
                 src.append(java.nio.file.Files.readString(p));
             }
         }
-        for (String c : classes) {
-            assertTrue(src.toString().contains("import dev.devoxx.dashboard.demos." + c + ";"),
-                    file + " must reuse " + c + ", not re-implement it");
-        }
+        return src.toString();
+    }
+
+    /** The output key an agent interface declares on its {@code @Agent}. */
+    private static Class<?> declaredOutputKey(Class<?> agent) {
+        return java.util.Arrays.stream(agent.getMethods())
+                .filter(m -> m.isAnnotationPresent(dev.langchain4j.agentic.Agent.class))
+                .findFirst().orElseThrow()
+                .getAnnotation(dev.langchain4j.agentic.Agent.class).typedOutputKey();
     }
 
     /** The scope keys an agent declares as inputs, resolved the way the framework does. */

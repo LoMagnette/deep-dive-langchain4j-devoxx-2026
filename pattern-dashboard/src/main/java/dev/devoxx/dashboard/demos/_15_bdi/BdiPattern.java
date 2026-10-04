@@ -12,11 +12,8 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Beliefs;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Crossing;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Lookout;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Napped;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Rescued;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Treed;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.bdi.BDIPlanner;
@@ -34,38 +31,8 @@ public final class BdiPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var upTheBank = AgenticServices.agentBuilder(ZoomUpTheBank.class)
-                .chatModel(model).name("ZoomUpTheBank").outputKey(Lookout.class).build();
-        var treesIt = AgenticServices.agentBuilder(ZoomTreesTheSquirrel.class)
-                .chatModel(model).name("ZoomTreesIt").outputKey(Treed.class).build();
-        var toTheFord = AgenticServices.agentBuilder(ZoomToTheFord.class)
-                .chatModel(model).name("ZoomToTheFord").outputKey(Crossing.class).build();
-        var bringsKid = AgenticServices.agentBuilder(ZoomBringsTheKidBack.class)
-                .chatModel(model).name("ZoomBringsKidBack").outputKey(Rescued.class).build();
-        var nap = AgenticServices.agentBuilder(ZoomNaps.class)
-                .chatModel(model).name("ZoomNaps").outputKey(Napped.class).build();
-
-        List<Desire> desires = List.of(
-                Desire.of("rescue the kid", 100,
-                        s -> sees(s, "stranded"),          // only once he has SEEN the kid
-                        s -> s.hasState(Rescued.class),
-                        ZoomToTheFord.class, ZoomBringsTheKidBack.class),
-                Desire.of("chase that squirrel", 50,
-                        s -> told(s, "squirrel"),
-                        s -> s.hasState(Treed.class),
-                        ZoomUpTheBank.class, ZoomTreesTheSquirrel.class),
-                Desire.of("nap", 10,
-                        s -> true,
-                        s -> s.hasState(Napped.class),
-                        ZoomNaps.class));
-
-        ZoomsHead app = AgenticServices.plannerBuilder(ZoomsHead.class)
-                .subAgents(upTheBank, treesIt, toTheFord, bringsKid, nap)
-                .planner(() -> new BDIPlanner(desires))
-                .outputKey(Napped.class)
-                .listener(listener)
-                .build();
-        var r = app.invoke(input);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(ZoomsHead.class, model).invoke(input));
         return intentions(r.agenticScope());
     }
 

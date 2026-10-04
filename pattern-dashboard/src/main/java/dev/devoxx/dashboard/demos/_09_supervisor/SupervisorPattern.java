@@ -9,16 +9,11 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DigOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.DocOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.SniffOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.ZoomOnCall;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
-import dev.langchain4j.agentic.supervisor.SupervisorAgent;
-import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -33,38 +28,14 @@ public final class SupervisorPattern {
     private static final List<String> RANGERS = List.of("Sniff", "Zoom", "Dig", "Doc");
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var sniff = AgenticServices.agentBuilder(SniffOnCall.class)
-                .chatModel(model).name("Sniff").build();
-        var zoom = AgenticServices.agentBuilder(ZoomOnCall.class)
-                .chatModel(model).name("Zoom").build();
-        var dig = AgenticServices.agentBuilder(DigOnCall.class)
-                .chatModel(model).name("Dig").build();
-        var doc = AgenticServices.agentBuilder(DocOnCall.class)
-                .chatModel(model).name("Doc").build();
-
-        SupervisorAgent zao = AgenticServices.supervisorBuilder()
-                .subAgents(sniff, zoom, dig, doc)
-                .chatModel(model)
-                .supervisorContext("""
-                        You are Zao, leader of the Pawer Rangers. The fair has several separate \
-                        problems. Send ONE Ranger at a time, to ONE problem, with that problem \
-                        as the call: Sniff finds the lost, Zoom catches anything running away, \
-                        Dig deals with holes and tight spots, Doc deals with anyone hurt. Read \
-                        each report before deciding who goes next. When every problem has had \
-                        a Ranger, finish, and say in one sentence whether the fair is under \
-                        control.""")
-                .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
-                .maxAgentsInvocations(6)
-                .output(SupervisorPattern::fairStatus)
-                .listener(listener)
-                .build();
-        return String.valueOf(zao.invokeWithAgenticScope(input).result());
+        return CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(FairSupervisor.class, model).invoke(input));
     }
 
     // ---- how the result is presented; the wiring above is the demo ----
 
     /** The route Zao chose, then each Ranger's report — the order is the thing to compare. */
-    private static String fairStatus(AgenticScope scope) {
+    static String fairStatus(AgenticScope scope) {
         var calls = scope.agentInvocations().stream()
                 .filter(i -> RANGERS.contains(i.agentName()))
                 .toList();

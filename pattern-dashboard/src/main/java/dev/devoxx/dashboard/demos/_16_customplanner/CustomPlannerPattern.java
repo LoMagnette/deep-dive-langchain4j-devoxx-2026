@@ -8,11 +8,7 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DigOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.DocOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.SniffOnCall;
-import dev.devoxx.dashboard.demos._06_conditional.ZoomOnCall;
-import dev.devoxx.dashboard.demos._16_customplanner.Keys.Schedule;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -26,22 +22,8 @@ public final class CustomPlannerPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var sniff = AgenticServices.agentBuilder(SniffOnCall.class)
-                .chatModel(model).name("Sniff").build();
-        var zoom = AgenticServices.agentBuilder(ZoomOnCall.class)
-                .chatModel(model).name("Zoom").build();
-        var dig = AgenticServices.agentBuilder(DigOnCall.class)
-                .chatModel(model).name("Dig").build();
-        var doc = AgenticServices.agentBuilder(DocOnCall.class)
-                .chatModel(model).name("Doc").build();
-
-        DaysWork app = AgenticServices.plannerBuilder(DaysWork.class)
-                .subAgents(sniff, zoom, dig, doc)
-                .planner(NapSchedule::new)
-                .outputKey(Schedule.class)
-                .listener(listener)
-                .build();
-        var r = app.invoke(input);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(DaysWork.class, model).invoke(input));
         return "**Zao's schedule for the day**\n\n" + String.valueOf(r.result()).lines()
                 .map(l -> l.startsWith("   ") ? "  - *" + l.strip() + "*" : "- " + l)
                 .reduce((a, b) -> a + "\n" + b).orElse("");

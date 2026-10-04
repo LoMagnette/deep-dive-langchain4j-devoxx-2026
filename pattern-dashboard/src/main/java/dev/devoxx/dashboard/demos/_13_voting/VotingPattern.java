@@ -15,6 +15,7 @@ import dev.devoxx.dashboard.demos._13_voting.Keys.Verdict;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Vote1;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Vote2;
 import dev.devoxx.dashboard.demos._13_voting.Keys.Vote3;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
@@ -44,20 +45,8 @@ public final class VotingPattern {
             votes -> votes.stream().allMatch(VotingPattern::isSafe) ? "SAFE" : "NOT SAFE";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Three DIFFERENT ways of judging, or the count is decoration: a nose, a medic, a ruler.
-        var sniff = AgenticServices.agentBuilder(SniffVotes.class)
-                .chatModel(model).name("Sniff").outputKey(Vote1.class).build();
-        var doc = AgenticServices.agentBuilder(DocVotes.class)
-                .chatModel(model).name("Doc").outputKey(Vote2.class).build();
-        var rivet = new RivetVotes();
-
-        IceVote app = AgenticServices.plannerBuilder(IceVote.class)
-                .subAgents(sniff, doc, rivet)
-                .planner(() -> new VotingPlanner(VETO))
-                .outputKey(Verdict.class)
-                .listener(listener)
-                .build();
-        var r = app.invoke(input);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(IceVote.class, model).invoke(input));
         return explain(r.agenticScope(), String.valueOf(r.result()));
     }
 

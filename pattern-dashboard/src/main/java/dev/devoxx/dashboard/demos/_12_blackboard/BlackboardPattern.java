@@ -7,18 +7,12 @@ import static java.util.stream.Collectors.joining;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.CameraClue;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.CrumbClue;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Culprit;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.ScentClue;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.TunnelClue;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
 import dev.langchain4j.agentic.patterns.blackboard.ConflictResolutionStrategy;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
@@ -33,40 +27,8 @@ public final class BlackboardPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Each Ranger's @K parameters are its PRECONDITION: the planner will not pick an agent
-        // until every pin it reads is on the board. Sniff and Rivet need only the crime; Dig needs
-        // Sniff's scent; Doc needs Rivet's cameras; Zao needs Dig's prints and Doc's crumb.
-        var sniff = AgenticServices.agentBuilder(SniffTrails.class)
-                .chatModel(model)
-                .name("Sniff")
-                .outputKey(ScentClue.class)
-                .build();
-        var rivet = new RivetCameras();
-        var dig = AgenticServices.agentBuilder(DigTunnels.class)
-                .chatModel(model)
-                .name("Dig")
-                .outputKey(TunnelClue.class)
-                .build();
-        var doc = AgenticServices.agentBuilder(DocTestsTheCrumb.class)
-                .chatModel(model)
-                .name("Doc")
-                .outputKey(CrumbClue.class)
-                .build();
-        var zao = AgenticServices.agentBuilder(ZaoNamesTheCulprit.class)
-                .chatModel(model)
-                .name("Zao")
-                .outputKey(Culprit.class)
-                .build();
-        Predicate<AgenticScope> solved = s -> s.hasState(Culprit.class);
-        Investigation app = AgenticServices.plannerBuilder(Investigation.class)
-                .subAgents(zao, doc, dig, rivet, sniff)
-                .planner(() -> new BlackboardPlanner(solved,
-                        ConflictResolutionStrategy.agentWithName("Dig")
-                                .or(ConflictResolutionStrategy.declarationOrder())))
-                .outputKey(Culprit.class)
-                .listener(listener)
-                .build();
-        var r = app.invoke(input);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(Investigation.class, model).invoke(input));
         return ruling(r.agenticScope(), r.result());
     }
 
