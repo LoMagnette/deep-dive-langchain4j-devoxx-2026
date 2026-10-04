@@ -36,12 +36,7 @@ public final class P2pPattern {
                 .chatModel(model).name("Dig").outputKey(Burrows.class).build();
 
         MazeSearch app = AgenticServices.plannerBuilder(MazeSearch.class)
-                // No order here means anything: P2PPlanner runs every pup whose inputs are all
-                // on the board, and re-runs a pup whenever one of them CHANGES. Sniff's scent
-                // wakes Zoom and Dig together; each of their reports wakes Sniff again.
                 .subAgents(zoom, dig, sniff)
-                // The exit predicate is the only thing that ends this — nobody is in charge — and
-                // it reads the CONTENT of the pins, from any pup: whoever finds the goat, found it.
                 .planner(() -> new P2PPlanner(20, P2pPattern::goatFound))
                 .outputKey(Scent.class)
                 .listener(listener)

@@ -49,33 +49,30 @@ public final class ParallelPattern {
                 .outputKey(SafetyReport.class)
                 .build();
 
-        // One thread per inspection, owned by this run: try-with-resources shuts it down when
-        // the mission is over, so a run that ends never leaves three idle threads behind.
-        try (ExecutorService pups = Executors.newFixedThreadPool(3)) {
-            var fanOut = AgenticServices.parallelBuilder(Inspections.class)
-                    .name("Parallel")
-                    .subAgents(zoom, sniff, dig);
-            // Its own statement: executor(...) is declared on the raw ParallelAgentService
-            // interface, so chaining build() after it loses the Inspections type.
-            fanOut.executor(pups);
-            Inspections inspections = fanOut.build();
+        var inspections = AgenticServices.parallelBuilder(Inspections.class)
+                .name("Parallel")
+                .subAgents(zoom, sniff, dig)
+                .executor(Executors.newFixedThreadPool(3))
+                .build();
 
-            StormWarning app = AgenticServices.sequenceBuilder(StormWarning.class)
-                    .name("Sequential")
-                    .subAgents(inspections, zao)
-                    // The report is built from the scope by the workflow itself, so the caller
-                    // gets the finished answer and never has to read the scope back.
-                    .output(scope -> "**Safety report**\n\n" + scope.readState(SafetyReport.class)
-                            + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
-                            + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
-                            + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), ""))
-                    .listener(listener)
-                    .build();
-            return app.warn(input).result();
-        }
+
+        StormWarning app = AgenticServices.sequenceBuilder(StormWarning.class)
+                .name("Sequential")
+                .subAgents(inspections, zao)
+                // The report is built from the scope by the workflow itself, so the caller
+                // gets the finished answer and never has to read the scope back.
+                .output(scope -> "**Safety report**\n\n" + scope.readState(SafetyReport.class)
+                        + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
+                        + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
+                        + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), ""))
+                .listener(listener)
+                .build();
+        return app.warn(input).result();
     }
 
-    /** How the page draws it, and what the catalogue shows. */
+    /**
+     * How the page draws it, and what the catalogue shows.
+     */
     public static PatternDef define() {
         Topology.Graph topo = graph("fanout",
                 List.of(node("in", "storm warning", "input"),

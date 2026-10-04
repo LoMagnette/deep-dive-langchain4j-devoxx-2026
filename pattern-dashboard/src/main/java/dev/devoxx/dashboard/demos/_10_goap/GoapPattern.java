@@ -50,8 +50,6 @@ public final class GoapPattern {
                 .build();
 
         GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
-                // Scrambled on purpose: the planner works backwards from CatSafe through what
-                // each Ranger needs, so this order is never the order they run in.
                 .subAgents(doc, rivet, dig, zoom)
                 .planner(GoalOrientedPlanner::new)
                 .outputKey(CatSafe.class)

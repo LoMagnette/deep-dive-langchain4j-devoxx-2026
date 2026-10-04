@@ -53,8 +53,6 @@ public final class VotingPattern {
 
         IceVote app = AgenticServices.plannerBuilder(IceVote.class)
                 .subAgents(sniff, doc, rivet)
-                // VotingPlanner calls every voter at once, collects what each returned, and
-                // hands the collection to the strategy — whose answer is the verdict.
                 .planner(() -> new VotingPlanner(VETO))
                 .outputKey(Verdict.class)
                 .listener(listener)

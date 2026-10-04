@@ -37,8 +37,6 @@ public final class CustomPlannerPattern {
 
         DaysWork app = AgenticServices.plannerBuilder(DaysWork.class)
                 .subAgents(sniff, zoom, dig, doc)
-                // Same builder as every planner before it. The only difference is that this
-                // planner is a page of this repo instead of a page of the library.
                 .planner(NapSchedule::new)
                 .outputKey(Schedule.class)
                 .listener(listener)
@@ -51,9 +49,6 @@ public final class CustomPlannerPattern {
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // The planner is drawn as framework-shaped but labelled as ours: the dotted box is code
-        // you wrote. Its two silent outcomes — feed and nap — are on the box, because they call
-        // nobody and so never light anything.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "roster", "input", 0).withSub("missions · energy"),
                         node("plan", "NapSchedule", "planner", 1).withSub("your Java · feed or nap").as("zao"),

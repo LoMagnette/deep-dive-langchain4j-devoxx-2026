@@ -40,12 +40,10 @@ public final class ParallelMapperPattern {
                 .outputKey(FoundDucklings.class)
                 .listener(listener)
                 .build();
-        // The ducklings come from what was typed (one per line or semicolon), so the input box
-        // decides how wide the fan-out is — eight is only the default.
+
         List<String> ducklings = items(input);
         List<String> found = requireNonNullElse(app.search(ducklings), List.of());
-        // Paired back with the duckling each result is about: the mapper preserves order, and
-        // eight unlabelled lines would leave the room counting.
+        
         return IntStream.range(0, found.size())
                 .mapToObj(i -> "- **" + (i < ducklings.size() ? ducklings.get(i) : "duckling " + i)
                         + "** — " + found.get(i))

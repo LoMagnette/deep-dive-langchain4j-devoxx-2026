@@ -39,11 +39,7 @@ public final class DebatePattern {
                 .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
 
         Debate app = AgenticServices.plannerBuilder(Debate.class)
-                // Every sub-agent but the LAST is a debater; the last one is the judge. That is
-                // the whole configuration of who plays which part — the order is the contract.
                 .subAgents(howl, marmalade, fifi)
-                // unanimous() ends the debate early only when both say exactly the same thing,
-                // which two sides of an argument never do — so it runs all three rounds.
                 .planner(() -> new DebatePlanner(ROUNDS, ConvergenceStrategy.unanimous()))
                 .outputKey(Verdict.class)
                 .listener(listener)

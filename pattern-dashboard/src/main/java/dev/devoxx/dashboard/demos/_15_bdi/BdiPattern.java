@@ -45,10 +45,6 @@ public final class BdiPattern {
         var nap = AgenticServices.agentBuilder(ZoomNaps.class)
                 .chatModel(model).name("ZoomNaps").outputKey(Napped.class).build();
 
-        // A desire is a priority, two predicates over the beliefs, and a PLAN — the agent types
-        // after the predicates, run in that order. The planner commits to the highest desire that
-        // is achievable and not yet satisfied, and after EVERY step it looks again: if a higher
-        // desire has become achievable, the current plan is preempted and its place remembered.
         List<Desire> desires = List.of(
                 Desire.of("rescue the kid", 100,
                         s -> sees(s, "stranded"),          // only once he has SEEN the kid

@@ -59,10 +59,6 @@ public final class BlackboardPattern {
                 .build();
         Predicate<AgenticScope> solved = s -> s.hasState(Culprit.class);
         Investigation app = AgenticServices.plannerBuilder(Investigation.class)
-                // Registered BACKWARDS on purpose, Zao first. If this list were the order, Zao
-                // would rule on an empty board. It is not: it is only the tie-break among the
-                // Rangers who are able to act at that moment — that is what the conflict
-                // resolution strategy is for.
                 .subAgents(zao, doc, dig, rivet, sniff)
                 .planner(() -> new BlackboardPlanner(solved,
                         ConflictResolutionStrategy.agentWithName("Dig")
