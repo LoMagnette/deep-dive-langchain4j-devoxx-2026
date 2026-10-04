@@ -558,11 +558,20 @@ public class MockChatModel implements ChatModel {
         return false;
     }
 
-    /** The debaters' n-th line, by how many rounds the transcript already holds. */
+    /**
+     * The debaters' next line. DebatePlanner hands each round only the LAST round's statements
+     * (debateContext), so there is no round counter on the board: the round is worked out from
+     * which of this debater's own lines is already in the context — none means round one.
+     */
     private static String round(String p, String[] lines) {
-        String transcript = after(p, "the debate so far:");
-        int done = transcript.split("round \\d", -1).length - 1;
-        return lines[Math.min(done, lines.length - 1)];
+        String lastRound = after(p, "last round:");
+        int next = 0;
+        for (int i = 0; i < lines.length; i++) {
+            if (lastRound.contains(collapse(lines[i]))) {
+                next = i + 1;
+            }
+        }
+        return lines[Math.min(next, lines.length - 1)];
     }
 
     // ------------------------------------------------------------------------------------------

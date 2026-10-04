@@ -373,7 +373,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   | White | **Doc** | St. Bernard | medic, decides what is safe, says no often | 2, 6, 10, 13, 19, 21 |
   | Purple | **Howl** | Husky | writes and argues, loud | 2, 3, 14, 18 |
   | Pink | **Fifi** | Poodle | critic and judge | 3, 14 |
-  | Silver | **Bolt** | robot dog | maths and lookups — **plain Java, no model** | 8, 10, 12, 13, 14 |
+  | Silver | **Bolt** | robot dog | maths and lookups — **plain Java, no model** | 8, 10, 12, 13, 17, 18 |
   Supporting cast: **Officer Jo** (the human, Mission 7), **Mittens the cat** (the villain — an AI
   agent in the debate, the prime suspect in every crime), **the Mayor** (loses things, owns roses).
   Rules that fell out of building it:
@@ -409,9 +409,24 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     triggers key on an INSTRUCTION, never on a dog's name alone (the same Ranger speaks in a dozen
     missions); and a verdict-giving agent is told that "not proven" is not a verdict.
   - **Pins that must grow need an appender.** An agent's output OVERWRITES its key, so the spec's
-    growing pins are built from parts: Mission 12's `clues` list is three pins (one per
-    clue-finder), and Mission 14's `transcript` is appended by Bolt (`BoltMinutes`) after each round —
-    plain Java, because the record of what was said must never be paraphrased.
+    `clues` list (Mission 12) is three pins, one per clue-finder.
+  - **Mission 14 is LangChain4j's `DebatePlanner`, not a loop dressed as one** — it was a
+    `loopBuilder` of Howl, Mittens and a Bolt minute-taker for a while, which showed a loop and
+    called it a debate. How the real planner works, read from its bytecode in `1.20.0-beta30`:
+    **every sub-agent but the LAST is a debater and the last is the judge** (so `subAgents(howl,
+    mittens, fifi)` is the whole casting); each round it calls ALL debaters together — they run
+    concurrently, so within a round nobody hears the other — then writes the previous round's
+    statements into the scope as `debateContext` ("Howl: …\nMittens: …"), which is what the next
+    round answers; after each round it asks the `ConvergenceStrategy` (`unanimous()` = word for
+    word identical, so prose never converges; `unanimousLastWord()` = both end on the same word),
+    and on convergence or `maxRounds` it calls the judge once with that context. Consequences:
+    `debateContext` holds ONLY the last round, so Fifi rules on closing statements and the result
+    rebuilds the full transcript from `scope.agentInvocations()`; round 1's context is EMPTY, so
+    the debaters are told an empty last round means "open your case" (live, Mittens otherwise
+    opened with "Howl has yet to offer an argument"); and `debateContext` is the library's key,
+    so `Keys.DebateContext` is the one `TypedKey` that overrides `name()` — with the library's
+    constant, `DebatePlanner.DEBATE_CONTEXT_KEY`. `theCouncilArguesThreeRoundsBeforeFifiRules`
+    asserts the planner is used and both debaters read that key.
   - **Peers need a finish line they can reach, and EITHER peer may cross it.** Live, the corn maze
     ran ten rounds with Zoom reporting "a faint bleat to the north" and Sniff never signing: his
     "start with FOUND: only if…" was a conditional under a positive instruction, and the positive

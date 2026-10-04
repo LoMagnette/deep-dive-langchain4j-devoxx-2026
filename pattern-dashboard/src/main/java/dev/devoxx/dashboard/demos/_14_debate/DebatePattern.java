@@ -3,7 +3,6 @@ package dev.devoxx.dashboard.demos._14_debate;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 
@@ -11,21 +10,24 @@ import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn;
 import dev.devoxx.dashboard.demos._14_debate.Keys.MittensTurn;
-import dev.devoxx.dashboard.demos._14_debate.Keys.Transcript;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
+import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for <b>Mission 14</b> — a loop of two debaters and a minute-taker, then a judge.
+ * Wiring for <b>Mission 14</b> — two debaters and a judge, run by LangChain4j's DebatePlanner.
  */
 public final class DebatePattern {
 
     private DebatePattern() {
     }
 
-    /** The council meets for three rounds, whatever happens. */
+    /** The council meets for three rounds, unless the two sides say exactly the same thing. */
     public static final int ROUNDS = 3;
 
     static String run(ChatModel model, String input, StreamingListener listener) {
@@ -33,57 +35,80 @@ public final class DebatePattern {
                 .chatModel(model).name("Howl").outputKey(HowlTurn.class).build();
         var mittens = AgenticServices.agentBuilder(MittensArgues.class)
                 .chatModel(model).name("Mittens").outputKey(MittensTurn.class).build();
-        var bolt = new BoltMinutes();
         var fifi = AgenticServices.agentBuilder(FifiJudges.class)
                 .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
 
-        Rounds rounds = AgenticServices.loopBuilder(Rounds.class)
-                .name("Loop")
-                .subAgents(howl, mittens, bolt)
-                .maxIterations(ROUNDS)
-                .build();
-
-        Council app = AgenticServices.sequenceBuilder(Council.class)
-                .name("Sequential")
-                .subAgents(rounds, fifi)
+        Debate app = AgenticServices.plannerBuilder(Debate.class)
+                // Every sub-agent but the LAST is a debater; the last one is the judge. That is
+                // the whole configuration of who plays which part — the order is the contract.
+                .subAgents(howl, mittens, fifi)
+                // unanimous() ends the debate early only when both say exactly the same thing,
+                // which two sides of an argument never do — so it runs all three rounds.
+                .planner(() -> new DebatePlanner(ROUNDS, ConvergenceStrategy.unanimous()))
                 .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
-        // The transcript is seeded because both debaters read it from their first turn on.
-        var r = app.meet(input, "(the debate is about to begin)");
-        return "**Fifi's verdict**\n\n" + r.result()
-                + "\n\n---\n\n" + requireNonNullElse(r.agenticScope().readState(Transcript.class), "");
+        var r = app.invoke(input);
+        return "**Fifi's verdict**\n\n" + r.result() + "\n\n---\n\n" + transcript(r.agenticScope());
+    }
+
+    // ---- how the result is presented; the wiring above is the demo ----
+
+    /**
+     * The whole debate, round by round. DebatePlanner only keeps the LAST round on the board
+     * (debateContext), so the full transcript is rebuilt from the scope's record of who said what.
+     */
+    private static String transcript(AgenticScope scope) {
+        List<AgentInvocation> turns = scope.agentInvocations().stream()
+                .filter(i -> List.of("Howl", "Mittens").contains(i.agentName())).toList();
+        StringBuilder out = new StringBuilder();
+        int round = 0;
+        for (int i = 0; i < turns.size(); i++) {
+            if (i % 2 == 0) {
+                out.append(out.isEmpty() ? "" : "\n\n").append("Round ").append(++round);
+            }
+            out.append("\n").append(turns.get(i).agentName()).append(": ")
+                    .append(String.valueOf(turns.get(i).output()).strip());
+        }
+        return out.toString();
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Columns: motion, three rounds, ruling. The two debaters share a column so their
-        // answers bow between them; Bolt's minutes sit beside them because they happen inside
-        // the same loop; Fifi rules only once the loop is done.
+        // The debaters never talk to each other directly: each round, the planner collects what
+        // both said and hands it back as debateContext. So the planner sits between them and
+        // the arrows go through it — and the judge is reached only from the planner, after the
+        // last round, because that is the only way the judge is ever called.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
-                        node("howl", "Howl", "agent", 1).withSub("for the dog park").as("howl"),
-                        node("mittens", "Mittens", "agent", 1).withSub("for the cat café").as("mittens"),
-                        node("bolt", "Bolt", "code", 2).withSub("keeps the minutes").as("bolt"),
-                        node("fifi", "Fifi", "judge", 3).withSub("after round 3").as("fifi")),
-                List.of(edge("in", "howl"), edge("in", "mittens"),
-                        edge("howl", "mittens", "answers"),
-                        edge("mittens", "howl", "3 rounds"),
-                        edge("howl", "bolt"), edge("mittens", "bolt", "each turn"),
-                        edge("bolt", "fifi", "transcript")));
+                        node("plan", "DebatePlanner", "planner", 1).withSub("3 rounds · unanimous()"),
+                        node("howl", "Howl", "agent", 2).withSub("for the dog park").as("howl"),
+                        node("mittens", "Mittens", "agent", 2).withSub("for the cat café").as("mittens"),
+                        node("fifi", "Fifi", "judge", 3).withSub("the LAST sub-agent").as("fifi")),
+                List.of(edge("in", "plan"),
+                        edge("plan", "howl"), edge("howl", "plan", "each round"),
+                        edge("plan", "mittens"), edge("mittens", "plan"),
+                        edge("plan", "fifi", "closing statements")));
         return new PatternDef("debate", "Debate", "minds",
                 "The town council must decide: the empty lot on Elm Street becomes a dog park, "
                         + "or a cat café. Mittens has prepared.",
                 null,
-                "Two agents argue opposing sides for three rounds, each answering the other, and "
-                        + "a judge rules on the transcript. Built from parts the room already "
-                        + "knows: a **loop** of Howl, Mittens and Bolt (who appends each round to "
-                        + "the transcript, word for word), then Fifi in a sequence after it. Ask "
-                        + "one agent and it picks a side and rationalises it; a debate makes the "
-                        + "case against the winner get said out loud first.",
-                "The most persuasive agent may beat the most correct one, and it is token-hungry "
-                        + "— three rounds is six calls before anyone rules. Let the audience vote "
-                        + "before Fifi announces: the interesting moment is when they disagree.",
+                "Two agents argue opposing sides for N rounds; a judge rules. LangChain4j's "
+                        + "`DebatePlanner` runs it: **every sub-agent but the last is a debater, "
+                        + "and the last is the judge**. Each round it calls both debaters, then "
+                        + "writes what they said into `debateContext`, which is what they answer "
+                        + "next round — so each side answers the other's LAST round. It stops when "
+                        + "the `ConvergenceStrategy` says the sides agree, or after `maxRounds`, and "
+                        + "only then calls the judge. Ask one agent and it picks a side and "
+                        + "rationalises it; a debate makes the case against the winner get said "
+                        + "out loud first.",
+                "The planner keeps only the last round on the board: `debateContext` is "
+                        + "overwritten every round, so Fifi rules on the CLOSING statements, not the "
+                        + "whole debate — the full transcript below the verdict is rebuilt for the "
+                        + "room from the scope's invocations. `unanimous()` means word-for-word "
+                        + "identical, which prose never is, so this always runs all three rounds "
+                        + "(`unanimousLastWord()` converges when both END on the same word). And it "
+                        + "is token-hungry: three rounds is six calls before anyone rules.",
                 topo,
                 "Barkville town council: should the empty lot on Elm Street become a dog park or a "
                         + "cat café? Howl speaks for the dog park, Mittens for the cat café.",

@@ -387,15 +387,31 @@ class PatternCatalogTest {
         assertTrue(r.result().contains("Bolt: SAFE — measured 12.0 cm"), r.result());
     }
 
-    /** Mission 14: three rounds, each turn minuted, then Fifi — once, last. */
+    /**
+     * Mission 14: LangChain4j's own DebatePlanner — not a loop dressed as one. Both debaters read
+     * the planner's debateContext, three rounds happen, and Fifi (the LAST sub-agent) rules once.
+     */
     @Test
-    void theCouncilArguesThreeRoundsBeforeFifiRules() {
+    void theCouncilArguesThreeRoundsBeforeFifiRules() throws Exception {
+        assertImports("_14_debate/DebatePattern", "_14_debate.Keys.HowlTurn");
+        var src = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/dev/devoxx/dashboard/demos/_14_debate/DebatePattern.java"));
+        assertTrue(src.contains("new DebatePlanner(") && !src.contains("loopBuilder"),
+                "the debate must be run by DebatePlanner");
+        assertEquals(List.of("Motion", "debateContext"),
+                inputKeys(dev.devoxx.dashboard.demos._14_debate.HowlArgues.class));
+        assertEquals(List.of("Motion", "debateContext"),
+                inputKeys(dev.devoxx.dashboard.demos._14_debate.MittensArgues.class));
+
         Run r = run(mission("debate"));
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
         assertEquals(3, times(r, "Howl"));
         assertEquals(3, times(r, "Mittens"));
+        assertEquals(1, times(r, "Fifi"));
         assertEquals("Fifi", r.rangers("Howl", "Mittens", "Fifi").getLast());
-        assertTrue(r.result().contains("Round 3"), "Bolt minuted every round: " + r.result());
+        assertTrue(r.result().contains("Round 3"), "the transcript is rebuilt: " + r.result());
+        // Each round answers the last one, so no debater repeats itself.
+        assertTrue(r.result().contains("school next door"), "Howl reached his round-3 line: " + r.result());
     }
 
     /** Mission 15: the squirrel changes nothing while the kid is stranded; a belief update does. */
