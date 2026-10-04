@@ -50,10 +50,7 @@ public final class ResiliencePattern {
                 .chatModel(model)
                 .name("Doc")
                 .outputKey(FirstAid.class)
-                // Skipped when 'Injuries' is not in the scope. Take this line away and a rescue
-                // where nobody got hurt costs you the whole mission, with a
-                // MissingArgumentException naming a step that looks unrelated.
-                .optional(true)
+                // TODO live: optional(true)
                 .build();
         var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
                 .chatModel(model)
@@ -61,15 +58,11 @@ public final class ResiliencePattern {
                 .outputKey(RescueStatus.class)
                 .build();
 
-        // The counter is not decoration. RETRY re-executes the agent and a second failure comes
-        // straight back here, so a handler that always retries never terminates.
         AtomicInteger attempts = new AtomicInteger();
         BadRadioDay app = AgenticServices.sequenceBuilder(BadRadioDay.class)
                 .name("Sequential")
                 .subAgents(sniff, doc, zoom)
-                .errorHandler(ctx -> attempts.incrementAndGet() <= MAX_RETRIES
-                        ? ErrorRecoveryResult.retry()
-                        : ErrorRecoveryResult.result("(Sniff's radio is down — no location)"))
+                // TODO live: errorHandler(...), retrying at most MAX_RETRIES times
                 .output(scope -> outcome(scope, radio, attempts.get()))
                 .listener(listener)
                 .build();

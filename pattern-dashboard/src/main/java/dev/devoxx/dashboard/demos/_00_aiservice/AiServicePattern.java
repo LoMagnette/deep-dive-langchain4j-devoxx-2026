@@ -32,37 +32,8 @@ public final class AiServicePattern {
         // run's listener. The demo works without this line; the diagram would just stay dark.
         var bridge = new AiServiceBridge(listener, "Zao");
 
-        PupHqDesk zao = AiServices.builder(PupHqDesk.class)
-                .chatModel(model)
-                .tools(new DutyRoster())
-                .inputGuardrails(new NoCatsAllowed())
-                .outputGuardrails(new PawSized())
-                // How many times an output guardrail may send the answer back before the call
-                // throws. Written out because the limit is real: hit it and the caller gets an
-                // OutputGuardrailException, not a long answer.
-                .outputGuardrailsConfig(OutputGuardrailsConfig.builder().maxRetries(MAX_REWRITES).build())
-                .registerListeners(bridge.listeners())
-                .build();
-
-        try {
-            String answer = zao.answer(input);
-            return answer + "\n\n---\n\n*" + (bridge.reprompts() == 0
-                    ? "Fit on the noticeboard first time."
-                    : "PawSized sent it back " + bridge.reprompts() + " time(s) — too long for the "
-                            + "noticeboard.") + "*";
-        } catch (OutputGuardrailException stillTooLong) {
-            // Every rewrite was still too long: the guardrail ran out of retries and the call
-            // threw. The noticeboard stays empty rather than holding a wall of text.
-            return "**Still too long after " + MAX_REWRITES + " rewrites — nothing goes on the "
-                    + "noticeboard.** PawSized ran out of retries, and the call threw an "
-                    + "`OutputGuardrailException`.";
-        } catch (InputGuardrailException blocked) {
-            // The model was never called: the guardrail stopped the letter at the door.
-            // The exception message names the guardrail class; the room wants what it SAID.
-            String said = blocked.getMessage().replaceFirst("(?s).*with this message: ", "");
-            return "**Turned away at the door by NoCatsAllowed.** " + said
-                    + "\n\n*The model was never called.*";
-        }
+        // TODO live: AiServices.builder
+        return "TODO live: AiServices.builder";
     }
 
     /** How the page draws it, and what the catalogue shows. */

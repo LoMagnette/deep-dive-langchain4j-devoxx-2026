@@ -39,31 +39,26 @@ public final class SequentialPattern {
                 .chatModel(model)
                 .tools(new SniffGear())
                 .name("Sniff")
-                .outputKey(Location.class)
+                .outputKey("Location")
                 .build();
         var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
                 .chatModel(model)
                 .name("Zoom")
-                .outputKey(RescueStatus.class)
+                .outputKey("RescueStatus")
                 .build();
         var doc = AgenticServices.agentBuilder(DocChecks.class)
                 .chatModel(model)
                 .name("Doc")
-                .outputKey(HealthReport.class)
+                .outputKey("HealthReport")
                 .build();
         var howl = AgenticServices.agentBuilder(HowlWritesStory.class)
                 .chatModel(model)
                 .name("Howl")
-                .outputKey(Article.class)
+                .outputKey("Article")
                 .build();
 
-        UntypedAgent app = AgenticServices.sequenceBuilder()
-                                          .subAgents(sniff, zoom, doc, howl)
-                                          .outputKey(Article.class)
-                                          .listener(listener)
-                                          .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
-        return String.valueOf(r.result());
+        // TODO live: sequenceBuilder
+        return "TODO live: sequenceBuilder";
     }
 
     /** How the page draws it, and what the catalogue shows. */

@@ -31,22 +31,22 @@ public final class ParallelPattern {
         var zoom = AgenticServices.agentBuilder(ZoomChecksBridge.class)
                 .chatModel(model)
                 .name("Zoom")
-                .outputKey(BridgeReport.class)
+                .outputKey("BridgeReport")
                 .build();
         var sniff = AgenticServices.agentBuilder(SniffChecksForest.class)
                 .chatModel(model)
                 .name("Sniff")
-                .outputKey(ForestReport.class)
+                .outputKey("ForestReport")
                 .build();
         var dig = AgenticServices.agentBuilder(DigChecksTunnels.class)
                 .chatModel(model)
                 .name("Dig")
-                .outputKey(TunnelReport.class)
+                .outputKey("TunnelReport")
                 .build();
         var zao = AgenticServices.agentBuilder(ZaoMerges.class)
                 .chatModel(model)
                 .name("Zao")
-                .outputKey(SafetyReport.class)
+                .outputKey("SafetyReport")
                 .build();
 
         // One thread per inspection, owned by this run: try-with-resources shuts it down when
@@ -63,15 +63,15 @@ public final class ParallelPattern {
             StormWarning app = AgenticServices.sequenceBuilder(StormWarning.class)
                     .name("Sequential")
                     .subAgents(inspections, zao)
-                    .outputKey(SafetyReport.class)
+                    .outputKey("SafetyReport")
                     .listener(listener)
                     .build();
             var r = app.warn(input);
             var scope = r.agenticScope();
             return "**Safety report**\n\n" + r.result()
-                    + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
-                    + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
-                    + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), "");
+                    + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState("BridgeReport", ""), "")
+                    + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState("ForestReport", ""), "")
+                    + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState("TunnelReport", ""), "");
         }
     }
 

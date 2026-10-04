@@ -38,28 +38,16 @@ public final class LoopPattern {
         var howl = AgenticServices.agentBuilder(HowlWrites.class)
                 .chatModel(model)
                 .name("Howl")
-                .outputKey(Draft.class)
+                .outputKey("Draft")
                 .build();
         var fifi = AgenticServices.agentBuilder(FifiScores.class)
                 .chatModel(model)
                 .name("Fifi")
-                .outputKey(Feedback.class)
+                .outputKey("Feedback")
                 .build();
 
-        PosterLoop app = AgenticServices.loopBuilder(PosterLoop.class)
-                .name("Loop")
-                .subAgents(howl, fifi)
-                .maxIterations(TREATS)
-                .exitCondition(scope -> reviewScore(scope.readState(Feedback.class)) >= 0.8)
-                .testExitAtLoopEnd(true)
-                .outputKey(Draft.class)
-                .listener(listener)
-                .build();
-
-        // Feedback is seeded because Howl's first pass reads it too: there is nothing to fix
-        // yet, and an absent input would stop the loop before the first word was written.
-        var r = app.refine(input, POSTER_RULES, "(none yet — this is the first draft)");
-        return everyPass(r.agenticScope(), String.valueOf(r.result()));
+        // TODO live: loopBuilder
+        return "TODO live: loopBuilder";
     }
 
     // ---- how the result is presented; the wiring above is the demo ----

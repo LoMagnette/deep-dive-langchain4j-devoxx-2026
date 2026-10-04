@@ -44,41 +44,8 @@ public final class NapSchedule implements Planner {
 
     @Override
     public Action nextAction(PlanningContext context) {
-        AgenticScope board = context.agenticScope();
-        if (!read) {
-            readTheBoard(board.readState(Keys.Roster.class));
-        }
-        var report = context.previousAgentInvocation();
-        if (report != null) {
-            schedule.add("   " + report.agentName() + " reports: " + report.output());
-        }
-        while (steps++ < BEDTIME) {
-            if (queue.isEmpty()) {
-                return finish(board, "Queue empty. Everybody naps.");
-            }
-            String mission = nextMission();
-            String pup = whoDoes(mission);
-            if (hungry.remove(pup)) {
-                energy.merge(pup, FOOD, Integer::sum);
-                schedule.add("FEED  " + pup + " is hungry → fed (+" + FOOD + ")");
-            } else if (energy.get(pup) > 70 && !pup.equals(last)) {
-                queue.remove(mission);
-                energy.merge(pup, -MISSION_COST, Integer::sum);
-                last = pup;
-                schedule.add("GO    " + pup + " → " + mission);
-                board.writeState(Call.class, mission);
-                pin(board);
-                return call(rangers.get(pup));
-            } else {
-                energy.merge(pup, NAP, Integer::sum);
-                if (pup.equals(last)) {
-                    last = null;   // a nap breaks the run: rested, he may go again
-                }
-                schedule.add("NAP   " + pup + " naps (+" + NAP + ")");
-            }
-            pin(board);
-        }
-        return finish(board, "Bedtime. Whatever is left waits for tomorrow.");
+        // TODO live: hungry → feed; energy above 70 and not last on a mission → go; otherwise → nap
+        return done("TODO live: Zao's nap schedule");
     }
 
     /** The first mission someone OTHER than the last Ranger can do; else simply the first. */

@@ -27,29 +27,29 @@ public final class ConditionalPattern {
         var zao = AgenticServices.agentBuilder(ZaoClassifies.class)
                 .chatModel(model)
                 .name("Zao")
-                .outputKey(Category.class)
+                .outputKey("Category")
                 .build();
         var sniff = AgenticServices.agentBuilder(SniffOnCall.class)
-                .chatModel(model).name("Sniff").outputKey(Response.class).build();
+                .chatModel(model).name("Sniff").outputKey("Response").build();
         var dig = AgenticServices.agentBuilder(DigOnCall.class)
-                .chatModel(model).name("Dig").outputKey(Response.class).build();
+                .chatModel(model).name("Dig").outputKey("Response").build();
         var doc = AgenticServices.agentBuilder(DocOnCall.class)
-                .chatModel(model).name("Doc").outputKey(Response.class).build();
+                .chatModel(model).name("Doc").outputKey("Response").build();
         var zoom = AgenticServices.agentBuilder(ZoomOnCall.class)
-                .chatModel(model).name("Zoom").outputKey(Response.class).build();
+                .chatModel(model).name("Zoom").outputKey("Response").build();
 
         OneRanger route = AgenticServices.conditionalBuilder(OneRanger.class)
                 .name("Conditional")
-                .subAgents(s -> "lost".equals(category(s.readState(Category.class))), sniff)
-                .subAgents(s -> "underground".equals(category(s.readState(Category.class))), dig)
-                .subAgents(s -> "hurt".equals(category(s.readState(Category.class))), doc)
-                .subAgents(s -> "urgent".equals(category(s.readState(Category.class))), zoom)
+                .subAgents(s -> "lost".equals(category(s.readState("Category", ""))), sniff)
+                .subAgents(s -> "underground".equals(category(s.readState("Category", ""))), dig)
+                .subAgents(s -> "hurt".equals(category(s.readState("Category", ""))), doc)
+                .subAgents(s -> "urgent".equals(category(s.readState("Category", ""))), zoom)
                 .build();
 
         EmergencyPhone app = AgenticServices.sequenceBuilder(EmergencyPhone.class)
                 .name("Sequential")
                 .subAgents(zao, route)
-                .outputKey(Response.class)
+                .outputKey("Response")
                 .listener(listener)
                 .build();
         return app.answer(input);
