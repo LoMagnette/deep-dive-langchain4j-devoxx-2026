@@ -18,4 +18,11 @@ public final class Keys {
 
     /** Doc's first-aid note, when there was one to write. */
     public record FirstAid() implements TypedKey<String> {}
+
+    /**
+     * How many times the error handler has been called this run. On the board because the
+     * handler is a static method with nothing to close over — and on the Scope tab, the retry
+     * count is now visible while the run is still going.
+     */
+    public record Attempts() implements TypedKey<Integer> {}
 }

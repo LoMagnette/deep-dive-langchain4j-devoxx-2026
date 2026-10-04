@@ -3,23 +3,21 @@ package dev.devoxx.dashboard.demos._21_resilience;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Location;
 import dev.devoxx.dashboard.demos._01_single.SniffFinds;
-import dev.devoxx.dashboard.demos._01_single.SniffGear;
 import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
 import dev.devoxx.dashboard.demos._02_sequential.SequentialPattern;
-import dev.devoxx.dashboard.demos._02_sequential.ZoomRescues;
+import dev.devoxx.dashboard.demos._21_resilience.Keys.Attempts;
 import dev.devoxx.dashboard.demos._21_resilience.Keys.FirstAid;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -33,49 +31,25 @@ public final class ResiliencePattern {
     }
 
     /** Past this the handler stops retrying and substitutes. See the caveat: RETRY re-enters. */
-    private static final int MAX_RETRIES = 2;
+    static final int MAX_RETRIES = 2;
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         // Mission 1's Sniff, on a collar radio that drops its first call. Nothing about the agent
         // knows or cares — flakiness is a property of the call, and recovery is a property of the
         // system, which is why neither of them is in the interface.
         var radio = new FlakyModel(model, 1);
-        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
-                .chatModel(radio)
-                .tools(new SniffGear())
-                .name("Sniff")
-                .outputKey(Location.class)
-                .build();
-        var doc = AgenticServices.agentBuilder(DocFirstAid.class)
-                .chatModel(model)
-                .name("Doc")
-                .outputKey(FirstAid.class)
-                // Skipped when 'Injuries' is not in the scope. Take this line away and a rescue
-                // where nobody got hurt costs you the whole mission, with a
-                // MissingArgumentException naming a step that looks unrelated.
-                .optional(true)
-                .build();
-        var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
-                .chatModel(model)
-                .name("Zoom")
-                .outputKey(RescueStatus.class)
-                .build();
-
-        // The counter is not decoration. RETRY re-executes the agent and a second failure comes
-        // straight back here, so a handler that always retries never terminates.
-        AtomicInteger attempts = new AtomicInteger();
-        BadRadioDay app = AgenticServices.sequenceBuilder(BadRadioDay.class)
-                .name("Sequential")
-                .subAgents(sniff, doc, zoom)
-                .errorHandler(ctx -> attempts.incrementAndGet() <= MAX_RETRIES
-                        ? ErrorRecoveryResult.retry()
-                        : ErrorRecoveryResult.result("(Sniff's radio is down — no location)"))
-                .output(scope -> outcome(scope, radio, attempts.get()))
-                .listener(listener)
-                .build();
+        var sniffOnTheRadio = new AgenticServices.AgentConfigurator(agent -> {
+            if (agent.agentServiceClass() == SniffFinds.class) {
+                agent.agentBuilder().chatModel(radio);
+            }
+        });
         // The injury is passed only when the report actually mentions one — deciding whether you
         // hold a value is not a job for a model, and making it one would hide what the demo is about.
-        return app.rescue(input, mentionsInjury(input) ? input : null);
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(BadRadioDay.class, model, sniffOnTheRadio)
+                        .rescue(input, mentionsInjury(input) ? input : null));
+        int attempts = requireNonNullElse(r.agenticScope().readState(Attempts.class), 0);
+        return outcome(r.agenticScope(), radio, attempts);
     }
 
     private static boolean mentionsInjury(String input) {
@@ -120,9 +94,9 @@ public final class ResiliencePattern {
                         + "oak. Neither is a reason not to get it down.",
                 "Mission 1's Sniff and Mission 2's Zoom, unchanged — on a radio that fails.",
                 "Two different answers to \"this step produced nothing\", and they are not "
-                        + "interchangeable. **`optional(true)`** is about a missing *input*: Doc is "
+                        + "interchangeable. **`optional = true`** is about a missing *input*: Doc is "
                         + "skipped when `Injuries` is absent, and it does nothing at all about "
-                        + "failure. **`errorHandler(...)`** is about a failing *call*: it sees every "
+                        + "failure. **`@ErrorHandler`** is about a failing *call*: it sees every "
                         + "`AgentInvocationException` and picks `retry()`, `result(x)` or "
                         + "`throwException()`. Delete the thorn from the input and Doc vanishes "
                         + "without an error; the dropped call is recovered either way.",

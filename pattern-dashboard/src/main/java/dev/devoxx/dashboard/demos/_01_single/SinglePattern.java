@@ -91,9 +91,9 @@ public final class SinglePattern {
                 "Paws up, Rangers! The Mayor has lost his hat. Sniff goes alone, and decides "
                         + "for himself where to put his nose.",
                 null,
-                "One `@Agent` interface with tools — the simplest useful unit. The wiring hands "
-                        + "Sniff his gear (`.tools(new SniffGear())`) and says nothing about "
-                        + "using it: **the model chooses which tool to call, with what argument, "
+                "One `@Agent` interface with tools — the simplest useful unit. The interface hands "
+                        + "Sniff his gear (a `@ToolsSupplier` returning `new SniffGear()`) and says "
+                        + "nothing about using it: **the model chooses which tool to call, with what argument, "
                         + "and in what order**. Watch the Run events pane — every `tool-call` "
                         + "line is a decision the LLM made, not your code.",
                 "The model may call a tool you did not expect, or none at all — and a tool that "

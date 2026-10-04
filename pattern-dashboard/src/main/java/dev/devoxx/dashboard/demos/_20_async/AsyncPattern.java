@@ -8,14 +8,9 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._04_parallel.DigChecksTunnels;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.BridgeReport;
 import dev.devoxx.dashboard.demos._04_parallel.Keys.ForestReport;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.SafetyReport;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.TunnelReport;
 import dev.devoxx.dashboard.demos._04_parallel.SniffChecksForest;
-import dev.devoxx.dashboard.demos._04_parallel.ZaoMerges;
-import dev.devoxx.dashboard.demos._04_parallel.ZoomChecksBridge;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -29,31 +24,17 @@ public final class AsyncPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The only line that differs from an ordinary sequence. The agent is Mission 4's, the
-        // builder is not a different builder — async is one call on this one step.
-        var sniff = AgenticServices.agentBuilder(SniffChecksForest.class)
-                .chatModel(model)
-                .name("Sniff")
-                .outputKey(ForestReport.class)
-                .async(true)
-                .build();
-        var zoom = AgenticServices.agentBuilder(ZoomChecksBridge.class)
-                .chatModel(model).name("Zoom").outputKey(BridgeReport.class).build();
-        var dig = AgenticServices.agentBuilder(DigChecksTunnels.class)
-                .chatModel(model).name("Dig").outputKey(TunnelReport.class).build();
-        var zao = AgenticServices.agentBuilder(ZaoMerges.class)
-                .chatModel(model).name("Zao").outputKey(SafetyReport.class).build();
-
-        StormRound app = AgenticServices.sequenceBuilder(StormRound.class)
-                .name("Sequential")
-                // Still a sequence: Sniff is sent FIRST. He just does not hold the other two up,
-                // because his report is not needed until Zao reads it — and that read is the join.
-                .subAgents(sniff, zoom, dig, zao)
-                .outputKey(SafetyReport.class)
-                .listener(listener)
-                .build();
+        // The only line that differs from an ordinary sequence. The agent is Mission 4's and is
+        // not async there, so it is switched on for this mission only, on this one step.
+        var sniffDoesNotBlock = new AgenticServices.AgentConfigurator(agent -> {
+            if (agent.agentServiceClass() == SniffChecksForest.class) {
+                agent.agentBuilder().async(true);
+            }
+        });
         return "**Safety report** *(the run waited for Sniff here, and only here)*\n\n"
-                + app.inspect(input);
+                + CurrentRun.with(listener, () ->
+                        AgenticServices.createAgenticSystem(StormRound.class, model, sniffDoesNotBlock)
+                                .inspect(input));
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -76,8 +57,8 @@ public final class AsyncPattern {
                 "The storm again. Sniff's forest check is slow — nose down, every tree. Nobody "
                         + "blocks the main thread waiting for a Beagle.",
                 "Mission 4's four agents, unchanged — as a sequence this time, with one of them async.",
-                "One step in an ordinary sequence marked `async(true)`. The agent is unchanged, "
-                        + "the builder is unchanged, and Sniff is still sent first. What changes is "
+                "One step in an ordinary sequence marked `async(true)` — for this mission only, by "
+                        + "the configurator in `run`. The agent is unchanged, the sequence is unchanged, and Sniff is still sent first. What changes is "
                         + "that he writes an `AsyncResponse` into the scope instead of a value, so "
                         + "**the join is the line that reads the key** — Zao's merge — not a step "
                         + "you declare. Watch the badge: the whole run is shorter than the "

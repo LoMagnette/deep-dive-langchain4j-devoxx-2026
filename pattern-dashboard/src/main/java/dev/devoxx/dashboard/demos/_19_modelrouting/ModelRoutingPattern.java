@@ -7,13 +7,12 @@ import static dev.devoxx.dashboard.support.Parsing.category;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Category;
 import dev.devoxx.dashboard.demos._06_conditional.Keys.Response;
-import dev.devoxx.dashboard.demos._06_conditional.ZaoClassifies;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.ModelTiers;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
@@ -33,42 +32,27 @@ public final class ModelRoutingPattern {
 
     static String run(ChatModel model, String input, StreamingListener listener) {
         ModelTiers tiers = listener.tiers(model);
-        // Which tier actually answered, recorded where the choice is made. Nothing in the scope
-        // records it — the framework has no reason to — and a demo that cannot say which model
-        // ran has not demonstrated anything.
-        AtomicReference<String> picked = new AtomicReference<>("none");
-
-        // Classifying is the cheap job by definition: one word of output.
-        var zao = AgenticServices.agentBuilder(ZaoClassifies.class)
-                .chatModel(tiers.cheap())
-                .name("Zao")
-                .outputKey(Category.class)
-                .build();
-
-        // THE line. chatModel takes a Function<AgenticScope, ChatModel>, so the model is
-        // resolved when Doc is invoked — by which time Zao has written the category.
-        var doc = AgenticServices.agentBuilder(DocOnNights.class)
-                .chatModel(scope -> {
-                    boolean serious = SERIOUS.contains(category(scope.readState(Category.class)));
-                    picked.set(serious ? tiers.strongName() : tiers.cheapName());
-                    return serious ? tiers.strong() : tiers.cheap();
-                })
-                .name("Doc")
-                .outputKey(Response.class)
-                .build();
-
-        NightPhone app = AgenticServices.sequenceBuilder(NightPhone.class)
-                .name("Sequential")
-                .subAgents(zao, doc)
-                .output(scope -> answerWithItsTier(scope, tiers, picked.get()))
-                .listener(listener)
-                .build();
-        return app.answer(input);
+        // The system's default model is the CHEAP one. Classifying is the cheap job by
+        // definition, so Zao needs no wiring at all — and Doc's @ChatModelSupplier is the one
+        // place in the mission that ever asks for more.
+        return CurrentRun.with(listener, tiers, () ->
+                AgenticServices.createAgenticSystem(NightPhone.class, tiers.cheap()).answer(input));
     }
 
-    /** Leads with the choice: the answer alone looks identical whichever model produced it. */
-    private static String answerWithItsTier(AgenticScope scope, ModelTiers tiers, String picked) {
-        return "**" + category(scope.readState(Category.class)) + " → " + picked + "**\n\n"
+    /** True for a category where being wrong is expensive — the one rule that picks the model. */
+    static boolean serious(String category) {
+        return SERIOUS.contains(category(category));
+    }
+
+    /**
+     * Leads with the choice: the answer alone looks identical whichever model produced it. The
+     * tier is a pure function of the category, so it is read back through the same
+     * {@link #serious} that {@code DocOnNights.model} chose with — not guessed after the fact.
+     */
+    static String answerWithItsTier(AgenticScope scope, ModelTiers tiers) {
+        String category = scope.readState(Category.class);
+        String picked = serious(category) ? tiers.strongName() : tiers.cheapName();
+        return "**" + category(category) + " → " + picked + "**\n\n"
                 + scope.readState(Response.class) + "\n\n---\n\n*" + tiers.note() + "*";
     }
 
@@ -89,9 +73,9 @@ public final class ModelRoutingPattern {
                         + "not ask the small one about a swollen ankle.",
                 "Mission 6's classifier, unchanged. The four Rangers are gone — here one answers "
                         + "everything and only the model behind him changes.",
-                "`chatModel(...)` has an overload taking a `Function<AgenticScope, ChatModel>`, "
-                        + "so the model is resolved **when the agent is invoked** rather than when "
-                        + "it is built — by which time Zao has written `category`. One agent, one "
+                "Doc's `@ChatModelSupplier` takes a parameter — `@K(Category.class)` — so the "
+                        + "model is resolved **when the agent is invoked** rather than when it is "
+                        + "built — by which time Zao has written `category`. One agent, one "
                         + "prompt: anything that differs between two runs came from the model. "
                         + "\"I have lost my umbrella\" settles on the cheap one; the ankle goes to "
                         + "the strong one.",

@@ -9,17 +9,10 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._13_voting.RivetVotes;
-import dev.devoxx.dashboard.demos._13_voting.DocVotes;
-import dev.devoxx.dashboard.demos._13_voting.Keys.Vote1;
-import dev.devoxx.dashboard.demos._13_voting.Keys.Vote2;
 import dev.devoxx.dashboard.demos._13_voting.SniffVotes;
 import dev.devoxx.dashboard.demos._13_voting.VotingPattern;
-import dev.devoxx.dashboard.demos._18_lakeparty.Keys.Announcement;
-import dev.devoxx.dashboard.demos._18_lakeparty.Keys.Finding;
-import dev.devoxx.dashboard.demos._18_lakeparty.Keys.Findings;
 import dev.devoxx.dashboard.demos._18_lakeparty.Keys.IceVerdict;
-import dev.devoxx.dashboard.demos._18_lakeparty.Keys.Spots;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
@@ -38,42 +31,16 @@ public final class LakePartyPattern {
             "by the reeds, where the stream comes in", "the end of the jetty", "round the island");
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // 1. Parallel mapper — one Sniff, once per spot.
-        var spot = AgenticServices.agentBuilder(SniffChecksSpot.class)
-                .chatModel(model).name("Sniff").outputKey(Finding.class).build();
-        IceSurvey survey = AgenticServices.parallelMapperBuilder(IceSurvey.class)
-                .name("ParallelMapper")
-                .subAgents(spot)
-                .itemsProvider(new Spots().name())
-                .outputKey(Findings.class)
-                .build();
-
-        // 2. Glue — the findings written back into the mission the voters read.
-        var report = new IceReport();
-
-        // 3. Mission 13's vote, unchanged: the same VotingPlanner, the same VETO strategy, nested
-        //    as one step. Its verdict is pinned this time, so the announcement can read it.
-        var sniff = AgenticServices.agentBuilder(SniffVotes.class)
-                .chatModel(model).name("SniffVote").outputKey(Vote1.class).build();
-        var doc = AgenticServices.agentBuilder(DocVotes.class)
-                .chatModel(model).name("Doc").outputKey(Vote2.class).build();
-        IceBallot ballot = AgenticServices.plannerBuilder(IceBallot.class)
-                .subAgents(sniff, doc, new RivetVotes())
-                .planner(() -> new VotingPlanner(VotingPattern.VETO))
-                .outputKey(IceVerdict.class)
-                .build();
-
-        // 4. Howl tells the town.
-        var howl = AgenticServices.agentBuilder(HowlAnnounces.class)
-                .chatModel(model).name("Howl").outputKey(Announcement.class).build();
-
-        LakeParty app = AgenticServices.sequenceBuilder(LakeParty.class)
-                .name("Sequential")
-                .subAgents(survey, report, ballot, howl)
-                .outputKey(Announcement.class)
-                .listener(listener)
-                .build();
-        var r = app.decide(input, SPOTS);
+        // Sniff appears twice in this mission — checking the spots, and voting. Two boxes with
+        // one name would both light up, so the vote is renamed for this mission only.
+        var sniffVotesAsHimself = new AgenticServices.AgentConfigurator(agent -> {
+            if (agent.agentServiceClass() == SniffVotes.class) {
+                agent.agentBuilder().name("SniffVote");
+            }
+        });
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(LakeParty.class, model, sniffVotesAsHimself)
+                        .decide(input, SPOTS));
         return "**Howl, to all of Barkville:** " + r.result() + "\n\n---\n\n"
                 + VotingPattern.explain(r.agenticScope(),
                         requireNonNullElse(r.agenticScope().readState(IceVerdict.class), ""));

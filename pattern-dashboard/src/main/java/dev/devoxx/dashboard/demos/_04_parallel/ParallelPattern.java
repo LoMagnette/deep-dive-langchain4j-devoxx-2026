@@ -47,7 +47,7 @@ public final class ParallelPattern {
                 null,
                 "Fan out independent work concurrently, then merge. The three inspections do "
                         + "not need each other, so they run at once on their own executor "
-                        + "(`.executor(...)` on the parallel builder) — and the safety report "
+                        + "(a `@ParallelExecutor` method on the parallel agent) — and the safety report "
                         + "needs all three, which is exactly when fan-out-and-join is the right "
                         + "shape. Zao's merge is a second step in a sequence: **the parallel "
                         + "workflow is itself an agent**, plugged into a bigger one.",

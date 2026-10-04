@@ -70,7 +70,7 @@ public final class GoapPattern {
                         + "handed over scrambled — Doc, Rivet, Dig, Zoom — and they still run "
                         + "Rivet, Zoom, Dig, Doc. **The order is an output.**",
                 "Only as good as the declared keys: a missing link makes the goal unreachable, and "
-                        + "the failure is silence, not an error. Take Dig out of `subAgents(...)` "
+                        + "the failure is silence, not an error. Take Dig out of `subAgents = {...}` "
                         + "and nobody can ever secure the ladder, so Doc never climbs — no "
                         + "exception, just Marmalade, still on the tower, looking smug.",
                 topo,

@@ -58,6 +58,66 @@ before `java -jar` (e.g. `cp -r target/quarkus-app /tmp/app && java -jar /tmp/ap
   disables the fallback and fails loudly; `mock` forces offline.
   To run against Ollama: `ollama serve && ollama pull <model>`, then `mvn quarkus:dev`.
 
+## On the `declarative-api` branch: the demos use the DECLARATIVE API
+
+This branch is the same catalogue with every agentic mission (1–21) declared with annotations
+instead of built with `AgenticServices.*Builder()` chains. Mission 0 is unchanged: it is plain
+`AiServices`, which has no agentic declarative form. **Where this section and the notes below
+disagree, this section is right for this branch** — the notes below were written for the
+builder form (`.name("X")`, "the verbosity is the lesson", `assertImports` on `XxxPattern`).
+An older attempt on the pre-Rangers catalogue lives on `declarative-approach`; this one
+reused its `CurrentRun` idea.
+
+The shape of every demo now:
+- **The topology is a system interface in the mission's package** (`HatSearch`, `KittenRescue`,
+  `PosterLoop`, `StormWarning`, `FairSupervisor`, `GoapMission`, …): one method carrying
+  `@SequenceAgent` / `@LoopAgent` / `@ParallelAgent` / `@ParallelMapperAgent` /
+  `@ConditionalAgent` / `@SupervisorAgent` / `@PlannerAgent`, with `subAgents = {...}` naming
+  agents **by class**, plus static methods for everything the builder took as a lambda:
+  `@ExitCondition`, `@ActivationCondition`, `@Output`, `@PlannerSupplier`, `@ErrorHandler`,
+  `@ParallelExecutor`, `@BeforeCall`, `@SupervisorRequest`. That file is what to open on stage.
+- **`run` is `CurrentRun.with(listener, () -> AgenticServices.createAgenticSystem(X.class,
+  model).method(input))`** and then result formatting, as before.
+- **Each Ranger's `.name(...)` and output key moved onto its own `@Agent(name = "Sniff",
+  typedOutputKey = ...)`**, and gear onto a `@ToolsSupplier` static method. The name is exactly as
+  load-bearing as `.name("X")` was (the default is still the method name).
+
+Things this pinned down, each easy to get wrong:
+- **Per-run objects need `run/CurrentRun`.** `@AgentListenerSupplier`, `@StreamingChatModelSupplier`,
+  `@HumanInTheLoop`, `@Output` and the rest are **static** methods the framework calls itself, so
+  the run's listener, the person to ask (Mission 7) and the model tiers (Mission 19) cannot be
+  passed as arguments. `CurrentRun` is a `ThreadLocal` set for the whole run (build AND
+  invocation) on the run's thread, cleared in a `finally` because runs come off a pool. It works
+  for invocation-time reads because a sequence runs its steps on the caller's thread; parallel
+  branches never read it. Every system interface carries the same three-line
+  `@AgentListenerSupplier` returning `CurrentRun.observers()`.
+- **Per-mission differences use `AgenticServices.AgentConfigurator`**, the third argument of
+  `createAgenticSystem`. It runs LAST for every AI agent built, so it overrides the annotation:
+  Zoom's output key in the Mega Mutt (17), `SniffVote` in the lake party (18), Sniff's `async` in
+  20, Sniff's flaky radio in 21. Declared, a key lives on the agent, so "the composite is where
+  contracts get written" now means a configurator — say so on stage.
+- **Non-AI agents must be `static @Agent` methods** (`Rivet`, `RivetCameras`, `RivetVotes`,
+  `TapeMeasure`, `GazetteBrief`, `IceReport`). Agents are named by class and never instantiated,
+  so an instance method is simply not found. Rivet is still invisible to the listener in a
+  sequence; `rivetDoesTheMathsWithNoBrainAndNoEvents` still holds.
+- **Three keys are strings, because the annotation leaves no choice.** `@HumanInTheLoop` declares
+  `typedOutputKey` but `createHumanInTheLoopAgent` reads only `outputKey()` in `1.20.0-beta30` —
+  a typed key there is silently ignored and Dig never hears Jo — so `OfficerJo` uses
+  `outputKey = "Approved"`. `@ParallelMapperAgent.itemsProvider` has no typed form and an
+  annotation value must be a constant (`"Ducklings"`, `"Spots"`). Each is the record's name.
+- **`supervisorContext(...)` has no annotation attribute**, but it is only a `beforeCall` writing
+  `SupervisorPlanner.SUPERVISOR_CONTEXT_KEY` — so `FairSupervisor` does exactly that in a
+  `@BeforeCall`. `@SupervisorRequest` reads the fair from a typed key instead of `"request"`.
+- **Mission 19 passes the CHEAP model to `createAgenticSystem`**, so Zao needs no wiring, and
+  `DocOnNights` declares a `@ChatModelSupplier` taking `@K(Category.class)` — resolved at
+  invocation, the declarative form of `chatModel(Function<AgenticScope, ChatModel>)`.
+- **Mission 21's retry counter is a pin (`Attempts`)**: the `@ErrorHandler` is static and has
+  nothing to close over, so it counts on the board — which also puts the count on the Scope tab.
+- **`@ParallelExecutor` is called on every build**, so Mission 4 returns one shared daemon pool
+  rather than a new pool per run that nobody shuts down.
+- **Source-reading tests read the whole mission package** (`missionSource`), since the wiring
+  lives in the system interface, not the `XxxPattern`.
+
 ## Architecture
 
 Backend is **one package per demo** under `src/main/java/dev/devoxx/dashboard/demos/`, plus a

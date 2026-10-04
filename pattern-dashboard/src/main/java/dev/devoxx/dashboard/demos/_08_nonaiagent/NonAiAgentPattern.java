@@ -61,8 +61,9 @@ public final class NonAiAgentPattern {
                         + "listener, emits nothing, and is never timed: Rivet's box never lights. "
                         + "He is doing the work all the same — `LadderLength` appears in the "
                         + "Scope tab.\n\nThe smaller trap: `name` goes on the **annotation**. "
-                        + "There is no builder to call `.name(\"X\")` on, and the default is the "
-                        + "method name, so Rivet would be called \"ladderLength\" everywhere.",
+                        + "Same rule as every Ranger here, and the default is the method name, so "
+                        + "Rivet would be called \"ladderLength\" everywhere. And the method is "
+                        + "`static`: agents are named by class and never instantiated.",
                 topo,
                 "Paws up, Rangers! The kitten's branch on the Main Street oak is 6 metres up. "
                         + "Rivet, how long a ladder? Zoom, go and get it.",

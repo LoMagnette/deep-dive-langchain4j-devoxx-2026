@@ -3,7 +3,6 @@ package dev.devoxx.dashboard.demos._17_megamutt;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Parsing.reviewScore;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
@@ -11,21 +10,14 @@ import java.util.List;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._01_single.Keys.Location;
-import dev.devoxx.dashboard.demos._01_single.SniffFinds;
-import dev.devoxx.dashboard.demos._01_single.SniffGear;
-import dev.devoxx.dashboard.demos._02_sequential.DocChecks;
 import dev.devoxx.dashboard.demos._02_sequential.Keys.HealthReport;
 import dev.devoxx.dashboard.demos._02_sequential.Keys.RescueStatus;
 import dev.devoxx.dashboard.demos._02_sequential.SequentialPattern;
-import dev.devoxx.dashboard.demos._03_loop.FifiScores;
-import dev.devoxx.dashboard.demos._03_loop.HowlWrites;
-import dev.devoxx.dashboard.demos._03_loop.Keys.Draft;
 import dev.devoxx.dashboard.demos._03_loop.Keys.Feedback;
-import dev.devoxx.dashboard.demos._03_loop.LoopPattern;
-import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.LadderLength;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
 import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomFetchesLadder;
-import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomGear;
+import dev.devoxx.dashboard.run.CurrentRun;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.model.chat.ChatModel;
@@ -44,45 +36,18 @@ public final class MegaMuttPattern {
                     + "now; 4. it is under 60 words";
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Mission 1's Sniff, gear and all.
-        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
-                .chatModel(model).tools(new SniffGear())
-                .name("Sniff").outputKey(Location.class).build();
-        // Glue: a sentence in, a number out.
-        var tape = new TapeMeasure();
-        // Mission 8's Rivet, dropped in between Sniff and Zoom — exactly what the spec asks.
-        var rivet = new Rivet();
-        // Mission 8's Zoom. Its output key is chosen HERE, by the wiring: in this sequence the
-        // ladder Zoom brings is the rescue Doc reads, so it pins RescueStatus — the key is the
-        // contract between two agents, and the composite is where the contract is written.
-        var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
-                .chatModel(model).tools(new ZoomGear())
-                .name("Zoom").outputKey(RescueStatus.class).build();
-        // Mission 2's Doc, unchanged.
-        var doc = AgenticServices.agentBuilder(DocChecks.class)
-                .chatModel(model).name("Doc").outputKey(HealthReport.class).build();
-        // Glue: two pins in, the brief Mission 3's loop expects out.
-        var brief = new GazetteBrief();
-        // Mission 3's loop, nested as one step: Howl writes, Fifi scores, until 0.8.
-        var howl = AgenticServices.agentBuilder(HowlWrites.class)
-                .chatModel(model).name("Howl").outputKey(Draft.class).build();
-        var fifi = AgenticServices.agentBuilder(FifiScores.class)
-                .chatModel(model).name("Fifi").outputKey(Feedback.class).build();
-        GazetteLoop gazette = AgenticServices.loopBuilder(GazetteLoop.class)
-                .name("Loop")
-                .subAgents(howl, fifi)
-                .maxIterations(LoopPattern.TREATS)
-                .exitCondition(s -> reviewScore(s.readState(Feedback.class)) >= 0.8)
-                .testExitAtLoopEnd(true)
-                .build();
-
-        MegaMutt app = AgenticServices.sequenceBuilder(MegaMutt.class)
-                .name("Sequential")
-                .subAgents(sniff, tape, rivet, zoom, doc, brief, gazette)
-                .outputKey(Draft.class)
-                .listener(listener)
-                .build();
-        var r = app.rescue(input, GAZETTE_RULES, "(none yet — this is the first draft)");
+        // The wiring chooses Zoom's output key: in this sequence the ladder Zoom brings is the
+        // rescue Doc reads, so it pins RescueStatus. Declared, the key lives on Zoom's own @Agent
+        // (Ladder, from Mission 8) — so the composite rewrites that one contract here, with the
+        // configurator the declarative API calls for every agent it builds, last.
+        var zoomPinsTheRescue = new AgenticServices.AgentConfigurator(agent -> {
+            if (agent.agentServiceClass() == ZoomFetchesLadder.class) {
+                agent.agentBuilder().outputKey(RescueStatus.class);
+            }
+        });
+        var r = CurrentRun.with(listener, () ->
+                AgenticServices.createAgenticSystem(MegaMutt.class, model, zoomPinsTheRescue)
+                        .rescue(input, GAZETTE_RULES, "(none yet — this is the first draft)"));
         var s = r.agenticScope();
         return "**The Barkville Gazette**\n\n" + r.result()
                 + "\n\n---\n\n*Sniff:* " + requireNonNullElse(s.readState(Location.class), "")
