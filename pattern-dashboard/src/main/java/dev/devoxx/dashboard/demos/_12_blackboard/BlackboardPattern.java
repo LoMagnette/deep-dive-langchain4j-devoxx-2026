@@ -65,7 +65,8 @@ public final class BlackboardPattern {
                 // resolution strategy is for.
                 .subAgents(zao, doc, dig, rivet, sniff)
                 .planner(() -> new BlackboardPlanner(solved,
-                        ConflictResolutionStrategy.declarationOrder()))
+                        ConflictResolutionStrategy.agentWithName("Dig")
+                                .or(ConflictResolutionStrategy.declarationOrder())))
                 .outputKey(Culprit.class)
                 .listener(listener)
                 .build();
