@@ -4,6 +4,7 @@ import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -13,8 +14,8 @@ import java.util.concurrent.TimeoutException;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Message;
-import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
+import dev.devoxx.dashboard.demos._01_single.Keys.Location;
+import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
@@ -22,41 +23,30 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.TokenStream;
 
 /**
- * Wiring for the <b>single</b> demo — one call, one job.
+ * Wiring for <b>Mission 1</b> — one Ranger, one job, and his own choice of gear.
  */
 public final class SinglePattern {
 
     private SinglePattern() {
     }
 
-    /** Shared with the sequential demo, which runs the same text through a second agent. */
-    public static final String SITTER_MESSAGE =
-            "hey!! ok so — zao, the big grey hairy one. he is a bouvier. he is not a bear and "
-                    + "he is not a sheep, people ask. "
-                    + "food's in the tub by the back door, two scoops morning and evening. he "
-                    + "CANNOT have the dried liver treats any more, they go straight through him "
-                    + "and you will know about it. do NOT let him off the lead in the park. he "
-                    + "does not come back. he has never come back. vet's 061 22 33 44. he will "
-                    + "scream the first night like you are taking him apart — ignore it, he's "
-                    + "fine, he does it to us too. thank you!!! x";
-
     static String run(ChatModel model, String input, StreamingListener listener) {
         if (listener.streamingModel() != null) {
             return streamed(listener, input);
         }
-        var clerk = AgenticServices.agentBuilder(NoteRetriever.class)
+        var sniff = AgenticServices.agentBuilder(SniffFinds.class)
                 .chatModel(model)
-                .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .tools(new SniffGear())
+                .name("Sniff")
+                .outputKey(Location.class)
                 .build();
 
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                                          .subAgents(clerk)
-                                          .outputKey(Notes.class)
+                                          .subAgents(sniff)
+                                          .outputKey(Location.class)
                                           .listener(listener)
                                           .build();
-        var r = app.invokeWithAgenticScope(Map.of(new Message().name(), input));
-
+        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
         return String.valueOf(r.result());
     }
 
@@ -66,14 +56,15 @@ public final class SinglePattern {
      * because it is the LAST agent: put a step after it and the framework drains it internally.
      */
     private static String streamed(StreamingListener listener, String input) {
-        var clerk = AgenticServices.agentBuilder(StreamingNoteRetriever.class)
+        var sniff = AgenticServices.agentBuilder(StreamingSniffFinds.class)
                 .streamingChatModel(listener.streamingModel())
-                .name("NoteRetriever")
-                .outputKey(Notes.class)
+                .tools(new SniffGear())
+                .name("Sniff")
+                .outputKey(Location.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(clerk).outputKey(Notes.class).listener(listener).build();
-        Object result = app.invokeWithAgenticScope(Map.of(new Message().name(), input)).result();
+                .subAgents(sniff).outputKey(Location.class).listener(listener).build();
+        Object result = app.invokeWithAgenticScope(Map.of(new Mission().name(), input)).result();
         if (!(result instanceof TokenStream stream)) {
             return String.valueOf(result);   // right answer, just not streamed
         }
@@ -82,7 +73,7 @@ public final class SinglePattern {
         var text = new StringBuilder();
         stream.onPartialResponse(chunk -> {
                     text.append(chunk);
-                    listener.emitToken("NoteRetriever", chunk);
+                    listener.emitToken("Sniff", chunk);
                 })
                 .onCompleteResponse(response -> done.complete(response.aiMessage().text()))
                 .onError(done::completeExceptionally)
@@ -93,39 +84,50 @@ public final class SinglePattern {
             Thread.currentThread().interrupt();
             return text.toString();
         } catch (ExecutionException | TimeoutException e) {
-            // Whatever arrived is what the page has been showing token by token.
             return text.isEmpty() ? "the stream failed: " + e : text.toString();
         }
     }
 
     /** A stream that never completes would hold one of four run threads for ever. */
-    private static final java.time.Duration STREAM_TIMEOUT = java.time.Duration.ofMinutes(3);
+    private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(3);
+
+    /** Shared with Mission 21, whose Sniff goes looking for the same hat on a bad radio. */
+    public static final String LOST_HAT =
+            "Paws up, Rangers! The Mayor has lost his hat — the tall green one with the feather. "
+                    + "He last had it on the bench in Barkville Park, before the ducks arrived.";
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        Topology.Graph topo = graph("chain",
-                List.of(node("in", "message", "input"),
-                        node("clerk", "NoteRetriever", "agent")),
-                List.of(edge("in", "clerk")));
-        return new PatternDef("single", "Single Agent", "workflow",
-                "You are away this weekend. A friend said yes to having Zao before reading "
-                        + "the message. You have just sent them the message.",
+        // The gear is drawn as plain-Java boxes the agent MAY reach, with no order between
+        // them: the arrows say "it decides", and the page lights each one as the model calls it.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "mission", "input", 0).withSub("from the Mayor"),
+                        node("sniff", "Sniff", "agent", 1).withSub("finds · picks his gear").as("sniff"),
+                        node("t1", "sniff(place)", "code", 2).withSub("gear · plain Java"),
+                        node("t2", "followTrail(scent)", "code", 2).withSub("gear · plain Java"),
+                        node("out", "location", "join", 3).withSub("where the hat is")),
+                List.of(edge("in", "sniff"),
+                        edge("sniff", "t1", "it decides"), edge("sniff", "t2"),
+                        edge("sniff", "out")));
+        return new PatternDef("single", "Single Agent", "team",
+                "Paws up, Rangers! The Mayor has lost his hat. Sniff goes alone, and decides "
+                        + "for himself where to put his nose.",
                 null,
-                "One LLM call wrapped as an agent — the simplest useful unit, doing the job an "
-                        + "LLM is genuinely best at: turning what a human actually typed into a "
-                        + "shape a system can use.",
-                "No decomposition: one agent struggles with multi-step or long tasks — and watch "
-                        + "the Walks line, because a model would rather invent a walk time than "
-                        + "admit the message never gave one.",
+                "One `@Agent` interface with tools — the simplest useful unit. The wiring hands "
+                        + "Sniff his gear (`.tools(new SniffGear())`) and says nothing about "
+                        + "using it: **the model chooses which tool to call, with what argument, "
+                        + "and in what order**. Watch the Run events pane — every `tool-call` "
+                        + "line is a decision the LLM made, not your code.",
+                "The model may call a tool you did not expect, or none at all — and a tool that "
+                        + "returns a plausible string is believed. Tools are where facts come "
+                        + "from, so make them return facts, and log every call: the tool lines "
+                        + "in the Server log are the audit trail.",
                 topo,
-                // A real message: no punctuation, out of order, and one field genuinely absent
-                // (nobody said when to walk him), so the room can check whether the agent obeys
-                // "write not given" or quietly makes something up.
-                SITTER_MESSAGE,
+                LOST_HAT,
                 SinglePattern::run,
-                // The only demo that honours the token toggle, so the only one the page offers
-                // it on. Streaming is a property of the LAST agent, and every other entry in the
-                // catalogue ends on something that is not one.
-                true);
+                // The only demo that honours the token toggle: streaming is a property of the
+                // LAST agent, and every other entry ends on something that is not one.
+                true)
+                .gist("One agent that chooses its own tools.");
     }
 }

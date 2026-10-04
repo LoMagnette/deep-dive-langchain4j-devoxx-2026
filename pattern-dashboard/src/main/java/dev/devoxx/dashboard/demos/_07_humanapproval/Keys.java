@@ -2,15 +2,15 @@ package dev.devoxx.dashboard.demos._07_humanapproval;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
 
-/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+/** The Pup Board pins this mission introduces. See {@code demos/package-info.java}. */
 public final class Keys {
 
     private Keys() {
     }
 
-    public record Decision() implements TypedKey<String> {}
+    /** Dig's plan, waiting on Officer Jo. Nothing is dug while this is all there is. */
+    public record DigPlan() implements TypedKey<String> {}
 
-    public record Draft() implements TypedKey<String> {}
-
-    public record Instruction() implements TypedKey<String> {}
+    /** What Officer Jo said — yes, no, or yes-but. Written by a person, read by a dog. */
+    public record Approved() implements TypedKey<String> {}
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import dev.devoxx.dashboard.catalog.PatternDef.PatternInfo;
+import dev.devoxx.dashboard.demos._00_aiservice.AiServicePattern;
 import dev.devoxx.dashboard.demos._01_single.SinglePattern;
 import dev.devoxx.dashboard.demos._02_sequential.SequentialPattern;
 import dev.devoxx.dashboard.demos._03_loop.LoopPattern;
@@ -20,8 +21,8 @@ import dev.devoxx.dashboard.demos._13_voting.VotingPattern;
 import dev.devoxx.dashboard.demos._14_debate.DebatePattern;
 import dev.devoxx.dashboard.demos._15_bdi.BdiPattern;
 import dev.devoxx.dashboard.demos._16_customplanner.CustomPlannerPattern;
-import dev.devoxx.dashboard.demos._17_sitternote.SitterNotePattern;
-import dev.devoxx.dashboard.demos._18_seconddogcouncil.SecondDogCouncilPattern;
+import dev.devoxx.dashboard.demos._17_megamutt.MegaMuttPattern;
+import dev.devoxx.dashboard.demos._18_lakeparty.LakePartyPattern;
 import dev.devoxx.dashboard.demos._19_modelrouting.ModelRoutingPattern;
 import dev.devoxx.dashboard.demos._20_async.AsyncPattern;
 import dev.devoxx.dashboard.demos._21_resilience.ResiliencePattern;
@@ -37,37 +38,36 @@ public class PatternCatalog {
     private final List<PatternDef> patterns = build();
 
     private static List<PatternDef> build() {
+        // In mission-number order — starting at 0 — so _NN_ in every package name is its index
+        // here. The rail and
+        // the gallery group these by the spec's four ACTS (the category), which is how missions
+        // 1 and 8 end up side by side in Act 1 without anything being renumbered.
         return List.of(
-                // Workflows — you decide the path
-                SinglePattern.define(),
-                SequentialPattern.define(),
-                LoopPattern.define(),
-                ParallelPattern.define(),
-                ParallelMapperPattern.define(),
-                ConditionalPattern.define(),
-                HumanApprovalPattern.define(),
-                // Last of the workflows because "the model decides nothing at all" is the far
-                // left of the dial — not in the group below, which is orthogonal to it.
-                NonAiAgentPattern.define(),
-                // Pure agents — the model decides the path
-                SupervisorPattern.define(),
-                // The pattern zoo — planners that decide the turns, the last one ours
-                GoapPattern.define(),
-                P2pPattern.define(),
-                BlackboardPattern.define(),
-                VotingPattern.define(),
-                DebatePattern.define(),
-                BdiPattern.define(),
-                CustomPlannerPattern.define(),
-                // Putting it together
-                SitterNotePattern.define(),
-                SecondDogCouncilPattern.define(),
-                // Running it for real — modifiers on an agent, not positions on the dial. They
-                // come last because they are orthogonal to the autonomy question the rail order
-                // asks: any of them can be bolted onto any demo above.
-                ModelRoutingPattern.define(),
-                AsyncPattern.define(),
-                ResiliencePattern.define());
+                AiServicePattern.define(),       // 0  · Before the pack — a plain AI service
+                SinglePattern.define(),          // 1  · Act 1, Meet the team
+                SequentialPattern.define(),      // 2  · Act 2, Workflows — you decide the order
+                LoopPattern.define(),            // 3
+                ParallelPattern.define(),        // 4
+                ParallelMapperPattern.define(),  // 5
+                ConditionalPattern.define(),     // 6
+                HumanApprovalPattern.define(),   // 7
+                NonAiAgentPattern.define(),      // 8  · Act 1 — some pups don't need a brain
+                SupervisorPattern.define(),      // 9  · Act 3, Planners — the system decides
+                GoapPattern.define(),            // 10
+                P2pPattern.define(),             // 11
+                BlackboardPattern.define(),      // 12
+                VotingPattern.define(),          // 13 · Act 4, Many minds and custom brains
+                DebatePattern.define(),          // 14
+                BdiPattern.define(),             // 15
+                CustomPlannerPattern.define(),   // 16
+                // The Mega Mutt — missions combined into a bigger Ranger.
+                MegaMuttPattern.define(),        // 17
+                LakePartyPattern.define(),       // 18
+                // Running it for real — modifiers you can bolt onto any mission above, which is
+                // why they sit outside the four acts rather than inside them.
+                ModelRoutingPattern.define(),    // 19
+                AsyncPattern.define(),           // 20
+                ResiliencePattern.define());     // 21
     }
 
     public List<PatternInfo> infos() {

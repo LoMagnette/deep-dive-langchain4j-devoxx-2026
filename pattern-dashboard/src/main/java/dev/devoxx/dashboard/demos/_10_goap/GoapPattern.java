@@ -3,108 +3,107 @@ package dev.devoxx.dashboard.demos._10_goap;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static dev.devoxx.dashboard.support.Parsing.firstNumber;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Children;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Cyclists;
-import dev.devoxx.dashboard.demos._10_goap.Keys.Hoover;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Rivet;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.Ladder;
+import dev.devoxx.dashboard.demos._08_nonaiagent.Keys.LadderLength;
+import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomFetchesLadder;
+import dev.devoxx.dashboard.demos._08_nonaiagent.ZoomGear;
+import dev.devoxx.dashboard.demos._10_goap.Keys.CatSafe;
+import dev.devoxx.dashboard.demos._10_goap.Keys.LadderSecured;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.goap.GoalOrientedPlanner;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>GOAP</b> demo — the planner works out the order from the declared inputs and outputs.
+ * Wiring for <b>Mission 10</b> — the planner derives the order from what each Ranger needs.
  */
 public final class GoapPattern {
 
     private GoapPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var hoover = AgenticServices.agentBuilder(NotTheHoover.class)
+        var rivet = new Rivet();
+        var zoom = AgenticServices.agentBuilder(ZoomFetchesLadder.class)
                 .chatModel(model)
-                .name("NotTheHoover")
-                .outputKey(Hoover.class)
+                .tools(new ZoomGear())
+                .name("Zoom")
+                .outputKey(Ladder.class)
                 .build();
-        var children = AgenticServices.agentBuilder(NotTheChildren.class)
+        var dig = AgenticServices.agentBuilder(DigSteadies.class)
                 .chatModel(model)
-                .name("NotTheChildren")
-                .outputKey(Children.class)
+                .name("Dig")
+                .outputKey(LadderSecured.class)
                 .build();
-        var cyclists = AgenticServices.agentBuilder(NotTheCyclists.class)
+        var doc = AgenticServices.agentBuilder(DocClimbs.class)
                 .chatModel(model)
-                .name("NotTheCyclists")
-                .outputKey(Cyclists.class)
+                .name("Doc")
+                .outputKey(CatSafe.class)
                 .build();
 
         GoapMission app = AgenticServices.plannerBuilder(GoapMission.class)
-                .subAgents(cyclists, children, hoover)
+                // Scrambled on purpose: the planner works backwards from CatSafe through what
+                // each Ranger needs, so this order is never the order they run in.
+                .subAgents(doc, rivet, dig, zoom)
                 .planner(GoalOrientedPlanner::new)
-                .outputKey(Cyclists.class)
+                .outputKey(CatSafe.class)
                 .listener(listener)
                 .build();
 
-        var r = app.invoke(input);
-        String hooverText = requireNonNullElse(r.agenticScope().readState(Hoover.class), "");
-        String childrenText = requireNonNullElse(r.agenticScope().readState(Children.class), "");
-        String cyclistText = requireNonNullElse(r.agenticScope().readState(Cyclists.class), "");
-        return "**The hoover** — " + hooverText
-                + "\n\n**The children** — " + childrenText
-                + "\n\n**The cyclists** — " + cyclistText;
+        var r = app.invoke(firstNumber(input, 12.0));
+        var s = r.agenticScope();
+        return "**Rivet** — the ladder must be " + s.readState(LadderLength.class) + " m"
+                + "\n\n**Zoom** — " + requireNonNullElse(s.readState(Ladder.class), "")
+                + "\n\n**Dig** — " + requireNonNullElse(s.readState(LadderSecured.class), "")
+                + "\n\n**Doc** — " + requireNonNullElse(s.readState(CatSafe.class), "");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // NO ARROWS BETWEEN THE AGENTS, and that is the entire design of this diagram. Drawn
-        // as goal → hoover → children → cyclists it was pixel-for-pixel the sequential demo:
-        // three boxes wired nose to tail, which is a picture of a path somebody typed. The
-        // sub-lines said "needs 'Hoover'" underneath arrows that had already claimed the order,
-        // so the caption was arguing with the drawing and the drawing wins.
-        //
-        // What actually happens: you hand the planner a BAG of agents — here in registration
-        // order, which is backwards — and it searches for a chain from what each one needs to
-        // what each one writes. Nobody connected them. So the agents sit in one column in the
-        // order they were declared, the planner fans out to them, and the arrows carry the
-        // positions it DERIVED: 3rd, 2nd, 1st, reading down. That mismatch between the order
-        // they are listed in and the order they run in is the pattern, and now it is the first
-        // thing you see rather than a line of small print.
+        // NO ARROWS BETWEEN THE RANGERS, and that is the entire design of this diagram. Drawn
+        // nose to tail it would be the sequential demo: a path somebody typed. Here you hand the
+        // planner a bag of agents in a scrambled order and it searches back from the goal, so
+        // the Rangers sit in one column in the order they were REGISTERED and the arrows carry
+        // the positions the planner DERIVED. That mismatch is the pattern.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "goal", "input", 0),
+                List.of(node("in", "towerHeight", "input", 0).withSub("goal: catSafe"),
                         node("plan", "GoalOrientedPlanner", "planner", 1)
-                                .withSub("the order is an OUTPUT"),
-                        node("cyclists", "NotTheCyclists", "agent", 2)
-                                .withSub("needs 'Children'"),
-                        node("children", "NotTheChildren", "agent", 2)
-                                .withSub("needs 'Hoover'"),
-                        node("hoover", "NotTheHoover", "agent", 2)
-                                .withSub("needs nothing")),
-                List.of(edge("in", "plan", "3 agents, unordered"),
-                        edge("plan", "cyclists", "runs 3rd"),
-                        edge("plan", "children", "runs 2nd"),
-                        edge("plan", "hoover", "runs 1st")));
-
-        return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "pattern-zoo",
-                "He is a cattle dog with no cattle, so he has improvised. The hoover has "
-                        + "been gathered. The children have been gathered.",
-                null,
-                "The planner orders agents automatically by matching each output to the next "
-                        + "input. Nobody has to be told this order: you can call him off a hoover "
-                        + "long before you can call him off a child, and off a child long before "
-                        + "you can call him off a cyclist — loud but stationary, then fast but "
-                        + "biddable, then fast and silent and gone. So there is genuinely an "
-                        + "order to discover, and you can see it was discovered rather than typed.",
-                // caveat: planning is only as good as the declared pre/post-conditions (I/O keys).
-                "Needs well-declared I/O keys; a missing link means the goal is unreachable — and "
-                        + "the failure is silence, not an error.",
+                                .withSub("works back from the goal"),
+                        node("doc", "Doc", "agent", 2).withSub("needs 'LadderSecured'").as("doc"),
+                        node("rivet", "Rivet", "code", 2).withSub("needs 'Height'").as("rivet"),
+                        node("dig", "Dig", "agent", 2).withSub("needs 'Ladder'").as("dig"),
+                        node("zoom", "Zoom", "agent", 2).withSub("needs 'LadderLength'").as("zoom")),
+                List.of(edge("in", "plan", "4 Rangers, scrambled"),
+                        edge("plan", "doc", "runs 4th"),
+                        edge("plan", "rivet", "runs 1st"),
+                        edge("plan", "dig", "runs 3rd"),
+                        edge("plan", "zoom", "runs 2nd")));
+        return new PatternDef("goap", "GOAP (Goal-Oriented Planning)", "planner",
+                "Marmalade is stuck on the water tower. Again. The Rangers are registered in the "
+                        + "wrong order, and the planner does not care.",
+                "Mission 8's Rivet and Zoom, unchanged, plus Dig and Doc.",
+                "Goal = `CatSafe`. Each Ranger declares what it needs and what it pins, and the "
+                        + "planner works backwards: Doc climbs (needs `LadderSecured`) ← Dig "
+                        + "steadies the ladder (needs `Ladder`) ← Zoom fetches it (needs "
+                        + "`LadderLength`) ← Rivet computes it (needs `Height`). The Rangers are "
+                        + "handed over scrambled — Doc, Rivet, Dig, Zoom — and they still run "
+                        + "Rivet, Zoom, Dig, Doc. **The order is an output.**",
+                "Only as good as the declared keys: a missing link makes the goal unreachable, and "
+                        + "the failure is silence, not an error. Take Dig out of `subAgents(...)` "
+                        + "and nobody can ever secure the ladder, so Doc never climbs — no "
+                        + "exception, just Marmalade, still on the tower, looking smug.",
                 topo,
-                "Zao has decided the hoover is livestock. So are the children. So, increasingly, "
-                        + "are cyclists. Teach him that none of them are.",
-                GoapPattern::run);
+                "Paws up, Rangers! Marmalade is stuck on top of the water tower — 12 metres up — and "
+                        + "is yowling at the whole of Barkville.",
+                GoapPattern::run)
+                .gist("Name the goal; the planner derives the order from what each needs.");
     }
 }

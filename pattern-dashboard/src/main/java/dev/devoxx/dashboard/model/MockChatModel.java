@@ -1,15 +1,19 @@
 package dev.devoxx.dashboard.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -17,24 +21,36 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * Deterministic, no-API-key chat model. It inspects the last user prompt and returns a short,
- * PARSEABLE answer so every pattern can run on stage without a real LLM — which is also what
- * {@code mvn test} runs against.
+ * Deterministic, no-API-key chat model for the Pawer Rangers. It inspects the last user prompt
+ * and returns a short, PARSEABLE answer so every mission can run on stage without a real LLM —
+ * which is also what {@code mvn test} runs against.
+ *
+ * <p>Three things it does that a canned table usually does not, each because a mission needs it:
+ * <ul>
+ *   <li><b>Tool calls.</b> When the request carries tools, it asks for them one at a time, the
+ *       way a model would, and only answers once every planned call has a result — so Mission 1's
+ *       {@code tool-call} events are real round trips through the framework, offline.</li>
+ *   <li><b>Item awareness.</b> The ducklings and the ice spots each get their own answer: eight
+ *       identical lines would run a mapper perfectly and demonstrate nothing.</li>
+ *   <li><b>A reactive supervisor plan.</b> Zao sends one Ranger per problem in the fair, read out
+ *       of the request, and stops when there are none left.</li>
+ * </ul>
  */
 public class MockChatModel implements ChatModel {
 
-    private final AtomicInteger scoreCounter = new AtomicInteger();
+    /** Fifi's reviews alternate 2/4 then 4/4, so a loop visibly iterates once and then exits. */
+    private final AtomicInteger reviews = new AtomicInteger();
     private final AtomicInteger lineCounter = new AtomicInteger();
-    /** How far the supervisor's reactive plan has got. */
+    /** How many fair problems Zao has handed out so far. */
     private final AtomicInteger plannerStep = new AtomicInteger();
 
     /** Filler for prompts no rule claims — themed, so an unmatched prompt still looks alive. */
     private static final String[] HOUSE_LINES = {
-            "Zao settles in the hall where he can see both doors, one ear up.",
-            "Noted, and stuck on the fridge with the others.",
-            "Nothing else to change this week — keep everything as boring as possible.",
-            "Zao takes this as his cue to bring you the lead, just in case.",
-            "Written in the notebook by the back door where you will both see it."
+            "Paws up! Zao has noted it on the Pup Board.",
+            "Sniff has his nose on it.",
+            "Nothing to report, and Zoom has gone after a squirrel.",
+            "Fifi has read it and finds it… adequate.",
+            "Rivet has filed it. Rivet files everything."
     };
 
     private final List<ChatModelListener> listeners;
@@ -46,8 +62,7 @@ public class MockChatModel implements ChatModel {
     /**
      * With listeners, the offline demo logs its prompts and answers exactly as a real model
      * does — {@code ChatModel.chat()} fires them and then calls {@link #doChat}, so overriding
-     * doChat rather than chat is what buys that for free. Tests construct the no-arg version:
-     * every mock call would otherwise log, and the interesting failures would be buried.
+     * doChat rather than chat is what buys that for free. Tests construct the no-arg version.
      */
     public MockChatModel(List<ChatModelListener> listeners) {
         this.listeners = List.copyOf(listeners);
@@ -60,18 +75,102 @@ public class MockChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest request) {
-        String text = respond(lastUserText(request));
-        return ChatResponse.builder().aiMessage(AiMessage.from(text)).build();
+        String prompt = lastUserText(request);
+        if (!request.toolSpecifications().isEmpty()) {
+            // A model with gear asks for one tool at a time and reads each result before the
+            // next call. Planned from the PROMPT, counted from the conversation, so every
+            // round trip goes through the framework's own tool loop.
+            List<ToolExecutionRequest> plan = toolPlan(collapse(prompt));
+            int done = toolResultsSinceLastUser(request.messages());
+            if (done < plan.size()) {
+                return ChatResponse.builder().aiMessage(AiMessage.from(List.of(plan.get(done))))
+                        .build();
+            }
+            prompt = prompt + " TOOL RESULTS: " + toolResults(request.messages());
+        }
+        return ChatResponse.builder().aiMessage(AiMessage.from(respond(prompt))).build();
     }
 
-    /**
-     * The LAST user message only — plus any system prompt, which carries the agent's role.
-     */
-    private String lastUserText(ChatRequest request) {
+    // ------------------------------------------------------------------------------------------
+    // Gear
+    // ------------------------------------------------------------------------------------------
+
+    private List<ToolExecutionRequest> toolPlan(String p) {
+        List<ToolExecutionRequest> plan = new ArrayList<>();
+        if (p.contains("answering letters at the pup hq front desk")
+                && !p.contains("rewrite this answer to fit the noticeboard")) {
+            // Mission 0: look up who does the job, then whether that Ranger is awake.
+            boolean digging = p.contains("dig") && !p.contains("glasses") || p.contains("hole");
+            plan.add(tool("rangerFor", digging ? "{\"job\":\"digging\"}"
+                    : "{\"job\":\"finding something lost\"}"));
+            plan.add(tool("onDuty", digging ? "{\"ranger\":\"Dig\"}" : "{\"ranger\":\"Sniff\"}"));
+        } else if (p.contains("find what this mission is looking for")) {
+            String mission = after(p, "mission:");
+            if (mission.contains("hat")) {
+                plan.add(tool("sniff", "{\"place\":\"the park bench\"}"));
+                plan.add(tool("followTrail", "{\"scent\":\"green feather fluff\"}"));
+            } else if (mission.contains("kitten") || mission.contains("oak")) {
+                plan.add(tool("sniff", "{\"place\":\"the oak tree on Main Street\"}"));
+            } else {
+                plan.add(tool("sniff", "{\"place\":\"" + jsonEscape(mission.strip()) + "\"}"));
+            }
+        } else if (p.contains("rivet says the ladder must be at least")) {
+            // The FIRST "at least" carries Rivet's number; the prompt says it twice.
+            String size = ladderFor(firstNumber(after(p, "rivet says the ladder must be at least")));
+            plan.add(tool("fetch", "{\"item\":\"" + size + " ladder\"}"));
+            plan.add(tool("deliver",
+                    "{\"item\":\"the " + size + " ladder\",\"place\":\"the rescue\"}"));
+        }
+        return plan;
+    }
+
+    private static final AtomicInteger TOOL_IDS = new AtomicInteger();
+
+    private static ToolExecutionRequest tool(String name, String arguments) {
+        return ToolExecutionRequest.builder().id("call_" + TOOL_IDS.incrementAndGet())
+                .name(name).arguments(arguments).build();
+    }
+
+    /** The shed's next size up — the same rule ZoomGear applies, so the call matches the gear. */
+    private static String ladderFor(double metres) {
+        for (double l : new double[] {5, 7.5, 10, 15}) {
+            if (l >= metres) {
+                return (l % 1 == 0 ? String.valueOf((int) l) : String.valueOf(l)) + " m";
+            }
+        }
+        return "15 m";
+    }
+
+    private static int toolResultsSinceLastUser(List<ChatMessage> messages) {
+        int n = 0;
+        for (ChatMessage m : messages) {
+            if (m instanceof UserMessage) {
+                n = 0;
+            } else if (m instanceof ToolExecutionResultMessage) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static String toolResults(List<ChatMessage> messages) {
+        StringBuilder sb = new StringBuilder();
+        for (ChatMessage m : messages) {
+            if (m instanceof UserMessage) {
+                sb.setLength(0);
+            } else if (m instanceof ToolExecutionResultMessage t) {
+                sb.append(t.text()).append(' ');
+            }
+        }
+        return sb.toString();
+    }
+
+    /** The LAST user message only — plus any system prompt, which carries the agent's role. */
+    private static String lastUserText(ChatRequest request) {
         StringBuilder sb = new StringBuilder();
         String lastUser = "";
         for (ChatMessage m : request.messages()) {
-            if (m instanceof UserMessage um) {
+            if (m instanceof UserMessage um && um.hasSingleText()) {
                 lastUser = um.singleText();
             } else if (m instanceof SystemMessage sm) {
                 sb.append(' ').append(sm.text());
@@ -80,607 +179,492 @@ public class MockChatModel implements ChatModel {
         return sb.append(' ').append(lastUser).toString();
     }
 
-    /** One canned behaviour: when the lowercased prompt matches, reply from the raw prompt. */
+    // ------------------------------------------------------------------------------------------
+    // The rule table
+    // ------------------------------------------------------------------------------------------
+
+    /** One canned behaviour: when the collapsed, lowercased prompt matches, reply from it. */
     private record Rule(Predicate<String> when, Function<String, String> reply) {
     }
 
+    /**
+     * Ordered, and each rule says what it stands in front of. Two rules for every trigger here:
+     * it is an INSTRUCTION from the prompt, never content an answer could quote back (a refining
+     * loop feeds its own output into the next prompt), and never a dog's name on its own (the
+     * same Ranger speaks in a dozen missions).
+     */
     private List<Rule> rules() {
         return List.of(
-                // --- 0. Supervisor planner. FIRST because its prompt also contains "one of ...
-                // agents", which would otherwise trip the routing rule and emit an unparseable
-                // word instead of the JSON the planner protocol requires.
+                // --- Mission 9. The supervisor's planner prompt. FIRST, because it quotes the
+                // descriptions of all four Rangers and would otherwise trip their rules.
                 new Rule(p -> p.contains("planner expert") || p.contains("agent invocation"),
                         this::supervisorPlan),
 
-                // --- 1. The loop critic. Keyed on "0.0 to 1.0", NOT on "number": three agents'
-                // rules mention the vet's telephone number. 0.60 then 0.95, so a loop iterates
-                // once and then crosses the 0.8 bar.
-                new Rule(p -> p.contains("0.0 to 1.0") || has(p, "score", "rate"),
-                        p -> String.format(Locale.US, "%.2f",
-                                scoreCounter.getAndIncrement() % 2 == 0 ? 0.60 : 0.95)),
+                // --- Mission 0. The front desk. The REPROMPT first: it arrives with the same
+                // system message, so the long-answer rule below would claim it too. The first
+                // answer is deliberately too long for PawSized, so the output guardrail fires
+                // offline every time and the room sees the reprompt.
+                new Rule(p -> p.contains("rewrite this answer to fit the noticeboard"),
+                        p -> "Sniff will find your glasses, Mr Mayor — he is on duty and can be "
+                                + "with you in ten minutes. Paws up!"),
+                new Rule(p -> p.contains("answering letters at the pup hq front desk"),
+                        p -> "Dear Mr Mayor, thank you so very much for your letter to Pup HQ, "
+                                + "which we have pinned to the wall and read aloud to the whole "
+                                + "team twice. I have checked the duty roster most carefully: the "
+                                + "Ranger for finding lost things is Sniff, our Beagle, whose nose "
+                                + "has never once let Barkville down, and I am delighted to report "
+                                + "that he is on duty, nose ready, and can be with you in about "
+                                + "ten minutes. Warmest regards from all of us at Pup HQ, Zao."),
 
-                // --- 2. The second-dog vote. One word, and deliberately NOT the same word for
-                // all three — a real 2-1 majority rather than three agents agreeing.
-                new Rule(p -> p.contains("what a second dog costs"), p -> "YES"),
-                new Rule(p -> p.contains("yes or later"), p -> "LATER"),
+                // --- Missions 3 and 17. Fifi before Howl: her prompt quotes his draft.
+                new Rule(p -> p.contains("score this draft against the four rules"),
+                        p -> reviews.getAndIncrement() % 2 == 0
+                                ? "SCORE: 2/4\nFEEDBACK: Too loud, too long, and it never says "
+                                + "when or where."
+                                : "SCORE: 4/4\nFEEDBACK: Acceptable. I suppose."),
+                new Rule(p -> p.contains("write what the brief below asks for"),
+                        MockChatModel::howlDraft),
 
-                // --- 3. The worry router. Must stay in step with Parsing.CATEGORIES, or it
-                // picks a branch that does not exist. Classified from the WORRY, never from the
-                // destinations the prompt lists — matching those routes everything to the vet,
-                // which looks right offline because the shipped worry really is an emergency.
-                new Rule(p -> p.contains("classify this worry"), p -> switch (kind(p)) {
-                    case MEDICAL -> "emergency";
-                    case BEHAVIOUR -> "training";
-                    case BASICS -> "everyday";
-                }),
+                // --- Missions 13 and 18. The two model voters; Rivet votes in Java.
+                new Rule(p -> p.contains("judge only by who is already out on the ice"),
+                        p -> "SAFE — the ducks are walking on it and it smells of nothing but duck."),
+                new Rule(p -> p.contains("you are the medic and you look for what could go wrong"),
+                        p -> "NOT SAFE — the dark patch by the reeds is thin ice over moving water."),
 
-                // --- 4. The beard, one item at a time. Item-aware, so the gathered verdicts
-                // differ per item — five identical lines would run the pattern perfectly and
-                // demonstrate nothing.
-                new Rule(p -> p.contains("out of the beard"), MockChatModel::beardVerdict),
+                // --- Missions 6 and 19. Zao's classifier. Reads ONLY the call, never the
+                // definitions its own prompt gives: those mention every category's words.
+                new Rule(p -> p.contains("classify this emergency call"),
+                        p -> kind(after(p, "the call:"))),
 
-                // --- 5. The sitter note, narrowest first. All three of these prompts talk about
-                // notes and cards, and the checklist's prompt quotes the words "sitter card".
-                new Rule(p -> p.contains("times of day in order"),
-                        p -> """
-                                07:30  two scoops, in the tub by the back door
-                                08:00  out for a walk, lead on the whole time
-                                13:00  quick garden visit
-                                18:00  two scoops
-                                19:00  last walk of the day
-                                Never: the dried liver treats. Never off the lead in the park.
-                                Lead and poo bags: hook by the back door. Vet: 061 22 33 44."""),
-                new Rule(p -> p.contains("sitter card with exactly"),
-                        p -> """
-                                Dog: Zao, Bouvier des Flandres
-                                Meals: two scoops morning and evening, food in the tub by the back door
-                                Walks: not given
-                                Watch out for: no dried liver treats; never off the lead in the park
-                                Vet: 061 22 33 44"""),
+                // --- Missions 1, 2, 17, 21. Sniff finds; doChat has appended the tool results.
+                new Rule(p -> p.contains("find what this mission is looking for"),
+                        MockChatModel::sniffFound),
 
-                // --- 6. The refinement loop's rewrite. Satisfies all four rules, so the room can
-                // hold it against the note it started from and see what the loop fixed.
-                new Rule(p -> p.contains("never met the dog"),
-                        p -> """
-                                Zao eats twice a day: two scoops at 07:30 and two at 18:00. Food \
-                                is in the tub by the back door. No dried liver treats — they \
-                                upset him.
+                // --- Mission 2. The kitten chain, one Ranger after another.
+                new Rule(p -> p.contains("bring the ladder from pup hq"),
+                        p -> "Ladder up against the north side of the oak, I went up, and the "
+                                + "kitten came down under my chin. It reached the ground scared, "
+                                + "holding one paw up, but in one piece."),
+                new Rule(p -> p.contains("check whoever was just rescued"),
+                        p -> "The kitten from 6 metres up the Main Street oak is scared but fine, "
+                                + "with a thorn in its front paw. Nobody picks it up by that paw "
+                                + "until the thorn is out."),
+                new Rule(p -> p.contains("write the barkville gazette story of this rescue"),
+                        p -> "KITTEN SAVED IN MAIN STREET DRAMA\nSix metres up, clinging to the "
+                                + "north branch, a kitten faced the end. The Pawer Rangers did not "
+                                + "let it. It is scared, thorny, and fine."),
 
-                                Walk him at 08:00 and again at 19:00. His lead and the poo bags \
-                                are on the hook by the back door. Keep him on the lead in the \
-                                park; he will not come back yet.
+                // --- Missions 4 and 20. Zao's merge FIRST: it quotes all three inspections.
+                new Rule(p -> p.contains("merge the three inspections"),
+                        p -> "Bridge: CLOSED\nForest: OPEN — the south path only\nTunnels: OPEN\n"
+                                + "Tonight everyone goes through the tunnels, and nobody crosses "
+                                + "the bridge."),
+                new Rule(p -> p.contains("inspect the river bridge"),
+                        p -> "Two planks cracked and the rope rail is fraying.\nCLOSED"),
+                new Rule(p -> p.contains("inspect the forest path"),
+                        p -> "A dead oak leans over the north path; the south path is clear.\n"
+                                + "OPEN — south path only"),
+                new Rule(p -> p.contains("inspect the old drainage tunnels"),
+                        p -> "Dry, clear, and every grate is holding.\nOPEN"),
 
-                                He may cry the first night. He settles.
+                // --- Mission 5. One duckling per call, read from the item, never the prompt.
+                new Rule(p -> p.contains("search for this one duckling"),
+                        p -> duckling(after(p, "the duckling:"))),
 
-                                Vet: 061 22 33 44."""),
+                // --- Mission 7. Dig plans, Jo answers, Dig acts.
+                new Rule(p -> p.contains("plan the tunnel for this rescue"),
+                        p -> "Start at the garden wall, behind the roses, not in the bed.\nTunnel "
+                                + "under the third bush, where the hedgehog is.\nThe roots above "
+                                + "will be disturbed: two prize blooms may drop."),
+                new Rule(p -> p.contains("officer jo has answered"), MockChatModel::digActs),
 
-                // --- 7. The weekend-away composite, narrowest first. Its refining loop reuses
-                // demo 3's FridgeMagnet rather than an agent of its own, so it is claimed by
-                // the checklist rule above — there is deliberately no rule of its own here.
-                new Rule(p -> p.contains("goes on the fridge for the dog sitter"),
-                        p -> """
-                                Fireworks are the thing to plan for: shut the curtains, put the \
-                                radio on and keep him in after dark both nights.
-                                Meals 07:30 and 18:00, two scoops. Walks 08:00 and 19:00, lead on \
-                                throughout. Vet 061 22 33 44."""),
-                new Rule(p -> p.contains("meals for the days"),
-                        p -> "Two scoops at 07:30 and two at 18:00, from the tub by the back "
-                                + "door. Nothing off the table, and no dried liver treats."),
-                new Rule(p -> p.contains("walks for the days"),
-                        p -> "08:00 for half an hour and 19:00 for twenty minutes, lead on the "
-                                + "whole time. Avoid the park after dark while the fireworks are "
-                                + "going."),
+                // --- Missions 8, 10, 17. Zoom with the ladder (gear first, then this).
+                new Rule(p -> p.contains("rivet says the ladder must be at least"),
+                        p -> "Fetched " + ladderFetched(p) + " from the fire-station shed and "
+                                + "delivered it, leaning against the trunk, ready to climb."),
 
-                // --- 8. The three desks, AFTER the composite's rules because the merger's
-                // prompt quotes whichever of them answered. Each ends with the word the
-                // escalation ladder branches on; the vet is the last rung, so it always answers.
-                new Rule(p -> p.contains("out-of-hours line"), MockChatModel::nurse),
+                // --- Mission 10. GOAP's last two links.
+                new Rule(p -> p.contains("dig its feet into the ground and hold it steady"),
+                        p -> "Feet dug in twenty centimetres, me sitting on the bottom rung. It "
+                                + "is not going anywhere: secure."),
+                new Rule(p -> p.contains("climb it, bring marmalade down"),
+                        p -> "Up the ladder, Marmalade under one paw, down again. She is unhurt, "
+                                + "ungrateful, and has scratched my nose."),
 
-                new Rule(p -> p.contains("emergency vet"),
-                        p -> vet(p) + "\nANSWERED"),
-                new Rule(p -> p.contains("the dog trainer"), MockChatModel::trainer),
-                new Rule(p -> p.contains("everyday dog questions"),
-                        p -> everyday(p) + "\n"
-                                + (kind(p) == Kind.BASICS ? "ANSWERED" : "ESCALATE")),
+                // --- Mission 11. The maze. Three peers, and the rules only read what the OTHER
+                // pups reported: Sniff's first scent splits (path AND hedge) so Zoom and Dig are
+                // woken together; their two reports wake Sniff, who now points at the middle; and
+                // Zoom, sent there, sees the goat.
+                new Rule(p -> p.contains("you are sniff, in a giant corn maze"),
+                        p -> after(p, "zoom reports:").contains("found:")
+                                ? "FOUND: confirmed by nose — Gertrude is in the middle of the maze."
+                                : after(p, "zoom reports:").contains("towards the middle")
+                                ? "Scent is strong now and runs north, along the paths towards "
+                                + "the middle. Nothing goes underground — Dig, that burrow is a "
+                                + "dead end. Zoom, the middle."
+                                : "Goat scent at the entrance, and it splits: one trail along the "
+                                + "east path, one under the west hedge. Zoom, the east path. Dig, "
+                                + "the hedge."),
+                new Rule(p -> p.contains("you are zoom, in a giant corn maze"),
+                        p -> after(p, "sniff says:").contains("middle")
+                                ? "FOUND: Gertrude is in the very middle of the maze, eating the "
+                                + "scarecrow's hat."
+                                : "Ran the east path: cleared, no goat. Fresh hoof prints turn "
+                                + "north, towards the middle."),
+                new Rule(p -> p.contains("you are dig, in a giant corn maze"),
+                        p -> after(p, "sniff says:").contains("west hedge")
+                                ? "Under the west hedge: a rabbit burrow, far too small for a "
+                                + "goat. Dead end — and one cross rabbit."
+                                : "Nothing under the north hedges. Standing down, as told."),
 
-                // --- 9. The supervisor's two specialists.
-                new Rule(p -> p.contains("daily routine"),
-                        p -> "Start now, not in month three: move his bed off your room and into "
-                                + "the hall this month, so it is not something the baby did to "
-                                + "him. Keep the 08:00 and 19:00 walks exactly as they are — they "
-                                + "are the two things that will not change in March."),
-                new Rule(p -> p.contains("needs to be taught"),
-                        p -> "In this order: a settle on a mat while you are busy in the room; "
-                                + "waiting at doorways instead of barging through; and off the "
-                                + "furniture on a word. Three months is enough for all three if "
-                                + "you start with the mat."),
+                // --- Mission 12. Zao FIRST: his prompt quotes Dig's and Doc's clues.
+                new Rule(p -> p.contains("read the clues on the board and name the culprit"),
+                        p -> "The culprit is Marmalade: four-toed, clawless prints run from the "
+                                + "drain to her garden at number 9. The crumb in my beard is from "
+                                + "the sausage dropped on our mat at 02:33, which I ate at 07:02 — "
+                                + "at 02:20 I was asleep in my basket, on camera. I am innocent. "
+                                + "It was Marmalade."),
+                new Rule(p -> p.contains("examine the crumb in zao's beard"),
+                        p -> "The crumb is from the sausage dropped on Pup HQ's mat at 02:33, "
+                                + "which Zao ate at 07:02.\nAt 02:20, while the sausages were "
+                                + "going, he was asleep in his basket: cleared."),
+                new Rule(p -> p.contains("report what your nose found, in two short plain sentences"),
+                        p -> "The scent runs from the butcher's back door, along the alley, and "
+                                + "down the storm drain at the end.\nIt never goes near Pup HQ."),
+                new Rule(p -> p.contains("you have just crawled the drain sniff found"),
+                        p -> "Small paw prints, four toes, no claw marks — a cat's, not a "
+                                + "dog's.\nThey come up in the garden of number 9."),
 
-                // --- 10. Un-herding, in three steps. The cyclist rule is FIRST because the
-                // cyclist prompt quotes "children step already done", and the children prompt
-                // quotes the hoover step.
-                new Rule(p -> p.contains("cyclist step"),
-                        p -> "Park, fifteen-metre line, sitting well back from the cycle path — "
-                                + "close enough that he can see them, far enough that he can "
-                                + "still hear you. The line exists so he never once gets to find "
-                                + "out that chasing works. Drop it when ten bikes have gone past "
-                                + "and he has looked at you instead of at them."),
-                new Rule(p -> p.contains("children step"),
-                        p -> "Same word, now with the children running in the garden, and start "
-                                + "with one child walking rather than three screaming. When he "
-                                + "ignores you, do not repeat it — walk to him, take his collar, "
-                                + "and make the next one easier. The children get a rule too: "
-                                + "nobody runs while he is loose."),
-                new Rule(p -> p.contains("hoover step for"),
-                        p -> "Hoover on, dog on a mat two metres away, someone paying him for "
-                                + "staying there. Say his name once, then the word, and pay him "
-                                + "the moment he turns away from it. Five goes, twice a day. It "
-                                + "is working when the hoover starts and he looks at you instead "
-                                + "of at it."),
+                // --- Mission 14. Fifi FIRST: her prompt quotes the whole transcript.
+                new Rule(p -> p.contains("moderating the barkville town council"),
+                        p -> "Winner: the dog park. 1. Howl showed the lot is the only green space "
+                                + "on Elm Street. 2. Marmalade conceded a café is open eight hours "
+                                + "and a park all day. 3. Nobody answered Howl's point about the "
+                                + "school next door. Howl's weakest moment: the howling."),
+                new Rule(p -> p.contains("you are howl, at the barkville town council"),
+                        p -> round(p, new String[] {
+                                "The lot on Elm Street is the only green on the street, and a dog "
+                                        + "park keeps it green. Every dog in Barkville needs room "
+                                        + "to RUN!",
+                                "Marmalade says a café brings visitors — a park brings every family "
+                                        + "in Barkville, every single day, for free.",
+                                "And the school next door gets a park to look at, not a window "
+                                        + "full of cats looking back."})),
+                new Rule(p -> p.contains("you are marmalade the cat"),
+                        p -> round(p, new String[] {
+                                "Green? It is mud with ideas. A cat café brings visitors, pays "
+                                        + "rent, and is quiet, which is more than can be said for "
+                                        + "Howl.",
+                                "Every family, every day, every dog — and every one of them "
+                                        + "barking. A café is open eight hours and calm in all of "
+                                        + "them.",
+                                "The school would learn more from a cat than from a dog. I rest "
+                                        + "my case, and then I rest."})),
 
-                // --- 11. The household argument. Both peers now write the SAME key and take
-                // turns, so each prompt carries the draft the other one just wrote — which
-                // means a rule has to tell its OWN opening turn from its second one. The bed
-                // does that by looking for the floor's counter in the draft it was handed;
-                // without that branch it says the same thing twice, nobody ever writes AGREED,
-                // and the negotiation runs to the ten-round cap.
-                //
-                // Note the lowercase() inside the reply: the lambda is handed the RAW prompt,
-                // not the lowercased text the rule matched on.
-                new Rule(p -> p.contains("you are the one who wants him on the bed"),
-                        p -> p.toLowerCase(Locale.ROOT).contains("his own bed in our room")
-                                ? "Then let us write it down and both keep it: his own bed in "
-                                + "our room, and he is invited up once the alarm has gone — "
-                                + "never in the night, never when he is wet. AGREED."
-                                : "He has slept up there since he was eight weeks old, he "
-                                + "settles better for it and so do I. Proposal: he sleeps on "
-                                + "the bed, and we all get on with our lives."),
-                new Rule(p -> p.contains("you are the one who wants him off the bed"),
-                        p -> "Forty kilos of wet beard is not a duvet, and I have measured what "
-                                + "is left of my side. Counter-proposal: his own bed in our "
-                                + "room, and he comes up in the morning once we are both awake "
-                                + "— never during the night, and never when he is wet."),
+                // --- Mission 15. Zoom's five plan steps. The lookout is the belief revision: it
+                // reports a STRANDED kid unless the radio already said the kid is safe — which is
+                // the whole difference between a preempted chase and a straight one.
+                new Rule(p -> p.contains("step one, chase it up the riverbank"),
+                        p -> after(p, "what the radio said:").contains("safe")
+                                ? "From the top of the bank: the bridge is out, and the far bank "
+                                + "is empty — Officer Jo has the kid.\nThe squirrel is still in "
+                                + "sight."
+                                : "From the top of the bank: the bridge is out, and a kid is "
+                                + "STRANDED on the far bank, waving.\nThe squirrel is still in "
+                                + "sight."),
+                new Rule(p -> p.contains("step two, chase it up a tree"),
+                        p -> "Up the big oak by the river, round it twice, and it went up.\nDid "
+                                + "not catch it. Will not catch it. Will try again."),
+                new Rule(p -> p.contains("step one, the bridge is out, so run downstream"),
+                        p -> "Downstream to the old ford, two kilometres the long way round.\n"
+                                + "Knee-deep and very cold."),
+                new Rule(p -> p.contains("step two of the rescue"),
+                        p -> "Reached the kid, and back over the ford with them holding my "
+                                + "collar.\nSafe, wet to the knees, and very impressed."),
+                new Rule(p -> p.contains("everything that matters is done. nap"),
+                        p -> "On the warm stones by the river, for an hour and a half."),
 
-                // --- 12. The barking board. The trainer's rule is FIRST because its prompt
-                // quotes all three contributors' headings.
-                new Rule(p -> p.contains("most likely first"),
-                        p -> """
-                                1. The bed under the front window — most likely. He now has a \
-                                job: watching the street all day. Try moving the bed to the back \
-                                room and see if it stops within a week.
-                                2. The new shift. His day changed shape and nobody told him. Try \
-                                a fixed 07:00 walk whatever time you leave.
-                                3. Not enough exercise before he is left. Try forty minutes off \
-                                the lead before you go, not ten on it."""),
-                new Rule(p -> p.contains("exercise angle"),
-                        p -> "A four-year-old bouvier needs more than a lead walk round the "
-                                + "block, and a cattle dog with no cattle invents work — usually "
-                                + "herding. Next: forty minutes of real exercise before he is "
-                                + "left, and see what changes."),
-                new Rule(p -> p.contains("new working hours"),
-                        p -> "The new shift is the change nobody has accounted for — he is left "
-                                + "at a different hour, for longer, with no warning cue. Next: "
-                                + "keep one thing fixed, the morning walk, whatever your shift."),
-                new Rule(p -> p.contains("see and hear from indoors")
-                                || p.contains("what he can see and hear"),
-                        p -> "His bed was moved under the front window, so he now watches the "
-                                + "street, the post and next door's cat all day. Next: move the "
-                                + "bed out of sight of the window before you try anything else."),
+                // --- Mission 18. One spot of ice per call, and Howl's announcement.
+                new Rule(p -> p.contains("check the ice at this one spot"),
+                        p -> iceSpot(after(p, "the spot:"))),
+                new Rule(p -> p.contains("announce the skating party"),
+                        p -> "BARKVILLE! The skating party is OFF. The ice by the reeds is thin "
+                                + "over running water, and one NOT SAFE is all it takes. Hot "
+                                + "chocolate at Pup HQ instead!"),
 
-                // --- 13. The puppy's first hour, three desires.
-                new Rule(p -> p.contains("first tiny training session"),
-                        p -> "One thing only: his name. Say it once, pay him when he looks, five "
-                                + "goes, then stop while he still wants more. Two minutes is a "
-                                + "long session for an eight-week-old puppy."),
-                new Rule(p -> p.contains("first meal in the new house"),
-                        p -> "The amount on the breeder's sheet, not more, in a quiet corner "
-                                + "where nobody walks past. Put it down, walk away, and leave him "
-                                + "alone with it — do not stroke him or take the bowl to check."),
-                new Rule(p -> p.contains("out to the garden first"),
-                        p -> "Straight out of the car and onto the grass, before he comes "
-                                + "indoors at all. Stand still and say nothing until he goes, "
-                                + "then tell him he is wonderful the second he finishes."),
+                // --- Mission 19. One Doc, every call.
+                new Rule(p -> p.contains("you are doc, on the pup hq night phone"),
+                        p -> nightPhone(after(p, "the call:"))),
 
-                // Before the desks' own rules: this prompt quotes whichever desk answered.
-                new Rule(p -> p.contains("honouring the person's decision"),
-                        MockChatModel::finalNote),
+                // --- Mission 21. The optional first aid.
+                new Rule(p -> p.contains("give first aid for the injury below"),
+                        p -> "Lie still and let Doc ease the thorn out with his front teeth.\nNo "
+                                + "licking the paw for an hour.\nIf it swells, or the kitten will "
+                                + "not stand on it, fetch Officer Jo."),
 
-                // --- 14. The council. The chair and the glue are listed before the two
-                // advocates, because all three prompts talk about a motion.
-                new Rule(p -> p.contains("chair the household council"),
-                        p -> "The motion is carried, but not yet. The fact that decided it: Zao "
-                                + "stiffens and growls at dogs that come at him, and a flat with "
-                                + "no garden gives him nowhere to get away from one. Condition: "
-                                + "not before he can meet a strange dog calmly on neutral ground."),
-                new Rule(p -> p.contains("restate this ruling"),
-                        p -> "A two-bedroom flat with no garden, both owners out eight to six, "
-                                + "and a second dog brought in later once Zao can meet other "
-                                + "dogs calmly."),
-                new Rule(p -> p.contains("write the motion"),
-                        p -> "Motion: get a second dog, but not this year — an older, calm "
-                                + "female, and only after Zao can meet a strange dog on neutral "
-                                + "ground without stiffening."),
-                new Rule(p -> p.contains("one angle only"),
-                        p -> "On this angle it points one way: the flat is small, the days are "
-                                + "long and the dog they have does not enjoy other dogs. What is "
-                                + "unknown: whether that is every dog, or just the ones that run "
-                                + "straight at him."),
-                // The two council advocates answer DIFFERENTLY, so unanimous() does not converge
-                // and the debate runs its full two rounds before the chair rules — the opposite
-                // of the holiday debate below, which converges in one. Both are worth seeing.
-                new Rule(p -> p.contains("argue for this motion"),
-                        p -> "A second dog would give him company for the nine hours nobody is "
-                                + "home, which is the real problem here. The objection is fair: "
-                                + "he does not like strange dogs — which is why the motion says "
-                                + "an older calm female, and says later, not now."),
-                new Rule(p -> p.contains("argue against this motion"),
-                        p -> "Two dogs in a flat with no garden and nobody home for nine hours "
-                                + "is two bored dogs instead of one. The point in favour is real "
-                                + "— he is lonely — but the answer to a lonely dog is a dog "
-                                + "walker, not another dog."),
-
-                // --- 15. The holiday debate. "comes or stays" is the JUDGE's prompt; the two
-                // advocates fall through to the catch-all, which hands them the same words and
-                // is what makes unanimous() converge after round one. The catch-all is
-                // load-bearing: a rule between these two that tells the advocates apart kills
-                // the contrast with the council's debate, and turns that test red.
-                new Rule(p -> p.contains("comes or stays"),
-                        p -> "He stays, with the sitter. The fact that decided it: a house with "
-                                + "no shade in Tuscany in August is dangerous for a black "
-                                + "double-coated bouvier, and the twelve-hour drive is on top of "
-                                + "that. Condition: the sitter stays in our house, not hers, and "
-                                + "does two overnight trial stays before August."),
-                new Rule(p -> has(p, "argue"),
-                        p -> "The twelve hours in the car and a house with no shade are the whole "
-                                + "argument, and August in Tuscany is not survivable for a black "
-                                + "double-coated dog. Two weeks with a sitter he knows costs him "
-                                + "a fortnight of missing you; the alternative could cost more."),
-
-                // --- 16. Running it for real. Last and safely so: each is keyed on an
-                // instruction no rule above quotes. The out-of-hours DESK, not the out-of-hours
-                // LINE — the nurse owns that phrase nine rules up.
-                new Rule(p -> p.contains("cover arrangements"),
-                        p -> "Mr Devos is on call from 19:00 to 08:00 both nights. Ring 061 22 "
-                                + "33 44 as normal and the line diverts to him.\nThe out-of-hours "
-                                + "surgery is in Marche, twenty minutes by car — ring before you "
-                                + "set off, they do not always have someone on site."),
-                // Deliberately DROPS the microchip and the policy number, so the guard has
-                // something to catch. Copy them here and that step becomes ceremony.
-                new Rule(p -> p.contains("from the record below"),
-                        p -> """
-                                Zao is a four-year-old Bouvier des Flandres, 38 kg.
-
-                                Feed him 400 g twice a day, morning and evening. He is used to \
-                                two walks, on the lead throughout.
-
-                                If anything worries you, ring Dr Cluysen on 061 22 33 44 — the \
-                                same number works out of hours.
-
-                                Thank you for having him!"""),
-                new Rule(p -> p.contains("medication paragraph"),
-                        p -> "Half a tablet with his breakfast, every morning, for his hip.\n"
-                                + "Push it into a folded slice of cheese and he takes it without "
-                                + "noticing.\nIf he spits it out, wait ten minutes and try the "
-                                + "other half.\nNever give two to catch up on a missed one."),
-                // One agent, three kinds of question — because the point of the demo is that the
-                // ANSWER is not what changes between tiers, so it had better be a real answer
-                // whichever question is typed in.
-                new Rule(p -> p.contains("desk a worried dog owner reaches"), p -> switch (kind(p)) {
-                    case MEDICAL -> vet(p);
-                    case BEHAVIOUR -> trainer(p);
-                    case BASICS -> everyday(p);
-                }));
+                // --- Missions 6, 9, 16. The four Rangers on call. LAST, because they answer
+                // whatever the call is about, and every mission above is more specific.
+                new Rule(p -> p.contains("you are sniff, the pawer ranger who"),
+                        p -> onCall("Sniff", after(p, "the call:"))),
+                new Rule(p -> p.contains("you are dig, the pawer ranger who"),
+                        p -> onCall("Dig", after(p, "the call:"))),
+                new Rule(p -> p.contains("you are doc, the pawer ranger who"),
+                        p -> onCall("Doc", after(p, "the call:"))),
+                new Rule(p -> p.contains("you are zoom, the pawer ranger who"),
+                        p -> onCall("Zoom", after(p, "the call:"))));
     }
 
     private String respond(String prompt) {
-        // Whitespace is collapsed before matching because the prompts are text blocks: "PASS or
-        // FAIL" is one phrase to a reader and "PASS or\nFAIL" to String.contains, so a rule that
-        // looks obviously correct silently never fires.
-        String p = prompt.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        // Whitespace is collapsed before matching because the prompts are text blocks: a phrase
+        // that wraps is one phrase to a reader and "a\nb" to String.contains.
+        String p = collapse(prompt);
         for (Rule r : rules()) {
             if (r.when().test(p)) {
-                return r.reply().apply(prompt);
+                return r.reply().apply(p);
             }
         }
         return HOUSE_LINES[Math.floorMod(lineCounter.getAndIncrement(), HOUSE_LINES.length)];
     }
 
-    /**
-     * The langchain4j PlannerAgent protocol: pick the next agent, or agentName "done" with a
-     * "response" argument to finish. We walk both sub-agents and then finish, so the demo shows
-     * a supervisor delegating twice rather than looping on one agent.
-     */
-    /**
-     * The canned supervisor plan — and it is deliberately a <b>reactive</b> one.
-     */
-    /**
-     * The argument the nurse and the three desks all take. A planner's JSON names the agent's
-     * parameter, so this is {@code demos._06_conditional.Keys.Worry} spelled out — the mock cannot
-     * import it without making the offline model depend on the demos, so it is named here
-     * instead of hidden inside two string concatenations.
-     */
-    private static final String WORRY_ARG = "Worry";
-
-    private String supervisorPlan(String prompt) {
-        boolean firstRound = prompt.toLowerCase(Locale.ROOT)
-                .contains("last received response is: ''");
-        String req = jsonEscape(between(prompt, "The user request is: '", "'."));
-        if (firstRound) {
-            plannerStep.set(1);
-            return "{\"agentName\":\"TriageNurse\",\"arguments\":{\"" + WORRY_ARG + "\":\""
-                    + req + "\"}}";
-        }
-        // ONLY the last response, never the whole prompt: the supervisor context spells out
-        // every phrase the nurse can use, so scanning the page would match them all.
-        String last = between(prompt, "last received response is: '", "'").toLowerCase(Locale.ROOT);
-        String needs = last.contains("needs: vet") ? "EmergencyVet"
-                : last.contains("needs: trainer") ? "DogTrainer"
-                : last.contains("needs: everyday") ? "EverydayCare"
-                : null;
-        if (needs != null && plannerStep.incrementAndGet() == 2) {
-            return "{\"agentName\":\"" + needs + "\",\"arguments\":{\"" + WORRY_ARG + "\":\""
-                    + req + "\"}}";
-        }
-        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"The nurse named who it "
-                + "needed and they have answered.\"}}";
+    private static String collapse(String s) {
+        return s.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
-    /**
-     * The instruction, after a person has had their say. Reads only what they said — and note
-     * that the reply lambda is handed the RAW prompt, not the lowercased one the rule matched
-     * on, so {@code indexOf("what they said:")} against raw text returns -1.
-     */
-    private static String finalNote(String prompt) {
-        String all = prompt.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-        int at = all.lastIndexOf("what they said:");
-        String said = at < 0 ? "" : all.substring(at + "what they said:".length());
-        boolean refused = said.contains("no ") || said.startsWith(" no")
-                || said.contains("nothing") || said.contains("don't") || said.contains("refuse")
-                || said.contains("wait");
+    // ------------------------------------------------------------------------------------------
+    // Answers that depend on what was asked
+    // ------------------------------------------------------------------------------------------
+
+    private static String sniffFound(String p) {
+        String found = after(p, "tool results:");
+        if (found.contains("duck pond") && found.contains("hat")) {
+            return "The Mayor's hat is floating in the middle of the duck pond, with a duck "
+                    + "sitting in it.";
+        }
+        if (found.contains("kitten")) {
+            return "The kitten is 6 metres up the oak on Main Street, on the north branch.";
+        }
+        return "Nose down, nothing yet: the trail stops at the town hall.";
+    }
+
+    /** First draft loud and incomplete, second fixed — so Fifi's 2/4 then 4/4 is earned. */
+    private static String howlDraft(String p) {
+        boolean first = after(p, "fifi's feedback on your last version:").contains("none yet");
+        boolean gazette = after(p, "the brief:").contains("gazette");
+        if (gazette) {
+            return first
+                    ? "KITTEN!!! A KITTEN!!! The Pawer Rangers, bravest dogs who ever lived, faced "
+                    + "the mightiest oak in all of Barkville and WON, and nobody will ever forget "
+                    + "this day as long as there are dogs to howl about it!!!"
+                    : "KITTEN SAVED ON MAIN STREET\nThe Rangers brought a kitten down from 6 "
+                    + "metres up the Main Street oak. It is scared but fine, minus one thorn.";
+        }
+        return first
+                ? "AWOOOO! THE TOWN FAIR!!! SAUSAGES!!! DOGS!!! THE GREATEST DAY IN THE HISTORY OF "
+                + "BARKVILLE IS COMING AND YOU WILL NOT BELIEVE THE SAUSAGES!!!"
+                : "Barkville Town Fair — Saturday 12 October, Barkville Green, 10:00 to 16:00. "
+                + "Free entry. Sausage stall, and the dog show at 14:00.";
+    }
+
+    private static String digActs(String p) {
+        String said = after(p, "what officer jo said:");
+        boolean refused = said.startsWith(" no") || said.contains(" no.") || said.contains("don't")
+                || said.contains("do not") || said.contains("refuse") || said.contains("wait");
         if (refused) {
-            return "Do not act on it. Sit with him, keep him where you can see him, and ring us "
-                    + "— we will decide and ring the vet ourselves if it comes to that.";
+            return "Not digging. Instead: a saucer of cat food by the garden wall tonight, and "
+                    + "the hedgehog will walk out on his own.";
         }
-        boolean changed = said.contains("but") || said.contains("also") || said.contains("add")
-                || said.contains("instead");
-        return "Ring the practice now, tell them what he swallowed and roughly when, and take "
-                + "him straight in."
-                + (changed ? " And do exactly what they added: " + said.trim() : "")
-                + " Do not try to make him sick yourself.";
+        boolean changed = said.contains("but") || said.contains("only") || said.contains("instead");
+        return "Dug from the garden wall as planned; the hedgehog walked out, and the roses are "
+                + "still standing." + (changed ? " And did exactly what Jo added:" + said : "");
     }
 
-
-
-    /** What the nurse makes of the call, and who she says it needs. */
-    private static String nurse(String prompt) {
-        String q = worry(prompt);
-        if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
-            return "A dog who has never done this before and now does is the one that worries "
-                    + "me. In a four-year-old that is pain until somebody rules it out — teeth "
-                    + "and ears first, then hips and back.\nNEEDS: vet";
-        }
-        if (has(q, "ear", "ears") || q.contains("limp") || q.contains("chocolate")
-                || q.contains("blood") || q.contains("swollen")) {
-            return "That is physical and it is not going to wait until Monday.\nNEEDS: vet";
-        }
-        if (q.contains("pull") || q.contains("bark") || q.contains("postman")
-                || q.contains("lunging")) {
-            return "Nothing here sounds like pain — he is well in himself and this is about what "
-                    + "he has learned to do.\nNEEDS: trainer";
-        }
-        if (q.contains("food") || q.contains("switch") || q.contains("groom")) {
-            return "Ordinary stuff, nothing urgent in it.\nNEEDS: everyday care";
-        }
-        return "He is bright, eating, and nothing about this needs anybody tonight. Ring us in "
-                + "the morning if it has not settled.\nNEEDS: nobody";
+    private static String ladderFetched(String p) {
+        Matcher m = Pattern.compile("the (\\d+(?:\\.\\d+)?) m ladder").matcher(p);
+        return m.find() ? "the " + m.group(1) + " m ladder" : "a ladder";
     }
 
-    /**
-     * The three desks answer what they were actually ASKED, not one canned line each.
-     */
-    private static String vet(String prompt) {
-        String q = worry(prompt);
-        if (q.contains("chocolate") || q.contains("ate a") || q.contains("poison")) {
-            return "Ring the practice now and tell them his weight and how much he ate — dark "
-                    + "chocolate is the worst kind. Take the wrapper so they can read the cocoa "
-                    + "percentage. Do not wait to see whether he is sick.";
-        }
-        if (has(q, "ear", "ears")) {
-            return "That is an infection until a vet says otherwise, and a smell means it has "
-                    + "been going a while. Book today, do not poke anything down there, and stop "
-                    + "him scratching it open — a buster collar tonight if you have one.";
-        }
-        if (q.contains("snap") || q.contains("growl") || q.contains("grumpy")) {
-            return "The nurse is right to send him. A dog that snaps where he never used to is "
-                    + "telling you something hurts, and at four the usual suspects are teeth and "
-                    + "ears. Book a full examination — mouth, ears, hips, spine — and keep the "
-                    + "children away from his bed entirely until he has been seen.";
-        }
-        if (q.contains("sock") || q.contains("swallow")) {
-            return "Bring him in now and do not try to make him sick — a sock coming back up is "
-                    + "how it gets stuck somewhere worse. Nothing to eat or drink on the way. "
-                    + "Tell us roughly when he swallowed it, because under two hours we have "
-                    + "options we lose afterwards.";
-        }
-        if (q.contains("wasp") || q.contains("sting") || q.contains("stung")) {
-            return "Watch his breathing, not his nose — a swollen face is ugly and usually fine, "
-                    + "a swollen throat is not. If the swelling spreads past the muzzle, or he "
-                    + "starts retching or wheezing, come straight in. Cold compress meanwhile, "
-                    + "and nothing from the human medicine cupboard.";
-        }
-        if (q.contains("limp") || q.contains("sore")) {
-            return "Keep him still and off stairs, and give him nothing from your own cupboard. "
-                    + "A dog that will not weight-bear needs examining today.";
-        }
-        return "Nothing here needs me tonight, but ring the practice in the morning if it has "
-                + "not settled.";
+    private static String duckling(String item) {
+        String d = item.strip();
+        String where = d.contains("puddle") ? "asleep under the lily pads at the far end of the pond"
+                : d.contains("pickle") ? "inside the bakery bin, eating a croissant"
+                : d.contains("waddles") ? "on the town hall steps, being fed by the Mayor"
+                : d.contains("biscuit") ? "swimming in circles in the fountain, very pleased"
+                : d.contains("noodle") ? "under the bandstand, stuck behind a drum — pulled out"
+                : d.contains("pip") ? "at the bus stop, waiting for the number 7"
+                : d.contains("socks") ? "in the Mayor's roses, eating them"
+                : d.contains("bean") ? "on Marmalade's doorstep, being watched very closely — rescued "
+                + "just in time"
+                : "by the duck pond, perfectly fine";
+        return "Found " + where + ".";
     }
 
-    private static String trainer(String prompt) {
-        String q = worry(prompt);
-        // The one every trainer knows: a behaviour that appeared out of nowhere is a medical
-        // question until somebody rules it out. This is what makes the supervisor call a second
-        // agent — not a script, but what the first agent said.
-        if ((q.contains("snap") || q.contains("growl") || q.contains("grumpy"))
-                && (q.contains("never") || q.contains("suddenly") || q.contains("started"))) {
-            return "I will not train this yet, and you should not either. A dog that has never "
-                    + "snapped and now does has usually started hurting somewhere — teeth, ears, "
-                    + "hips, back. Training a dog out of telling you it is in pain is how you get "
-                    + "a dog that bites without warning first. Get him examined, then call me.\n"
-                    + "ESCALATE";
-        }
-        if (q.contains("postman") || q.contains("letterbox") || q.contains("lunging")) {
-            return "Block the hallway so he cannot reach the door, and feed him something good "
-                    + "the moment the post lands — he learns the noise pays. Never let him "
-                    + "rehearse the lunge; every time he does it, it works, because the postman "
-                    + "always leaves.";
-        }
-        if (q.contains("pull") || q.contains("lead")) {
-            return "Stop the walk dead every time the lead goes tight, and only move off when it "
-                    + "slackens. Stop yanking him back, which teaches him that pulling is how "
-                    + "walks feel.\n"
-                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
-        }
-        if (q.contains("bark")) {
-            return "Find out what he is barking at before you train anything — the answer is "
-                    + "usually a window he should not be able to see out of.\n"
-                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
-        }
-        return "Nothing here is a training problem.\n"
-                + (kind(prompt) == Kind.BEHAVIOUR ? "ANSWERED" : "ESCALATE");
+    private static String iceSpot(String spot) {
+        return spot.contains("reeds") ? "Dark grey ice, and I can hear water moving underneath. I "
+                + "would not put a paw on it."
+                : spot.contains("middle") ? "Clear, hard ice. It does not creak under me."
+                : spot.contains("jetty") ? "Fine at the jetty, a little slushy at the very edge."
+                : "Solid all round; the ducks have been here all morning.";
     }
 
-    private static String everyday(String prompt) {
-        String q = worry(prompt);
-        if (q.contains("food") || q.contains("switch") || q.contains("puppy food")) {
-            return "Move him onto an adult food of the same brand over a week: a quarter new on "
-                    + "day one, half by day three, all of it by day seven. Switching in one go is "
-                    + "what upsets stomachs, not the food itself.";
+    private static String nightPhone(String call) {
+        return switch (kind(call)) {
+            case "hurt" -> "Keep him sitting down with the ankle up on a cushion and something "
+                    + "cold on it. Nobody walks him home — wake Officer Jo, he needs the doctor "
+                    + "tonight.";
+            case "underground" -> "Do not climb in after him. Keep talking to him, and wake "
+                    + "Officer Jo: Dig is on his way.";
+            case "urgent" -> "Wake Officer Jo and send Zoom. Everybody else, out of the road.";
+            default -> "No need to wake anyone. Check the bakery's umbrella stand first — "
+                    + "everything in Barkville ends up there.";
+        };
+    }
+
+    /** What a Ranger on call says, from what the call is actually about. */
+    private static String onCall(String ranger, String call) {
+        String c = call.strip();
+        if (c.contains("child")) {
+            return "Found the child by the carousel, sharing a toffee apple with a clown. Back "
+                    + "with their mum.";
         }
-        if (q.contains("groom") || q.contains("brush") || q.contains("coat")) {
-            return "Twice a week normally, daily while he is dropping coat, and do it somewhere "
-                    + "you do not mind hoovering.";
+        if (c.contains("sausage cart")) {
+            return "Caught the sausage cart ten metres from the duck pond. Two sausages are "
+                    + "missing; I was not involved.";
         }
-        return "Keep it boring and keep it the same: same food, same times, same route.";
+        if (c.contains("bouncy castle")) {
+            return "Crawled inside the bouncy castle and found the hole — a Marmalade-sized claw "
+                    + "mark. Patched it with the Mayor's sash.";
+        }
+        if (c.contains("glasses")) {
+            return "Found the Mayor's reading glasses. They were on the Mayor's head.";
+        }
+        if (c.contains("post")) {
+            return "Fetched the post from the station in four minutes flat.";
+        }
+        if (c.contains("drain")) {
+            return "Drain on Elm Street cleared: one tennis ball, eleven leaves and a sock.";
+        }
+        if (c.contains("puppy")) {
+            return "The new puppy at number 4 is healthy, loud, and chewing a slipper.";
+        }
+        if (c.contains("well") || c.contains("tortoise")) {
+            return "Head first down the old well behind the bakery: the tortoise is on a ledge two "
+                    + "metres down. I will dig a ramp and walk him out.";
+        }
+        return switch (ranger) {
+            case "Sniff" -> "Nose down at the last place it was seen. I will follow the trail "
+                    + "until it ends.";
+            case "Dig" -> "Going in through the nearest tight spot, and out again with them.";
+            case "Doc" -> "Checking breathing first, then the leg. Nobody moves them until I have.";
+            default -> "Running now — there in two minutes.";
+        };
     }
 
     /**
-     * Just what was asked, never the agent's own instructions — see {@link #kind}.
+     * The emergency phone's classifier, from the call alone. Must stay in step with
+     * {@code Parsing.category}'s four destinations, or it picks a branch that does not exist.
      */
-    private static final List<String> ASKED_LABELS =
-            List.of("worry:", "question:", "the call:");
-
-    private static String worry(String prompt) {
-        String lower = prompt.toLowerCase(Locale.ROOT);
-        int at = ASKED_LABELS.stream().mapToInt(lower::lastIndexOf).max().orElse(-1);
-        return at < 0 ? "" : lower.substring(lower.indexOf(':', at) + 1);
+    private static String kind(String call) {
+        String c = call.toLowerCase(Locale.ROOT);
+        if (has(c, "hurt", "injured", "bleeding", "swollen", "swelling", "slipped", "ankle",
+                "broken", "sick", "thorn")) {
+            return "hurt";
+        }
+        if (has(c, "well", "hole", "tunnel", "drain", "stuck under", "underground", "fallen down")) {
+            return "underground";
+        }
+        if (has(c, "rolling", "runaway", "downhill", "on fire", "racing")) {
+            return "urgent";
+        }
+        return "lost";
     }
 
-    /** Which rung of the escalation ladder a question belongs on. */
-    private enum Kind { BASICS, BEHAVIOUR, MEDICAL }
-
-    private static final String[] MEDICAL_WORDS = {
-            "limp", "blood", "bleeding", "vomit", "sick", "swollen", "collapse", "breathing",
-            "not eating", "won't eat", "lump", "sore", "hurt", "injur", "poison", "ate a",
-            // "eaten a whole bar of dark chocolate" matches none of the above: "eaten a" is not
-            // "ate a". The catalogue's most-used worry was classifying as BASICS.
-            "chocolate",
-            // A swallowed sock and a stung face are medical for reasons no word above covers,
-            // and they exist so demos 7 and 19 stop being the chocolate a second and third time.
-            "swallow", "sting", "stung", "wasp"
-    };
-    private static final String[] BEHAVIOUR_WORDS = {
-            "pull", "bark", "bite", "biting", "growl", "jump", "recall", "come back", "lead",
-            "aggress", "scared", "afraid", "anxious", "chew", "destroy", "toilet", "training"
-    };
-
-    /**
-     * Reads ONLY the question, never the tier's own instructions. This one is worth the comment
-     * because the obvious version is wrong in a way tests caught and eyes would not: every tier's
-     * prompt explains what is past it ("anything about pain, injury or illness"), so a match
-     * against the whole prompt finds "injur" every single time, classifies every question as
-     * medical, and the ladder walks to the top no matter what is asked — a planner that looks
-     * exactly like a sequence.
-     */
-    private static Kind kind(String prompt) {
-        String lower = prompt.toLowerCase(Locale.ROOT);
-        // The escalation tiers say "Question:", the desks say "Worry:" — same idea, and the
-        // ladder now runs on the desks, so both have to be found.
-        int at = Math.max(lower.lastIndexOf("question:"), lower.lastIndexOf("worry:"));
-        if (at < 0) {
-            return Kind.MEDICAL;
-        }
-        String q = lower.substring(lower.indexOf(':', at) + 1);
-        for (String w : MEDICAL_WORDS) {
-            if (q.contains(w)) {
-                return Kind.MEDICAL;
+    private static boolean has(String text, String... words) {
+        for (String w : words) {
+            if (text.contains(w)) {
+                return true;
             }
         }
-        for (String w : BEHAVIOUR_WORDS) {
-            if (q.contains(w)) {
-                return Kind.BEHAVIOUR;
-            }
-        }
-        return Kind.BASICS;
+        return false;
     }
 
     /**
-     * What the room already knows, in a table: the dangerous ones and the harmless ones. The
-     * first four are what the beard actually came back with; the rest are still here because
-     * the input box is live on stage and somebody always types "chocolate".
+     * The debaters' next line. DebatePlanner hands each round only the LAST round's statements
+     * (debateContext), so there is no round counter on the board: the round is worked out from
+     * which of this debater's own lines is already in the context — none means round one.
      */
-    private static final String[][] FOODS = {
-            {"bone,chicken bone,rib", "Dangerous — a cooked bone splinters, and the splinters "
-                    + "are the problem, not the bone. Ring the vet now and give him nothing "
-                    + "else to eat."},
-            {"conker,chestnut,acorn", "Dangerous — conkers are toxic AND exactly the right size "
-                    + "to block a gut. Ring the vet, and count how many trees he walked under."},
-            {"glove,sock,fabric,tea towel", "Dangerous — fabric does not pass, it wedges. Ring "
-                    + "the vet even though he looks delighted with himself."},
-            {"croissant,pastry,bread,crust,toast", "Fine — plain baked dough does nothing. "
-                    + "Nothing to do (raw dough would be a different answer)."},
-            {"puddle,water,pond,rain", "Fine — that is just beard. It is going on your leg, not "
-                    + "into the dog. Nothing to do."},
-            {"grape,raisin,sultana", "Dangerous — grapes and raisins can shut a dog's kidneys "
-                    + "down and there is no known safe amount. Ring the vet now."},
-            {"chocolate,cocoa", "Dangerous — and dark is the worst kind. Ring the vet now with "
-                    + "his weight and how much he ate; keep the wrapper."},
-            {"onion,garlic,leek,shallot", "Dangerous — onions damage red blood cells, and raw is "
-                    + "worse. Ring the vet, even if he seems fine today."},
-            {"xylitol,sweetener,sugar-free", "Dangerous — xylitol drops a dog's blood sugar "
-                    + "within minutes. Ring the vet now."},
-            {"macadamia", "Dangerous — macadamias cause weakness and tremors. Ring the vet."},
-            {"cheese,cheddar", "Fine — a slice of cheese is fat and salt, nothing worse. Nothing "
-                    + "to do."},
-            {"bread,crust,toast", "Fine — plain baked bread does nothing. Nothing to do (raw "
-                    + "dough would be a different answer)."},
-            {"carrot,apple,banana", "Fine — nothing to do. Take the apple core off him though."}
-    };
-
-    /**
-     * One verdict for one thing out of the beard. Reads ONLY the item, never the instruction:
-     * the prompt itself uses the words "problem" and "ring the vet", so matching the whole text
-     * would give every item the same answer and hide the entire point of a scatter/gather.
-     */
-    private static String beardVerdict(String prompt) {
-        String item = prompt.toLowerCase(Locale.ROOT);
-        int at = item.lastIndexOf("out of the beard:");
-        item = at < 0 ? item : item.substring(at + "out of the beard:".length());
-        for (String[] food : FOODS) {
-            for (String name : food[0].split(",")) {
-                if (item.contains(name)) {
-                    return food[1];
-                }
+    private static String round(String p, String[] lines) {
+        String lastRound = after(p, "last round:");
+        int next = 0;
+        for (int i = 0; i < lines.length; i++) {
+            if (lastRound.contains(collapse(lines[i]))) {
+                next = i + 1;
             }
         }
-        return "Probably nothing, but watch him for a few hours and ring the vet if he is sick "
-                + "more than once.";
+        return lines[Math.min(next, lines.length - 1)];
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Mission 9: Zao, the supervisor
+    // ------------------------------------------------------------------------------------------
+
+    /**
+     * The argument every Ranger on call takes. A planner's JSON names the agent's parameter, so
+     * this is {@code demos._06_conditional.Keys.Call} spelled out — the mock cannot import it
+     * without making the offline model depend on the demos.
+     */
+    private static final String CALL_ARG = "Call";
+
+    /**
+     * The canned plan, and it is a reactive one: the fair's problems are read out of the request
+     * in order, one Ranger is sent per problem, and Zao finishes when none are left — so the
+     * supervisor genuinely decides "next" from where it has got to.
+     */
+    private String supervisorPlan(String prompt) {
+        if (prompt.contains("last received response is: ''")) {
+            plannerStep.set(0);
+        }
+        String request = between(prompt, "the user request is: '", "'.");
+        List<String> problems = new ArrayList<>();
+        for (String part : request.split(",| and ")) {
+            String s = part.strip();
+            if (s.contains("child") || s.contains("cart") || s.contains("hole")
+                    || s.contains("hurt")) {
+                problems.add(s);
+            }
+        }
+        int step = plannerStep.getAndIncrement();
+        if (step < problems.size()) {
+            String problem = problems.get(step);
+            String ranger = problem.contains("child") ? "Sniff"
+                    : problem.contains("cart") ? "Zoom"
+                    : problem.contains("hole") ? "Dig" : "Doc";
+            return "{\"agentName\":\"" + ranger + "\",\"arguments\":{\"" + CALL_ARG + "\":\""
+                    + jsonEscape(problem) + "\"}}";
+        }
+        return "{\"agentName\":\"done\",\"arguments\":{\"response\":\"Every problem has had a "
+                + "Ranger. The fair is under control.\"}}";
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Small helpers
+    // ------------------------------------------------------------------------------------------
+
+    /** Everything after the LAST occurrence of a label — what was asked, not the instructions. */
+    private static String after(String text, String label) {
+        int at = text.lastIndexOf(label);
+        return at < 0 ? "" : text.substring(at + label.length());
+    }
+
+    private static double firstNumber(String text) {
+        Matcher m = Pattern.compile("\\d+(?:\\.\\d+)?").matcher(text);
+        return m.find() ? Double.parseDouble(m.group()) : 0;
     }
 
     /** Substring between two markers, or a themed fallback if the markers aren't found. */
     private static String between(String text, String start, String end) {
         int i = text.indexOf(start);
         if (i < 0) {
-            return "get the dog ready for what is coming";
+            return "paws up, rangers";
         }
         i += start.length();
         int j = text.indexOf(end, i);
@@ -691,18 +675,5 @@ public class MockChatModel implements ChatModel {
     private static String jsonEscape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"")
                 .replace("\n", " ").replace("\r", " ").replace("\t", " ");
-    }
-
-    /**
-     * True if any word appears as a whole word in the (lowercased) text. Word boundaries matter:
-     * matching "rate" as a substring fires on "celeb-RATE-s" in a note being edited.
-     */
-    private static boolean has(String text, String... words) {
-        for (String w : words) {
-            if (Pattern.compile("\\b" + Pattern.quote(w) + "\\b").matcher(text).find()) {
-                return true;
-            }
-        }
-        return false;
     }
 }

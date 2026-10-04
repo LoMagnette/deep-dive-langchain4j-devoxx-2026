@@ -2,16 +2,21 @@ package dev.devoxx.dashboard.demos._08_nonaiagent;
 
 import dev.langchain4j.agentic.declarative.TypedKey;
 
-/** The scope keys this demo introduces. See {@code demos/package-info.java}. */
+/** The Pup Board pins this mission introduces. See {@code demos/package-info.java}. */
 public final class Keys {
 
     private Keys() {
     }
 
     /**
-     * The household's own record of the dog: numbers that exist somewhere authoritative and must
-     * never be generated. A non-AI agent writes this key, and nothing downstream can tell the
-     * difference — which is the point.
+     * How high the ladder has to reach, in metres. A tree here, a water tower in Mission 10 —
+     * Rivet does not care which, which is why the pin is not called treeHeight.
      */
-    public record Facts() implements TypedKey<String> {}
+    public record Height() implements TypedKey<Double> {}
+
+    /** Rivet's answer, in metres. A number, because Rivet is Java and Java can promise one. */
+    public record LadderLength() implements TypedKey<Double> {}
+
+    /** Which ladder Zoom brought, and where it is now. */
+    public record Ladder() implements TypedKey<String> {}
 }

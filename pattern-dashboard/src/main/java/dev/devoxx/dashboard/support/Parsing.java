@@ -74,16 +74,19 @@ public final class Parsing {
         return v < 0 ? 0 : Math.min(v, 1.0);
     }
 
-    /** The three people the owner's worry can be sent to. */
-    private static final List<String> CATEGORIES = List.of("emergency", "training", "everyday");
+    /**
+     * The four Rangers the emergency phone can ring, by what the call is about. {@code hurt} is
+     * FIRST because it is the fallback: when Zao cannot tell what a call is, the tolerable mistake
+     * is sending Doc, not sending Zoom to a pup who is bleeding.
+     */
+    private static final List<String> CATEGORIES = List.of("hurt", "lost", "underground", "urgent");
 
     /**
-     * Normalises the router's answer to exactly one known destination. Asked to "return one
-     * word", a real model answers "This is best categorised as: **medical**." — an exact
+     * Normalises the classifier's answer to exactly one known destination. Asked to "return one
+     * word", a real model answers "This is best categorised as: **lost**." — an exact
      * {@code equalsIgnoreCase} then matches no branch at all and the run silently produces null.
      * We take the LAST one mentioned (models state the conclusion at the end) and fall back to
-     * the first, which is deliberately {@code emergency}: when the classifier is unsure about a
-     * dog, the tolerable mistake is bothering the vet, not routing a poisoning to the trainer.
+     * the first, which is deliberately {@code hurt}.
      */
     public static String category(String answer) {
         String raw = (answer == null ? "" : answer).toLowerCase(Locale.ROOT);
@@ -99,19 +102,51 @@ public final class Parsing {
         return best;
     }
 
+    private static final Pattern LABELLED_SCORE =
+            Pattern.compile("score\\s*[:=]\\s*(" + N + "(?:\\s*(?:/|out\\s+of|of)\\s*" + N + ")?)",
+                    Pattern.CASE_INSENSITIVE);
+
     /**
-     * Whether a peer has signed off on the shared draft. Deliberately looks at the CONTENT: a
-     * predicate that asks whether a key exists, when the key is one of the peers' own output
-     * keys, is true the moment that peer has run and can never end anything.
+     * Fifi's review is "SCORE: 0.6 / FEEDBACK: the date is missing …", and the feedback is prose
+     * that can hold any number ("1 typo", "2 o'clock"). So the number after the SCORE label wins,
+     * and only a review with no label at all falls back to {@link #score}.
      */
-    public static boolean agreed(String draft) {
-        return draft != null && draft.toUpperCase(Locale.ROOT).contains("AGREED");
+    public static double reviewScore(String review) {
+        String text = (review == null ? "" : review).replaceAll("[*_`]", "");
+        var m = LABELLED_SCORE.matcher(text);
+        return m.find() ? score(m.group(1)) : score(text);
     }
 
-    /** What the beard held, for when there is genuinely nothing to fan out over. */
-    private static final List<String> BEARD =
-            List.of("a cooked chicken bone", "half a croissant", "one conker",
-                    "somebody's left glove", "roughly a litre of yesterday's puddle");
+    /**
+     * Whether a peer has found what the maze was searched for. The CONTENT is read, never the
+     * presence of a key: a predicate asking whether a peer's own output key exists is true the
+     * moment that peer has spoken, and ends a search that has not found anything.
+     */
+    public static boolean found(String report) {
+        if (report == null) {
+            return false;
+        }
+        String t = report.toLowerCase(Locale.ROOT);
+        int at = t.indexOf("found:");
+        return at >= 0 && !t.substring(Math.max(0, at - 4), at).contains("not");
+    }
+
+    /**
+     * The first number in a sentence — "the oak is 6 m up to the branch" — for the plain-Java
+     * steps that need a measurement. Deciding what was measured is the Ranger's job; reading the
+     * digits back out is ours.
+     */
+    public static double firstNumber(String text, double fallback) {
+        var m = NUMBER.matcher(text == null ? "" : text);
+        return m.find() ? num(m.group()) : fallback;
+    }
+
+    /** The eight ducklings, for when the input box holds nothing to fan out over. */
+    private static final List<String> DUCKLINGS = List.of(
+            "Puddle — last seen at the duck pond", "Pickle — last seen by the bakery bins",
+            "Waddles — last seen on the town hall steps", "Biscuit — last seen in the fountain",
+            "Noodle — last seen under the bandstand", "Pip — last seen at the bus stop",
+            "Socks — last seen in the Mayor's roses", "Bean — last seen following Marmalade");
 
     /**
      * Splits the user's typed input into items for the parallel mapper.
@@ -119,7 +154,7 @@ public final class Parsing {
     public static List<String> items(String input) {
         String text = input == null ? "" : input;
         if (text.isBlank()) {
-            return BEARD;
+            return DUCKLINGS;
         }
         // Semicolons and newlines beat commas when both are present: an item can contain a
         // comma, and splitting on everything fans the mapper out over half-items.
@@ -131,6 +166,6 @@ public final class Parsing {
                 .filter(s -> s.matches("(?s).*[\\p{L}\\p{N}].*"))
                 .toList();
         // Only when the split produced nothing at all (an input of separators and spaces).
-        return parsed.isEmpty() ? BEARD : parsed;
+        return parsed.isEmpty() ? DUCKLINGS : parsed;
     }
 }

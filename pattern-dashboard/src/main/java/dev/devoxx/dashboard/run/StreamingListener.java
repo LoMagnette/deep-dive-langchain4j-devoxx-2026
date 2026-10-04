@@ -10,7 +10,9 @@ import java.util.function.Consumer;
 
 import dev.devoxx.dashboard.run.RunEvent.ScopeValue;
 import dev.devoxx.dashboard.support.Errors;
+import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentInvocationError;
+import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
@@ -67,6 +69,71 @@ public class StreamingListener implements AgentListener {
         this.streaming = streaming;
     }
 
+    @Override
+    public boolean inheritedBySubagents() {
+        return true;
+    }
+
+    @Override
+    public void beforeAgentInvocation(AgentRequest r) {
+        startedNanos.put(r.agentId(), System.nanoTime());
+        emit("agent-before", r.agentName(), "invoking " + r.agentName(), r.agenticScope(), null);
+    }
+
+    @Override
+    public void afterAgentInvocation(AgentResponse r) {
+        Object out = r.output();
+        Long took = elapsed(r.agentId());
+        emit("agent-after", r.agentName(),
+                "completed " + r.agentName() + (took == null ? "" : " in " + took + " ms"),
+                r.agenticScope(), truncate(out), took);
+    }
+
+    @Override
+    public void onAgentInvocationError(AgentInvocationError e) {
+        // The whole cause chain, not just getMessage(): see Errors.
+        String msg = e.error() == null ? "error" : Errors.explain(e.error());
+        emit("agent-error", e.agentName(), "error in " + e.agentName() + ": " + msg,
+                e.agenticScope(), null, elapsed(e.agentId()));
+    }
+
+    /**
+     * A Ranger reaching for its gear. Mission 1's whole point is that the MODEL chose these calls
+     * and their order, so they are emitted as events of their own rather than left to the server
+     * log: the Run events pane then reads "sniff(...) → followTrail(...) → answer", which is the
+     * thing to point at on stage.
+     */
+    @Override
+    public void beforeAgentToolExecution(BeforeAgentToolExecution t) {
+        var req = t.toolExecution().request();
+        emit("tool-call", t.agentInstance().name(),
+                req.name() + "(" + req.arguments() + ")", null, null);
+    }
+
+    @Override
+    public void afterAgentToolExecution(AfterAgentToolExecution t) {
+        var exec = t.toolExecution();
+        Long took = exec.duration() == null ? null : exec.duration().toMillis();
+        emit("tool-result", t.agentInstance().name(),
+                exec.request().name() + " → " + exec.result(), null, null, took);
+    }
+
+    @Override
+    public void afterAgenticScopeCreated(AgenticScope agenticScope) {
+        emit("scope-created", null, null, agenticScope, null);
+    }
+
+    @Override
+    public void beforeAgenticScopeDestroyed(AgenticScope agenticScope) {
+        emit("scope-detroyed", null, null, agenticScope, null);
+    }
+
+    @Override
+    public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+        emit("scope-suspended", null, null, agenticScope, null);
+    }
+
+
     /**
      * The streaming model for this run, or null when the viewer did not ask for one. Null is the
      * signal, not a flag beside it: a demo that can stream branches on having somewhere to
@@ -104,33 +171,7 @@ public class StreamingListener implements AgentListener {
         return answer;
     }
 
-    @Override
-    public boolean inheritedBySubagents() {
-        return true;
-    }
 
-    @Override
-    public void beforeAgentInvocation(AgentRequest r) {
-        startedNanos.put(r.agentId(), System.nanoTime());
-        emit("agent-before", r.agentName(), "invoking " + r.agentName(), r.agenticScope(), null);
-    }
-
-    @Override
-    public void afterAgentInvocation(AgentResponse r) {
-        Object out = r.output();
-        Long took = elapsed(r.agentId());
-        emit("agent-after", r.agentName(),
-                "completed " + r.agentName() + (took == null ? "" : " in " + took + " ms"),
-                r.agenticScope(), truncate(out), took);
-    }
-
-    @Override
-    public void onAgentInvocationError(AgentInvocationError e) {
-        // The whole cause chain, not just getMessage(): see Errors.
-        String msg = e.error() == null ? "error" : Errors.explain(e.error());
-        emit("agent-error", e.agentName(), "error in " + e.agentName() + ": " + msg,
-                e.agenticScope(), null, elapsed(e.agentId()));
-    }
 
     /** Milliseconds since this invocation started, or null if we never saw it start. */
     private Long elapsed(String agentId) {
@@ -141,6 +182,15 @@ public class StreamingListener implements AgentListener {
     /** Manually push an error event (used when a pattern run throws). */
     public void emitError(String agent, String message) {
         emit("agent-error", agent, message, null, null);
+    }
+
+    /**
+     * Push an event that did not come from the agentic listener — Mission 0's plain AI service
+     * reports through LangChain4j's AiService observability API instead (see AiServiceBridge),
+     * and lands here so the page animates it exactly like an agent.
+     */
+    public void emitEvent(String type, String agent, String message, Long millis) {
+        emit(type, agent, message, null, null, millis);
     }
 
     private void emit(String type, String agent, String message, AgenticScope scope, Object data) {

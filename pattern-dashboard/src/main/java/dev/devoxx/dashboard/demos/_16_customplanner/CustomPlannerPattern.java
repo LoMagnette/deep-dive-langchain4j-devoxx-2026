@@ -5,119 +5,88 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 
 import java.util.List;
-import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
-import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
-import dev.devoxx.dashboard.demos._06_conditional.Keys.Answer;
+import dev.devoxx.dashboard.demos._06_conditional.DigOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.DocOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.SniffOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.ZoomOnCall;
+import dev.devoxx.dashboard.demos._16_customplanner.Keys.Schedule;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
-import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>custom planner</b> demo — the escalation ladder. See EscalationPlanner.
+ * Wiring for <b>Mission 16</b> — Mission 6's four Rangers, run by a planner you wrote.
  */
 public final class CustomPlannerPattern {
 
     private CustomPlannerPattern() {
     }
 
-    /** The escalation ladder, cheapest first — the same order the planner is handed. */
-    private static final List<String> LADDER =
-            List.of("EverydayCare", "DogTrainer", "EmergencyVet");
-
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Declaration order IS the cost order — that is the whole configuration of this
-        // planner, and it is worth pointing at on stage: no prompt says "cheapest first".
-        var book = AgenticServices.agentBuilder(EverydayCare.class)
-                .chatModel(model)
-                .name("EverydayCare")
-                .outputKey(Answer.class)
-                .build();
-        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                .chatModel(model)
-                .name("DogTrainer")
-                .outputKey(Answer.class)
-                .build();
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
-                .chatModel(model)
-                .name("EmergencyVet")
-                .outputKey(Answer.class)
-                .build();
-        EscalationLadder app = AgenticServices.plannerBuilder(EscalationLadder.class)
-                .subAgents(book, trainer, vet)
-                // Same builder as every pattern above it. The only difference is that this
-                // planner is forty lines in this repo instead of forty lines in the library.
-                .planner(EscalationPlanner::new)
-                .outputKey(Answer.class)
+        var sniff = AgenticServices.agentBuilder(SniffOnCall.class)
+                .chatModel(model).name("Sniff").build();
+        var zoom = AgenticServices.agentBuilder(ZoomOnCall.class)
+                .chatModel(model).name("Zoom").build();
+        var dig = AgenticServices.agentBuilder(DigOnCall.class)
+                .chatModel(model).name("Dig").build();
+        var doc = AgenticServices.agentBuilder(DocOnCall.class)
+                .chatModel(model).name("Doc").build();
+
+        DaysWork app = AgenticServices.plannerBuilder(DaysWork.class)
+                .subAgents(sniff, zoom, dig, doc)
+                // Same builder as every planner before it. The only difference is that this
+                // planner is a page of this repo instead of a page of the library.
+                .planner(NapSchedule::new)
+                .outputKey(Schedule.class)
                 .listener(listener)
                 .build();
         var r = app.invoke(input);
-        // WHICH rung settled it, read from the scope's invocation history. Return just the
-        // answer and the one thing separating this from a sequence becomes invisible.
-        String answer = String.valueOf(r.result());
-        var scope = r.agenticScope();
-        if (scope == null) {
-            return answer;
-        }
-        List<String> asked = scope.agentInvocations().stream()
-                .map(AgentInvocation::agentName).filter(LADDER::contains).distinct().toList();
-        boolean settled = answer.toUpperCase(Locale.ROOT).lastIndexOf("ANSWERED")
-                > answer.toUpperCase(Locale.ROOT).lastIndexOf("ESCALATE");
-        String rung = asked.isEmpty() ? "nobody" : asked.get(asked.size() - 1);
-        // The marker is protocol, not prose: the planner read it, the Scope tab still shows
-        // it on the raw value, and the reader does not need it in the answer.
-        String shown = answer.replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "");
-        return "**" + (settled ? "Answered by " + rung
-                    : "Nobody could answer — best effort from " + rung)
-                + "** · asked " + asked.size() + " of " + LADDER.size() + " rungs\n\n" + shown;
+        return "**Zao's schedule for the day**\n\n" + String.valueOf(r.result()).lines()
+                .map(l -> l.startsWith("   ") ? "  - *" + l.strip() + "*" : "- " + l)
+                .reduce((a, b) -> a + "\n" + b).orElse("");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // One column per rung, cost rising left to right. Stacked in one column this is demo
-        // 6's branch diagram — one input, three desks — which is the opposite reading. The
-        // three ways out arc over the rungs they skip.
+        // The planner is drawn as framework-shaped but labelled as ours: the dotted box is code
+        // you wrote. Its two silent outcomes — feed and nap — are on the box, because they call
+        // nobody and so never light anything.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "worry", "input", 0),
-                        node("book", "EverydayCare", "agent", 1).withSub("rung 1 · cheapest"),
-                        node("trainer", "DogTrainer", "agent", 2).withSub("rung 2 · only if asked"),
-                        node("vet", "EmergencyVet", "agent", 3).withSub("rung 3 · last resort"),
-                        node("out", "first ANSWERED wins", "join", 4)),
-                List.of(edge("in", "book"),
-                        edge("book", "trainer", "ESCALATE"),
-                        edge("trainer", "vet", "ESCALATE"),
-                        edge("book", "out", "ANSWERED"),
-                        edge("trainer", "out", "ANSWERED"),
-                        edge("vet", "out")));
-        return new PatternDef("customPlanner", "Custom Planner (write your own)", "pattern-zoo",
-                "By now you know who to ask, in what order, and that the vet charges for "
-                        + "the phone call. Escalation, with the bill in view.",
-                "Demo 6's three desks a third time. Routing picks one, the supervisor "
-                        + "picks several, and this tries them cheapest-first and stops early.",
-                "Every planner above is an implementation of one small interface — here is one "
-                        + "written by hand. The policy is a cost ladder: ask the book, then the "
-                        + "trainer, then the vet, and stop at the first rung that can actually "
-                        + "answer. Change the question and watch it stop at a different rung: "
-                        + "that decision depends on what came back, which is the one thing none "
-                        + "of the built-in builders can express.",
-                // caveat: you own the control loop, including the ways it can fail to end.
-                "You own the loop now. Nothing stops a planner from never terminating, calling "
-                        + "the same agent forever, or spending the whole budget on the top rung — "
-                        + "`terminated()` and a hard tier count are the guard rails, and they are "
-                        + "yours to write. Reach for this only when a built-in builder genuinely "
-                        + "cannot say what you mean.",
+                List.of(node("in", "roster", "input", 0).withSub("missions · energy"),
+                        node("plan", "NapSchedule", "planner", 1).withSub("your Java · feed or nap").as("zao"),
+                        node("sniff", "Sniff", "agent", 2).withSub("if energy > 70").as("sniff"),
+                        node("zoom", "Zoom", "agent", 2).withSub("if energy > 70").as("zoom"),
+                        node("dig", "Dig", "agent", 2).withSub("if energy > 70").as("dig"),
+                        node("doc", "Doc", "agent", 2).withSub("if energy > 70").as("doc"),
+                        node("out", "schedule", "join", 3).withSub("queue empty, or bedtime")),
+                List.of(edge("in", "plan"),
+                        edge("plan", "sniff"), edge("sniff", "plan", "report"),
+                        edge("plan", "zoom"), edge("zoom", "plan"),
+                        edge("plan", "dig"), edge("dig", "plan"),
+                        edge("plan", "doc"), edge("doc", "plan"),
+                        edge("plan", "out", "done")));
+        return new PatternDef("customPlanner", "Custom Planner (write your own)", "minds",
+                "Four missions, four tired Rangers, and Zao's one rule: nobody does two missions "
+                        + "in a row. Zoom is hungry.",
+                "Mission 6's four Rangers on call, one more time — now run by your own code.",
+                "Every planner above implements one small interface; here is one written by hand. "
+                        + "`nextAction` reads the board and decides in plain Java: **hungry → "
+                        + "feed; energy above 70 → go; otherwise → nap**, and nobody twice in a "
+                        + "row. Feeding and napping change the board and call nobody, so the loop "
+                        + "runs on until a Ranger is sent or it is bedtime. Watch `Energy`, "
+                        + "`LastOnMission` and `MissionQueue` change in the Scope tab.",
+                "You own the loop now. Nothing stops a planner from never terminating or calling "
+                        + "the same agent for ever — the empty queue and `BEDTIME` are the guard "
+                        + "rails, and they are yours to write. Reach for this only when a built-in "
+                        + "builder genuinely cannot say what you mean.",
                 topo,
-                // Escalates all the way, so the default run walks the whole ladder. Try
-                // "which food should I buy for a four-year-old bouvier?" and it stops at the
-                // book; try "he pulls like a train on the lead" and it stops at the trainer.
-                "he's suddenly limping on his back left leg and won't put weight on it — and "
-                        + "the out-of-hours vet charges €180 before anybody has touched the dog",
-                CustomPlannerPattern::run);
+                "Missions: find the Mayor's reading glasses; fetch the post from the station; dig "
+                        + "out the blocked drain on Elm Street; check the new puppy at number 4. "
+                        + "Energy: Sniff 90, Zoom 75, Dig 40, Doc 80. Zoom is hungry.",
+                CustomPlannerPattern::run)
+                .gist("Your own Planner class decides every next step, in plain Java.");
     }
 }

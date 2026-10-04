@@ -1,6 +1,8 @@
 package dev.devoxx.dashboard.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -60,16 +62,42 @@ class ParsingTest {
     }
 
     @Test
-    void categorySurvivesAChattyRouter() {
-        assertEquals("training", Parsing.category("training"));
-        assertEquals("training", Parsing.category("This is best categorised as: **training**."));
-        assertEquals("everyday", Parsing.category("Everyday"));
+    void categorySurvivesAChattyClassifier() {
+        assertEquals("lost", Parsing.category("lost"));
+        assertEquals("underground", Parsing.category("This is best categorised as: **underground**."));
+        assertEquals("urgent", Parsing.category("Urgent"));
         // The conclusion comes last, so the last label mentioned wins.
-        assertEquals("emergency", Parsing.category("Not a training question — this is an emergency."));
+        assertEquals("hurt", Parsing.category("Not lost — someone is hurt."));
         // An unrecognised answer must still pick a destination rather than routing nowhere, and
-        // it has to fall towards the vet: that is the mistake you can live with.
-        assertEquals("emergency", Parsing.category("no idea"));
-        assertEquals("emergency", Parsing.category(null));
+        // it has to fall towards Doc: sending the medic is the mistake you can live with.
+        assertEquals("hurt", Parsing.category("no idea"));
+        assertEquals("hurt", Parsing.category(null));
+    }
+
+    @Test
+    void fifisScoreIsTheNumberAfterTheLabelNotOneInHerFeedback() {
+        assertEquals(0.5, Parsing.reviewScore("SCORE: 2/4\nFEEDBACK: fix 1 thing and the 2 o'clock"), 1e-9);
+        assertEquals(1.0, Parsing.reviewScore("**SCORE:** 4/4 FEEDBACK: fine"), 1e-9);
+        assertEquals(0.75, Parsing.reviewScore("Score = 0.75, because 1 rule fails"), 1e-9);
+        // No label at all: fall back to reading the review like any other score.
+        assertEquals(0.8, Parsing.reviewScore("I would give it 0.8"), 1e-9);
+        assertEquals(0.0, Parsing.reviewScore(null), 1e-9);
+    }
+
+    @Test
+    void foundReadsTheMarkerAndNotItsNegation() {
+        assertTrue(Parsing.found("FOUND: in the middle, eating the scarecrow's hat"));
+        assertTrue(Parsing.found("Found: the goat"));
+        assertFalse(Parsing.found("Not found: nothing in the east loops"));
+        assertFalse(Parsing.found("still looking"));
+        assertFalse(Parsing.found(null));
+    }
+
+    @Test
+    void firstNumberReadsMeasurementsOutOfSentences() {
+        assertEquals(6.0, Parsing.firstNumber("the branch is 6 metres up", 0), 1e-9);
+        assertEquals(12.5, Parsing.firstNumber("ice 12,5 cm thick", 0), 1e-9);
+        assertEquals(9.0, Parsing.firstNumber("no numbers here", 9), 1e-9);
     }
 
     @Test
@@ -78,16 +106,16 @@ class ParsingTest {
         assertEquals(List.of("a", "b"), Parsing.items("a;\nb"));
         // Semicolons beat commas when both are present, or an item that contains a comma is
         // fanned out as two half-items with no error at all.
-        assertEquals(List.of("half a croissant, buttered", "one conker"),
-                Parsing.items("half a croissant, buttered; one conker"));
-        // A single item is honoured as a single item. Substituting five canned things for the one
-        // the speaker typed reads as the demo ignoring them, which is worse than a short fan-out.
-        assertEquals(List.of("one thing only"), Parsing.items("one thing only"));
-        // Only a genuinely empty input falls back to the beard — the mapper must always have
-        // something to fan out over.
-        assertEquals(5, Parsing.items("").size());
-        assertEquals(5, Parsing.items("   ").size());
-        assertEquals(5, Parsing.items(null).size());
-        assertEquals(5, Parsing.items(" ; , ").size());
+        assertEquals(List.of("Puddle, the small one", "Pickle"),
+                Parsing.items("Puddle, the small one; Pickle"));
+        // A single item is honoured as a single item: substituting eight canned ducklings for the
+        // one the speaker typed reads as the demo ignoring them.
+        assertEquals(List.of("one duckling only"), Parsing.items("one duckling only"));
+        // Only a genuinely empty input falls back to the eight ducklings — the mapper must always
+        // have something to fan out over.
+        assertEquals(8, Parsing.items("").size());
+        assertEquals(8, Parsing.items("   ").size());
+        assertEquals(8, Parsing.items(null).size());
+        assertEquals(8, Parsing.items(" ; , ").size());
     }
 }

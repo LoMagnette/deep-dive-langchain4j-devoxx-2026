@@ -34,7 +34,14 @@ public class MockStreamingChatModel implements StreamingChatModel {
             // One call to the canned model, then handed out in pieces. The listeners fire here,
             // so the Server log tab still shows one prompt and one answer per call rather than
             // one line per token.
-            String text = answers.chat(request).aiMessage().text();
+            var reply = answers.chat(request);
+            // A tool call is not text to stream: hand it over whole, the way a real streaming
+            // model completes a tool-calling turn, and let the framework run the gear.
+            if (reply.aiMessage().hasToolExecutionRequests()) {
+                handler.onCompleteResponse(reply);
+                return;
+            }
+            String text = reply.aiMessage().text();
             for (String chunk : chunks(text)) {
                 handler.onPartialResponse(chunk);
                 Thread.sleep(DELAY_MS);

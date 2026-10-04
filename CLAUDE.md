@@ -9,9 +9,13 @@ Two distinct halves:
 
 - **Root** (`README.md`) — talk planning: the through-line is "autonomy is a dial," told as "From Puppy
   to Pack." The `NN-*.md` planning docs referenced in the root README are the speaker's notes.
-- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** all 19
-  LangChain4j agentic patterns, set in the life of **Zao**, a Bouvier des Flandres, and the household
-  he runs. This is the code you will actually build and edit.
+- **`pattern-dashboard/`** — the live demo: a Quarkus web app that visualizes and **runs** the
+  LangChain4j agentic patterns as missions of the **Pawer Rangers** — a team of dogs led by **Zao**,
+  a Bouvier des Flandres, in the town of Barkville. This is the code you will actually build and edit.
+- **`Pawer Rangers – Agentic Patterns Demo Spec.md`** — THE spec for the demos: the cast, the Pup
+  Board pins, and one mission per pattern (16), in four acts. The code follows it mission by
+  mission; when they disagree, the spec is what the speaker is presenting from. Missions 17–21 (two
+  Mega Mutts and three production demos) are not in the spec and are built in its world.
 
 ## Commands (run inside `pattern-dashboard/`)
 
@@ -61,18 +65,20 @@ few shared packages; the frontend is four static files (no build step). Every pa
 `package-info.java` saying what it is for — read that first, it is the shortest path in.
 
 ```
-demos/_NN_<id>/  EVERYTHING for one demo, and nothing else:
-                   its agent contracts, one interface per file
+demos/_NN_<id>/  EVERYTHING for one mission, and nothing else:
+                   its agent contracts, one interface per file (and its gear, if any)
+                   its Keys — the Pup Board pins it introduces
                    its XxxPattern — topology + Runner
-                   package-info.java — what this demo is for
-                 NN is its place in the talk, so the tree reads in running order
-  _01_single/ _02_sequential/ _03_loop/ _04_parallel/ _05_parallelmapper/
-  _06_conditional/ _07_humanapproval/ _08_nonaiagent/
-  _09_supervisor/
-  _10_goap/ _11_p2p/ _12_blackboard/ _13_voting/ _14_debate/ _15_bdi/
-  _16_customplanner/
-  _17_sitternote/ _18_seconddogcouncil/
-  _19_modelrouting/ _20_async/ _21_resilience/
+                   package-info.java — what this mission is for
+                 NN is the spec's mission number, so the tree reads in mission order
+  Before the pack              _00_aiservice/   (a plain AI service — not agentic)
+  Act 1 · Meet the team        _01_single/ _08_nonaiagent/
+  Act 2 · Workflows            _02_sequential/ _03_loop/ _04_parallel/ _05_parallelmapper/
+                               _06_conditional/ _07_humanapproval/
+  Act 3 · Planners             _09_supervisor/ _10_goap/ _11_p2p/ _12_blackboard/
+  Act 4 · Many minds           _13_voting/ _14_debate/ _15_bdi/ _16_customplanner/
+  The Mega Mutt (composites)   _17_megamutt/ _18_lakeparty/
+  Running it for real          _19_modelrouting/ _20_async/ _21_resilience/
 catalog/         PatternCatalog (the registry) · PatternDef · Topology
 support/         Parsing · Errors — the shared pieces that are OURS, not LangChain4j's
 model/           ModelFactory (which ChatModel is live) · MockChatModel (the offline one)
@@ -99,7 +105,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - **`.name("X")` is load-bearing, not decoration.** An agent's default name is its *method*
     name (`check`, `rewrite`, `plan`), not its interface name — so without it the topology labels
     stop matching, `markNode` never lights a node, and the supervisor's canned plan cannot find
-    `TriageNurse`. Nine tests go red at once if you drop it, which is how this was established.
+    `FirstSniff`. Nine tests go red at once if you drop it, which is how this was established.
     Visible in the wild at `p2p`: `plannerBuilder()` takes no `.name(...)`, so the wrapper itself
     reports as `invoke` — which is why that demo's test filters the roll-call to its two peers.
   - **`support/Parsing` takes plain strings, not an `AgenticScope`.** Reading the scope is
@@ -118,7 +124,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 - **A demo package is `_NN_<id>`: its place in the running order, then the pattern id**,
   lowercased. So the packages sort into the talk's order in the IDE tree, and the deep link on a
   slide (`#/loop`) still names the package to open on stage (`demos._03_loop`), with
-  `#/secondDogCouncil` at `demos._18_seconddogcouncil`. Two things about that shape:
+  `#/megaMutt` at `demos._17_megamutt`. `NN` is also the spec's mission number. Two things about
+  that shape:
   - **The leading `_` is not decoration — a package segment cannot start with a digit.** `01_single`
     is a compile error ("illegal underscore"); `_` is one of the three characters Java allows a
     segment to begin with, so it is the price of having the number first.
@@ -128,27 +135,19 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     build and wrong only to a reader. **Reordering the rail now means renaming packages**, on top
     of the `buildsOn` renumbering that moving `nonAiAgent` already cost once. That is the standing
     price of this scheme; pay it deliberately or not at all.
-- **An agent lives in the demo that introduces it**, and later demos import it from there. That is
-  deliberate, and worth pointing at on stage: `sitternote` imports the loop's `RuffDraftCritic`
-  and the routing demo's `WorryRouter`; `seconddogcouncil` imports the three assessors `voting`
-  introduced. A composite reuses the parts rather than re-implementing them, and its import list
-  says so before a word of explanation. Two shared default inputs work the same way —
-  `SinglePattern.SITTER_MESSAGE` (also used by `sequential`) and `VotingPattern.HOUSEHOLD` (also
-  used by the council).
+- **An agent lives in the mission that introduces it**, and later missions import it from there —
+  see "The missions build on each other" below for the map.
 - **`PatternCatalog` is the registry and nothing else**: twenty-one `XxxPattern.define()` calls in
-  the talk's running order, grouped by comments for the five rail categories. Adding a demo is a
+  mission-number order, commented with the act each belongs to. Adding a demo is a
   new package plus one line here.
 - **An agent does not have to be a model, and `nonAiAgent` is the general case.**
   `AgentUtil.agentToExecutor` falls through to `nonAiAgentToExecutor` for anything that is not
   already an agent, so **any plain object with one `@Agent` method goes straight into
   `subAgents(...)`** — `@K` parameters bound from the scope, return value written to the output
   key, the sequence unable to tell. `HumanInTheLoop` (demo 7) is the library's own instance of
-  this; `demos/_08_nonaiagent/` is your own class, on both ends of an LLM step. **It is demo 8, the
-  last of the workflows** — not in `production` with the other late additions — because "the
-  model decides nothing at all" is a genuine position on the autonomy dial, and the far-left one.
-  It was in `production` first, and moving it cost a renumbering of every `buildsOn` from
-  `supervisor` onwards; that renumbering is the price of the rail order meaning something. Three
-  things it pinned down:
+  this; `demos/_08_nonaiagent/Rivet` is your own class, in front of an LLM step. **It is Mission
+  8, and the spec puts it in Act 1** beside Mission 1 — "not every dog needs a brain" — which the
+  `team` category does without renumbering. Three things it pinned down:
   - **A non-AI agent is INVISIBLE to the listener in `1.20.0-beta30`.**
     `NonAiAgentInstance.setParent` sets the parent and never calls
     `registerInheritedParentListener` — which `AgentInvocationHandler:253` and
@@ -156,13 +155,13 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     `composeWithInherited` are all there; the one call is missing. So a plain-Java step emits no
     `agent-before`/`agent-after`, is never timed, and **its node never lights on the diagram**.
     The demo makes that the lesson rather than hiding it, and
-    `theJavaStepsAreIndistinguishableFromTheModelStepAndActuallyDoTheWork` pins the current
+    `rivetDoesTheMathsWithNoBrainAndNoEvents` pins the current
     behaviour: **if that assertion goes red on a version bump the library fixed it — delete the
     assertion and rewrite the demo's caveat, which will have become wrong.** (This is also why
     `humanApproval` works: `StreamingListener.askHuman` emits `human-ask`/`human-answer` by hand,
     so that demo never depended on the inheritance that is missing here.)
   - **`name` goes on the annotation, not a builder.** There is no builder for a POJO, and the
-    default is the *method* name — `FlatFile` would be called `lookup` everywhere. Same trap
+    default is the *method* name — `Rivet` would be called `ladderLength` everywhere. Same trap
     as `.name("X")` one layer down. `agentAction(scope -> …)` has no answer at all: it comes out
     named `run`, which is why anything you want on a diagram is better as a class.
   - **`typedOutputKey = Keys.Facts.class`** is the annotation's `outputKey(Facts.class)`, so a
@@ -185,10 +184,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Four things these three demos pinned down, each of which is easy to get backwards:
   - **`optional(true)` is about a missing INPUT, not a failing agent.** In `AgentExecutor` the
     `optional()` check sits inside `catch (MissingArgumentException e)` — a step that *throws* is
-    not optional's problem however optional it is. So `resilience` skips `MedicationNote` because
-    most dogs are on nothing and nothing writes `meds`, and the seeding of that key is **plain
-    Java in `run`**: deciding whether you hold a value is not a job for a model. Delete the
-    tablets from the input on stage and the step vanishes with no error.
+    not optional's problem however optional it is. So `resilience` skips Doc (`DocFirstAid`) because
+    most rescues end with nobody hurt and nothing writes `Injuries`, and the seeding of that key
+    is **plain Java in `run`**: deciding whether you hold a value is not a job for a model.
+    Delete "a thorn in its paw" from the input on stage and the step vanishes with no error.
   - **`errorHandler(...)` lives on `AgenticService`, so it is set on the *workflow* builder, not
     on `AgentBuilder`** — it rides on the scope (`DefaultAgenticScope.withErrorHandler`) and sees
     every `AgentInvocationException` in the run. **`RETRY` re-executes and a second failure comes
@@ -247,12 +246,12 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   only says "it did not throw", which is true of a pattern that has quietly turned back into a
   sequence. Three demos went a long time with nothing else — and they were the wrong three, since
   `blackboard` is one of the patterns this file records as having *been* a straight line once:
-  the fix was made and never pinned. They now have `theDebateConvergesOnAgreementAndNotOtherwise`,
-  `theTwoPeersSettleOnThePredicateRatherThanRunningOutOfRounds` and
-  `anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast`. The last of those asserts from
-  the **interfaces**, not from a run, and that is the general lesson: a run shows one order, and
-  one order is exactly what a sequence shows too — so the claim "any of them could go first" has
-  to be read off the declared `@K` keys, which is what actually makes it true.
+  the fix was made and never pinned. They now have `theCouncilArguesThreeRoundsBeforeFifiRules`,
+  `oneScentWakesTwoPeersAndTheSearchEndsOnTheGoat` and
+  `eachClueUnlocksTheNextAndTheBoardDecidesTheOrder`. The last two assert from the
+  **interfaces** first, then from a run, and that is the general lesson: a run shows one order,
+  and one order is exactly what a sequence shows too — so "who can act when" has to be read off
+  the declared `@K` keys, which is what actually makes it true.
 - **There is an untyped version of demos 1–6 in the history, for the live demo.** Commit
   `31c3967` ("Example without typedkey: demo 1-6") is the whole catalogue with demos 1–6 using
   `@V("Notes")` / `.outputKey("Notes")` instead of `@K` and `TypedKey`, so §5 can argue for typed
@@ -315,73 +314,184 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   What it buys, concretely: the mapper's gathered verdicts read as a `List<String>` with no cast
   and no `instanceof`, because `Verdicts` is a `TypedKey<List<String>>`.
   `noDemoAddressesTheScopeWithAStringLiteral` reads the demo sources and fails on a relapse.
-- **The demos build on each other, and that is the narration.** Each `PatternDef` carries a
-  `story` (its beat: a weekend away, the beard, the chocolate, a baby coming, the second dog) and a
-  `buildsOn` naming what it inherits. Read in catalogue order the twenty-one beats are one passage;
-  read down the `buildsOn` lines they are one system being assembled. The tester shows both above
-  the explanation, the gallery cards show the beat so the grid reads as the story, and `←`/`→`
-  walk the catalogue in order.
-  **Three spines carry the reuse:**
-  - **The sitter note** — `single` introduces `NoteRetriever`; `sequential` reuses it and adds
-    `FridgeMagnet`; `loop` reuses *that* agent unchanged and draws a critic and a loop around
-    it; `sitterNote` uses the same two a third time. Nothing about the agent changes between
-    demos 2, 3 and 17 — only the control around it, which is the entire argument.
-  - **The three desks** — `conditional` introduces `EverydayCare`/`DogTrainer`/`EmergencyVet`, and
-    then four demos put a different control flow around the same cast: routing picks one,
-    `humanApproval` adds a person before the answer is acted on, `supervisor` picks several and
-    decides when to stop, `customPlanner` tries them cheapest-first. **`supervisor` adds exactly
-    one agent of its own** — the `TriageNurse`, and nothing else — so the §6 pivot is a change of
-    *decider* over a cast the room already knows, not a new cast. `theDemosReuseWhatTheEarlierOnesBuilt`
-    asserts that count exactly: one, and it must be her. (It said "no agent of its own" for a
-    while, which was true of the version before the nurse and of nothing since; the demo's own
-    `buildsOn` line said it too, on screen, while the diagram beside it drew her.)
-    The supervisor's claim is not "it calls more than one" — a fan-out does that. It is that
-    **the second call exists because of what the first one said**, which neither routing nor a
-    fan-out can produce. It took three attempts to make that land on a real model, and the
-    failures are the useful part:
-    - **Do not build a hand-off on an agent refusing.** The first version had the trainer decline
-      cases that smelled of pain. It reads beautifully and it called one agent on a live model: a
-      refusal is a *conditional exception* sitting under a positive instruction ("give the owner
-      one thing to change this week"), and a model — a small local one especially — takes the
-      positive instruction every time.
-    - **So the first call is a `TriageNurse`, whose job IS to hand on.** She never treats and
-      never trains; she assesses and ends by naming who is needed (`NEEDS: vet`). She always
-      succeeds at what she was asked, so the supervisor's next decision rests on a fact it was
-      given rather than a judgement the model had to volunteer. This is the one agent the demo
-      adds; the three it calls are the routing demo's, unchanged.
-    - **`supervisorContext(...)` must match the scenario it is written for.** An earlier version
-      described a message holding *several separate problems* — left over from a previous
-      scenario — and a live planner did exactly as told: one problem, one answer, stop.
-    - **The result is one answer with its route, not a set of opinions.**
-      `output(SupervisorPattern::answerWithItsRoute)` leads with the path
-      (`TriageNurse → EmergencyVet`), then the **last** answer in full, then the earlier call in
-      italics as the *reason* the next one happened. Printing every call as a peer block is what
-      a parallel workflow produces, and it made this demo read as one. Only the final answer is
-      output; an assessment is work.
-    Same wiring, three routes, decided by what the nurse names: a sudden behaviour change reaches
-    the vet, pulling and barking reach the trainer, and grass-eating settles with the nurse and
-    stops there. `theSupervisorCallsASecondAgentBecauseOfWhatTheFirstSaid` asserts all three,
-    plus that no protocol marker (`NEEDS:`, `ESCALATE`) leaks into the answer.
-    **A warning about the mock**: it had the hand-off special-cased, so every test passed while
-    the live demo called one agent and stopped. A deterministic stand-in proves the wiring, never
-    that a real model will follow a prompt — check this demo against Ollama after touching any of
-    these prompts.
-  - **The second dog** — `voting` introduces the three assessors; `secondDogCouncil` has them
-    ratify a debated motion instead of voting cold.
-  `parallelMapper`, `goap`, `p2p`, `blackboard`, `debate` and `bdi` stand alone, honestly: they
-  are about different subjects and forcing a link would damage them.
-  **Two rules that must not be broken:**
-  - **The narration is written to fit the rail order, never the other way round.** That order is
-    the autonomy dial, which is the talk's thesis. `bdi` is a deliberate flashback ("think back to
-    his very first hour") because the puppy's first hour is chronologically first and sits near
-    the end of the dial.
-  - **The chain runs through the DEFAULT INPUTS, not at run time.** `parallel`'s default input is
-    literally what `single` prints. Nothing is passed between demos while they run, so a skipped
-    section, a deep link from a slide, or one failed run never strands what follows.
-  `theDemosReuseWhatTheEarlierOnesBuilt` asserts the reuse from the topologies, and
-  `everyDemoHasItsBeatInTheNarration` fails the build on a demo with no beat. The first of those
-  already caught the capstone quietly using its own `NoteTightener` while claiming to reuse demo
-  3's checklist — the wiring was changed to match the claim, not the claim to match the wiring.
+- **Mission 0 (`aiService`) is a plain `AiServices` interface — deliberately NOT agentic.** It is
+  the baseline the room needs before an `@Agent` means anything: one model call, with
+  `.tools(new DutyRoster())`, `.inputGuardrails(new NoCatsAllowed())` and
+  `.outputGuardrails(new PawSized())` on the builder. Category `classic` ("Before the pack"), at
+  catalogue index 0 — which is why the package-numbering test counts from ZERO. Five things it
+  pinned down:
+  - **An AI service is invisible to the agentic listener.** It reports through a different
+    API — `AiServices.registerListeners(...)` with one listener per event type (started, tool
+    executed, input/output guardrail executed, completed, error). `run/AiServiceBridge` maps those
+    onto the run's `StreamingListener` (via its public `emitEvent`), so the page animates Mission 0
+    like any agent; guardrails report as type `guardrail` under their class name, which is their
+    box's label. `ToolExecutedEvent` only fires AFTER the tool ran, so call and result are emitted
+    together.
+  - **There is no scope.** No Pup Board, no Scope tab rows — the test asserts it. That absence is
+    the bridge to Mission 1: the scope is what the agentic module adds.
+  - **A reprompt is sent WITHOUT the conversation** unless the service has chat memory. The first
+    version re-prompted with "answer the letter again, shorter", and a live model replied
+    "please provide the letter you would like me to answer". `PawSized` now puts its own draft in
+    the reprompt text, so the instruction is self-contained.
+  - **Output retries are capped, and the cap throws.** Two reprompts by default; past that the
+    call throws `OutputGuardrailException`. The wiring sets it out loud
+    (`outputGuardrailsConfig(...maxRetries(3))`) and catches it. An input guardrail that fails
+    throws `InputGuardrailException` too — and the model is never called (no tool events).
+  - **The default letter asks for "everything"** so a live model writes 110–220 words and
+    `PawSized` fires on the first click; a polite short letter passes first time and shows nothing.
+    For the input guardrail, sign a letter "Marmalade".
+- **The missions build on each other: the cast is met once and reused.** Each `PatternDef`
+  carries a `story` (the mission in one sentence, as the speaker says it) and a `buildsOn` naming
+  what it inherits; the gallery cards show the story so the grid reads as Barkville's week. An
+  agent lives in the mission that introduces it, and later missions import it from there — so a
+  mission's import list says what it is made of before a word of explanation.
+  `laterMissionsReuseTheRangersTheyAlreadyMet` asserts these imports:
+  - **Sniff finds** (`_01_single.SniffFinds`, with `SniffGear`) — the hat (1), the kitten (2),
+    the Mega Mutt (17), the bad radio day (21).
+  - **The four Rangers on call** (`_06_conditional.SniffOnCall/DigOnCall/DocOnCall/ZoomOnCall`,
+    all reading `Call`) — routing picks one (6), Zao supervises them (9), the nap schedule
+    rations them (16). Mission 19 reuses Zao's classifier.
+  - **Rivet and Zoom's ladder** (`_08_nonaiagent.Rivet`, `ZoomFetchesLadder` with `ZoomGear`) —
+    GOAP chains them (10), the Mega Mutt drops them into Mission 2 (17), exactly as the spec's
+    presenter notes ask.
+  - **Howl and Fifi's loop** (`_03_loop`) — the poster (3), and nested inside the Mega Mutt for
+    the Gazette story (17). Fifi's rules are a `Rules` PIN, not part of her prompt, so the same
+    critic grades a poster and an article.
+  - **The storm inspections** (`_04_parallel`) — in parallel (4), and as a sequence with one async
+    step (20). **The ice voters** (`_13_voting`) — cold (13), and after a real inspection (18).
+  **The chain runs through the DEFAULT INPUTS, never at run time**: `SequentialPattern.KITTEN` is
+  shared by 2, 17 and 21, `VotingPattern.LAKE` by 13 and 18, `SinglePattern.LOST_HAT` by 1. Nothing
+  is passed between missions while they run, so a skipped mission or a deep link from a slide never
+  strands what follows.
+- **The Pawer Rangers: one cast, one colour, one job — and the name says it.** From the spec:
+  | Colour | Ranger | Breed | Job | In the code |
+  |---|---|---|---|---|
+  | Black | **Zao** | Bouvier des Flandres | leader: decides who goes where, names the culprit | classifier (6), merge (4), supervisor (9), blackboard verdict (12) |
+  | Blue | **Sniff** | Beagle | finds things — gear: `sniff`, `followTrail` | 1, 2, 4, 5, 6, 9, 11, 12, 13, 18, 21 |
+  | Yellow | **Zoom** | Greyhound | runs, fetches, delivers — gear: `fetch`, `deliver` | 2, 4, 8, 10, 11, 15 |
+  | Green | **Dig** | Dachshund | tunnels and tight spots | 4, 6, 7, 10, 12 |
+  | White | **Doc** | St. Bernard | medic, decides what is safe, says no often | 2, 6, 10, 13, 19, 21 |
+  | Purple | **Howl** | Husky | writes and argues, loud | 2, 3, 14, 18 |
+  | Pink | **Fifi** | Poodle | critic and judge | 3, 14 |
+  | Silver | **Rivet** | robot dog | maths and lookups — **plain Java, no model** | 8, 10, 12, 13, 17, 18 |
+  Supporting cast: **Officer Jo** (the human, Mission 7), **Marmalade the cat** (the villain — an AI
+  agent in the debate, the prime suspect in every crime), **the Mayor** (loses things, owns roses).
+  **Rivet and Marmalade were Bolt and Mittens until 2026-10-04**, renamed because a super-powered
+  dog called Bolt next to a cat called Mittens is the cast of Disney's *Bolt* (2008). When naming
+  any new character, check it is not a well-known one first — and avoid Disney's cats in
+  particular (Duchess, Figaro, Lucifer).
+  Rules that fell out of building it:
+  - **An agent's `.name(...)` is its Ranger; its interface name is its job in this mission**
+    (`SniffFinds`, `ZoomFetchesLadder`, `DigSteadies`). The diagram label is the Ranger, so the room
+    learns eight names once. Where one mission has the same Ranger twice the second gets its own
+    name (`DigActs`, `ZoomRescue`/`ZoomSquirrel`/`ZoomNap`, `SniffVote`), because `markNode`
+    lights every box whose label matches — two boxes called "Zoom" would both light.
+  - **"Color = job" is on the schematic**: `Topology.Node.as("sniff")` sets the Ranger and
+    `render.js` draws a badge in the box corner in `var(--r-sniff)` (`app.css`). A badge, not a
+    tinted stroke, because Doc is WHITE and vanishes on the light canvas. The schematic test fails
+    any box labelled as a Ranger without a colour.
+  - **Rivet is always drawn as `code`**, never as an agent — wherever he appears. And **a non-AI
+    agent is invisible to the listener in a sequence** (see the non-AI note above), so Rivet's box
+    never lights there; his effect is on the Scope tab. Oddly, whether he is reported depends on how he
+    is nested: invisible as a direct sub-agent of a sequence or of Mission 13's top-level
+    VotingPlanner, but reported when that planner is nested one level down (Mission 18). Do not
+    build anything on either behaviour — read his effect from the scope.
+  - **Gear is real tools, and the model picks them.** `SniffGear`/`ZoomGear` are `@Tool` classes
+    passed with `.tools(...)`; `@P(name = "place", ...)` is needed because the build does not keep
+    parameter names (without it the model is offered `arg0`). `StreamingListener` emits
+    `tool-call`/`tool-result` from `beforeAgentToolExecution`/`afterAgentToolExecution`, `app.js`
+    lights the gear box whose label starts with the tool name, and `ChatCallLog` prints a
+    tool-only reply as `tool call: sniff({...})` instead of an empty arrow. Gear returns canned
+    Barkville FACTS — a tool is where facts come from — and its shed is the source of truth
+    (`ZoomGear.fetch` rounds UP to the next ladder it actually has).
+  - **The acts are the categories** (`team`, `workflow`, `planner`, `minds`, then `composite`,
+    `production`). The catalogue stays in mission-number order (so `_NN_` holds), and the rail and
+    gallery group by category — which is how missions 1 and 8 sit together in Act 1, as the spec's
+    running order asks, without renumbering anything.
+  - **Live-model lessons carried over from earlier casts, all still true:** a persona prompt
+    ("You are the St Bernard…") makes a small model role-play and lose judgement, so a persona
+    goes only where the voice IS the output and stays short; a prompt that ends in a marker puts
+    the decision FIRST; "who guards it" lets a human in where "which dog guards it" does not; mock
+    triggers key on an INSTRUCTION, never on a dog's name alone (the same Ranger speaks in a dozen
+    missions); and a verdict-giving agent is told that "not proven" is not a verdict.
+  - **Pins that must grow need an appender.** An agent's output OVERWRITES its key, so the spec's
+    `clues` list (Mission 12) is one pin per clue — which is also what lets a clue be the
+    precondition of somebody else's contribution.
+  - **Mission 13 is LangChain4j's `VotingPlanner`, not a parallel workflow with a hand count** —
+    which is what it was for a while. The planner calls EVERY sub-agent at once, collects each
+    output as a vote, and returns `strategy.aggregate(votes)` as the result. `VotingStrategy` is a
+    one-method interface, so the spec's safety rule is a lambda: `VotingPattern.VETO` (one NOT SAFE
+    wins), passed as `new VotingPlanner(VETO)`. The result also shows what the library's own
+    `VotingStrategy.majority()` would have said on the same votes — the spec's "majority for the
+    mascot, veto for safety" made literal, with both strategies real. One trap: `majority()` counts
+    EQUAL votes, and "SAFE — the ducks are on it" is a different vote from "SAFE, 12 cm", so votes
+    are read down to their verdict word before `majority()` sees them. Mission 18 nests the same
+    planner and strategy as one step of its sequence. `theVetoOverrulesTheMajorityOnIce` asserts
+    both use `VotingPlanner` and neither uses `parallelBuilder`.
+  - **Mission 14 is LangChain4j's `DebatePlanner`, not a loop dressed as one** — it was a
+    `loopBuilder` of Howl, Marmalade and a Rivet minute-taker for a while, which showed a loop and
+    called it a debate. How the real planner works, read from its bytecode in `1.20.0-beta30`:
+    **every sub-agent but the LAST is a debater and the last is the judge** (so `subAgents(howl,
+    marmalade, fifi)` is the whole casting); each round it calls ALL debaters together — they run
+    concurrently, so within a round nobody hears the other — then writes the previous round's
+    statements into the scope as `debateContext` ("Howl: …\nMarmalade: …"), which is what the next
+    round answers; after each round it asks the `ConvergenceStrategy` (`unanimous()` = word for
+    word identical, so prose never converges; `unanimousLastWord()` = both end on the same word),
+    and on convergence or `maxRounds` it calls the judge once with that context. Consequences:
+    `debateContext` holds ONLY the last round, so Fifi rules on closing statements and the result
+    rebuilds the full transcript from `scope.agentInvocations()`; round 1's context is EMPTY, so
+    the debaters are told an empty last round means "open your case" (live, Marmalade otherwise
+    opened with "Howl has yet to offer an argument"); and `debateContext` is the library's key,
+    so `Keys.DebateContext` is the one `TypedKey` that overrides `name()` — with the library's
+    constant, `DebatePlanner.DEBATE_CONTEXT_KEY`. `theCouncilArguesThreeRoundsBeforeFifiRules`
+    asserts the planner is used and both debaters read that key.
+  - **Missions 11, 12 and 15 were rebuilt because they were too simple to show their pattern.**
+    Two peers alternating looked like a loop; three clue-finders reading only the crime plus a
+    judge looked like a fan-out and a join; and BDI's beliefs never changed during the run, so it
+    was a priority list. Each now makes the ONE behaviour that distinguishes it visible in the
+    Run events, and each was read out of the library's bytecode first — worth doing again on a
+    version bump, because these planners are small and their semantics are the whole demo:
+    - **P2P (corn maze): three peers, one pin with two listeners.** `P2PPlanner` runs every agent
+      whose input pins all exist, and after EACH agent finishes, re-arms every agent that reads
+      the key it wrote — then calls everything activatable at once. So Sniff (reads Zoom's
+      `Clearing` and Dig's `Burrows`) writes `Scent`, which wakes Zoom AND Dig together, and
+      each of their reports wakes Sniff again. Seed `Clearing`/`Burrows` or nobody moves
+      ("stable after 0 invocations"). It is genuinely chatty: when two reports land a moment
+      apart, Sniff fires once for each — a live run took 13 turns, hence the cap of 20 and the
+      caveat saying so. The test asserts Sniff first, then {Zoom, Dig} as a wave, and that the
+      predicate (FOUND: in any pin) stopped it — never the exact interleaving, which is the
+      planner's. The prompts are explicit if/else scripts on what the OTHER pups said: on
+      gemma, "once your run takes you to the middle" let Zoom find the goat on his first run,
+      and the peers never needed each other.
+    - **Blackboard (sausage heist): preconditions, not a fan-out.** `BlackboardPlanner` picks,
+      each step, ONE agent whose inputs are all on the board and that has not fired since they
+      last changed, using a `ConflictResolutionStrategy` when several qualify. So the inputs ARE
+      the preconditions: Sniff and Rivet need the crime; Dig needs Sniff's `ScentClue`; Doc needs
+      Rivet's `CameraClue`; Zao needs `TunnelClue` + `CrumbClue` and writing `Culprit` is the goal.
+      They are registered **backwards** (Zao, Doc, Dig, Rivet, Sniff) and `declarationOrder()`
+      only breaks ties among the eligible, so the run goes Rivet → Doc → Sniff → Dig → Zao —
+      interleaving two chains nobody wrote — and the result prints that order beside the
+      registration order. The diagram has NO agent→agent edge (the test pins it): every arrow
+      goes into or out of the board, which sits in the middle column.
+    - **BDI (squirrel!): multi-step intentions, preemption, resumption.** A `Desire` is
+      priority + achievable + satisfied + a PLAN (its agent types, in order). `BDIPlanner`
+      commits to the highest achievable unsatisfied desire, and after EVERY step re-checks: if
+      a higher desire has become achievable it preempts, remembering the cursor
+      (`desireProgress`), and later resumes there; a plan that runs out without satisfying its
+      desire is an `IllegalStateException`, not a retry. The demo needs a belief that changes
+      mid-run, so Zoom's squirrel plan step 1 (`ZoomUpTheBank`) writes `Lookout` — what he
+      sees — and the rescue is achievable only once that says "stranded". The run is squirrel
+      1/2 → rescue 1/2 → rescue 2/2 → squirrel **2/2** → nap; with "Officer Jo already has the
+      kid, safe" on the radio it is squirrel 1/2 → 2/2 → nap. Beliefs are read in plain Java.
+    - **On gemma, "pin your clue on the Pup Board" is an invitation to role-play** — headings,
+      emoji pins, "Clue Status: PLACED" — and the facts the next Ranger needs fall out. Clue
+      prompts are "Report it in two short plain sentences, no headings", and they carry the
+      facts (cat's prints, number 9, the 07:02 snack): the twist is only fair if the board
+      makes it, and a small model will otherwise convict "the Rat".
+  - **A voter's criterion must be narrow enough to disagree.** Mission 13's whole lesson is a 2–1
+    SAFE majority overruled by a veto. When Sniff judged "what you can sniff and see", he saw the
+    dark patch too and voted NOT SAFE, so majority and veto agreed and the lesson vanished. He now
+    judges ONLY who is already out on the ice and whether it holds them.
 - **The demo problems obey two rules that pull against each other.** Both are load-bearing, and
   the catalogue has been rewritten twice for getting one of them wrong — read this before
   inventing a new scenario.
@@ -396,8 +506,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
       one. It now scores a **fraction of four named rules**.
     - *Patterns that are secretly a sequence.* GOAP, BDI and blackboard were all straight lines.
       GOAP now has a real precondition chain and is registered **backwards on purpose**; BDI has
-      three desires whose priorities (not declaration order) pick the winner; blackboard's three
-      contributors each read only `problem`, so any of them can go first.
+      ranked multi-step plans and a belief that changes mid-run; blackboard's contributors each
+      need a different clue on the board, so the order emerges. See the Missions 11/12/15 note.
       **`p2p` was the fourth, and it hid for longer because its exit predicate looked fine.**
       It was `hasState(Agreement.class)`, and `Agreement` was the *second peer's own output
       key* — so it was true the instant that peer had run, on any model, and the run always
@@ -425,16 +535,16 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     per demo is fifteen sentences across the talk — during which the room is learning kennels,
     not patterns. So every constraint a demo turns on is now one the room already holds: a cooked
     bone is dangerous and a croissant is not, a dog who suddenly starts snapping needs a vet and not a
-    training tip, a fridge note needs the vet's
-    number on it, a puppy goes to the garden before he gets a training session, you can call him
-    off a hoover before you can call him off a cyclist, and neither half of a couple outranks the other about
-    the bed. **The test for a new scenario: would a dev in row 20 know the right answer before
+    training tip, a Dachshund stuck under a fence needs rescuing and not a training tip, a puppy goes to the garden before he gets a training session, the chair cannot
+    be pushed while the human is in the kitchen, the dog who does not fit through the dog flap did
+    not carry the cake out through it, and with the pack leader declining to rule, neither of two
+    dogs outranks the other about the sofa. **The test for a new scenario: would a dev in row 20 know the right answer before
     you finished reading the input aloud?** If not, it is the wrong scenario however good the
     pattern fit is.
   - **3. Something in the input must be visibly wrong, dangerous or funny — and the run must be
     seen dealing with it.** This is the newest rule and the one the catalogue was weakest on. The
     demos that land are the ones with an "oh no" the room spots before the first agent runs: the
-    conker, the 85% chocolate, the 2-1 split, the nurse sending it to the vet, the ladder stopping
+    conker, the 85% chocolate, the 2-1 split, the Beagle sending it to the rescue dog, the ladder stopping
     at the book. The ones that died on stage all produced *admin* — "plan the meals for the days
     the owners are away" is a perfectly good pattern fit and a paragraph nobody watches. **This is
     not fixed by better prose.** A pass that only made the sentences wittier was rejected in the
@@ -463,83 +573,43 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     **cancels** its question — runs execute on a pool of four, so a question nobody answers would
     otherwise hold a thread for ever and the next few runs would silently never start.
   - **`StreamingListener.askHuman`** carries it, because the listener already *is* the per-run
-    context object and only one demo out of twenty-one asks anybody anything. It emits `human-ask`
+    context object and only one mission out of twenty-one asks anybody anything. It emits `human-ask`
     **before** waiting — do it the other way round and the run blocks on a question nobody has
     been shown.
   The diagram gives the person the `human` role rather than `agent`, and
-  `everyTopologyShowsWhatItsPatternActuallyDoes` asserts it: drawn like the boxes either side, the
+  `everySchematicShowsWhatItsMissionActuallyDoes` asserts it: drawn like the boxes either side, the
   picture would say the model decided, which is the one thing this pattern denies.
-  A trap this already paid for: `MockChatModel`'s reply lambda is handed the **raw** prompt, not
-  the lowercased one its rule matched on, so `indexOf("what they said:")` returned -1, the slice
-  landed somewhere arbitrary, and the refusal path quietly produced the approved answer. The test
-  missed it too, because the result echoes the person's words and a naive `contains("nothing")`
-  passed on those — assert on the instruction section, not the whole result.
-- **`customPlanner` is the §7 "middle ground" made runnable**, and the only pattern whose
-  behaviour lives in this repo rather than in the library. `demos/_16_customplanner/` holds all of
-  it — the three tier agents, the planner, and the wiring. `EscalationPlanner` implements
-  `dev.langchain4j.agentic.planner.Planner` — which is a smaller interface than it looks:
-  `nextAction(PlanningContext)` returns `call(...)` to invoke agents or `done()` / `done(result)`
-  to stop, `init(InitPlanningContext)` hands you the sub-agents in declaration order, and
-  `firstAction` defaults to `nextAction` (so it runs once before anything has been invoked and
-  `previousAgentInvocation()` is null that first time). Everything else is a default method.
-  The policy is a **cost ladder**: `PuppyBook` → `TrainerOnCall` → `VetOnCall`, stopping at the
-  first rung whose answer ends `ANSWERED` rather than `ESCALATE`. Declaration order *is* the cost
-  order; no prompt says "cheapest first".
-  Why it has to be a custom planner, which is the only reason to write one — a sequence runs all
-  three every time, a conditional picks a rung up front from the question alone, a loop re-runs
-  the same agents, and a supervisor would hand an LLM your cost policy. The decision here depends
-  on **what came back**, which is what `PlanningContext.previousAgentInvocation().output()` is
-  for and what none of the built-in builders can express.
-  Two things worth keeping if you touch it:
-  - **The result names the rung that settled it** ("asked 1 of 3 rungs"), read from
-    `AgenticScope.agentInvocations()`. Return just the answer and the one thing that distinguishes
-    this from a sequence becomes invisible.
-  - **`MockChatModel.kind()` reads only the question, never the tier's instructions.** Every
-    tier's prompt explains what is past it ("anything about pain, injury or illness"), so a match
-    against the whole prompt finds "injur" every time, classifies everything as medical, and the
-    ladder walks to the top no matter what is asked — a planner that behaves exactly like a
-    sequence. `PatternCatalogTest.theCustomPlannerStopsAtTheFirstRungThatCanAnswer` is what
-    caught that, and it asserts the early exit on three different questions for that reason.
-  On stage: the default input (a limp) walks all three rungs; type "which food should I buy?" and
-  it stops at the book, or "he pulls like a train on the lead" and it stops at the trainer. That
-  works offline too — the mock has three canned ladders.
-- **`sitterNote` is the capstone, and the payoff of the talk's arc.** It is a system rather than a
-  pattern: conditional routing sends the owner's worry to the right person, a parallel step plans
-  the meals and the walks, a sequence merges all three into one note for the fridge door, and a
-  loop tightens it until it passes the **same four rules** the standalone loop demo uses — a
-  composite reuses the parts, it does not re-implement them. It exists to show that the builders
-  *nest* — each composite is itself an `UntypedAgent` that another builder takes as a sub-agent —
-  and to make the dial visible: deterministic scaffolding with LLM judgement at three points. Its
-  diagram uses the `stages` layout, where each node carries an explicit column number, because no
-  automatic layout recovers the real order of a composite's steps. When adding another composite,
-  give it `category: "composite"` — the gallery counts patterns and composites separately.
-  One seam it pays for out loud: it seeds the scope with the same text under **both** `worry` and
-  `stay`, because the router and the three specialists ask "what is the worry" while the two
-  planners ask "what is the stay". Reusing an agent means accepting the key it already declared;
-  get it wrong and you get `MissingArgumentException` pointing at a step that looks unrelated.
-- **`secondDogCouncil` is the second composite, mixing zoo patterns with plain plumbing**: a
-  parallel mapper reads three angles of the household, one agent turns the findings into a motion,
-  a **debate** argues it to a ruling, and the **same three assessors from the voting demo** ratify
-  it — so the room has already met the voters and watches them ratify a debated motion instead of
-  voting cold. Its lesson is the opposite of the first one's: the exotic planners are the easy
-  part, and most of the work is the small adapter agents between them (`CouncilBriefer`,
-  `CouncilNote`) because each pattern expects its input under its own key. Its result is composed
-  from the scope (ruling, restated motion **and** ratification) rather than the debate's `verdict`
-  alone — otherwise the last third of the diagram looks decorative because nothing it produced
-  reaches the screen.
-  Worth noticing: this debate's two advocates disagree, so `unanimous()` never converges and it
-  runs its full two rounds, while the holiday debate's converge in one. Both behaviours on one
-  page is deliberate.
-  Three traps these composites already paid for, worth knowing before writing a third:
-  - **Scope values are passed through, never coerced.** The mapper writes `findings` as a `List`;
-    declaring `@K(Findings.class) String` fails at runtime with a bare `argument type mismatch`.
-  - **Parallel steps invoke the listener from several threads.** Anything collecting those events
-    must be thread-safe — a plain `ArrayList` in a test silently drops them and reads as a flaky
-    "that agent never ran". The SSE path is fine (Mutiny's emitter serialises), and is verified.
-  - **A refinement loop feeds its own output back into the next prompt.** In the mock that means
-    a rule matching a word which appears in the *note* hijacks the loop's second pass, and the
-    composite returns the wrong stage's answer with no error at all. See the rule ordering note
-    in `MockChatModel`.
+  In Mission 7 the person is **Officer Jo**, the one human in the cast. She is asked whether Dig
+  may tunnel under the Mayor's prize roses, and her answer — yes, no or yes-but — is the
+  `approved` pin `DigActs` reads. On stage, say no once: Dig does not dig and suggests another way.
+  A trap this already paid for, and still worth knowing: the mock's reply reads what the person
+  said from the AFTER-label slice of the prompt, and the test asserts on the outcome section
+  (`**So Dig…**`), not the whole result — the result echoes Jo's own words, so a naive
+  `contains("no")` passes on those even when Dig ignored her.
+- **`customPlanner` (Mission 16, Zao's Nap Schedule) is your own `Planner`, on one slide.**
+  `NapSchedule` implements `dev.langchain4j.agentic.planner.Planner` — `init(InitPlanningContext)`
+  hands it the sub-agents, `nextAction(PlanningContext)` returns `call(agent)` or `done(result)`,
+  and `context.agenticScope()` lets it READ and WRITE the board (typed `writeState(Key.class, v)`).
+  The rule is plain Java: **hungry → feed; energy above 70 and not last on a mission → go;
+  otherwise → nap**, nobody twice in a row. Feeding and napping change the board and call nobody,
+  so `nextAction` loops internally until somebody is sent or it is bedtime (`BEDTIME` steps) — the
+  two guard rails are the empty queue and that cap, and they are yours to write. It writes the
+  current mission into `Call` before calling a Ranger, because Mission 6's Rangers read `Call`,
+  and pins `Energy`, `LastOnMission`, `MissionQueue` and `Schedule` so the Scope tab shows the
+  planner thinking. The result is the day's log, with FEED / GO / NAP in words — no emoji.
+- **`megaMutt` (17) is the spec's "Mega Mutt" made literal**: Mission 2's kitten rescue with
+  Rivet (8) dropped in between Sniff and Zoom, and Mission 3's loop nested at the end to polish the
+  Gazette story. It exists to show that **the builders nest** — a loop is an agent, so it sits in a
+  sequence like any Ranger. Its lesson is the glue: Sniff pins a sentence and Rivet needs a number,
+  so `TapeMeasure` (plain Java) reads the metres; the rescue pins a health report and the loop
+  needs a brief, so `GazetteBrief` (plain Java) writes one. And **the wiring chooses Zoom's output
+  key** (`RescueStatus`, so Doc can read it) — the key is the contract between two agents, and a
+  composite is where contracts get written.
+- **`lakeParty` (18)**: a parallel mapper sends Sniff to four spots of ice, `IceReport` (plain
+  Java) writes the findings back INTO `Mission` — because that is the key Mission 13's voters
+  declared, and reusing an agent means accepting its key — then the same vote with the same veto
+  (`VotingPattern.count`, public so it can be reused), and Howl announces it. The original words go
+  first in the rewritten mission, or Rivet's ruler loses the measured thickness.
 - **`demos/_NN_<id>/*`** — one public interface per agent (`@Agent` + `@UserMessage`/`@K`), so
   LangChain4j can build JDK proxies. Prompts are worded so `MockChatModel` returns parseable output.
 - **`ModelFactory`** — resolves the shared `ChatModel` (Ollama or mock). Eager (observes `StartupEvent`)
@@ -576,38 +646,39 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   millisecond and the demo shows a block of text appearing at once, which is exactly what
   streaming is supposed to look different from.
 - **`MockChatModel`** — deterministic, no-network `ChatModel`, and the thing `mvn test` runs
-  against. It pattern-matches **the last user message** (never the accumulated conversation —
-  that would pin multi-turn planners to their first choice) against an **ordered rule table**,
-  and returns canned, PARSEABLE answers. The table is ordered on purpose and each rule's comment
-  says what it stands in front of, because prompts overlap heavily: three agents talk about the
-  sitter note, the park step quotes the garden step, and the *specific* rule has to come first.
-  Three hazards it already handles, each of which produced a wrong demo with no error:
-  - **Whitespace is collapsed before matching.** The prompts are text blocks, so "PASS or FAIL"
-    is one phrase to a reader and `"PASS or\nFAIL"` to `String.contains` — a rule that looks
-    obviously right silently never fires.
-  - **Rules that match on quoted content go below rules that match on an instruction.** A
-    refinement loop feeds the note it just wrote back in; a rule keyed on a word inside that
-    note hijacks the loop's second pass.
-  - **Trigger words must not be ordinary English.** The score rule used to fire on the word
-    "number", which quietly claimed every agent whose rules mention "the vet's telephone
-    number" — so they answered `0.60` instead of writing a note. It now keys on "0.0 to 1.0".
-  The demo-critical values: a score alternating 0.60/0.95 so loops visibly iterate then exit;
-  **different** one-word votes per assessor (`YES` for money, `LATER` for the other two) so the
-  offline vote is a genuine 2-1 majority; a **catch-all** `argue` rule that hands both holiday
-  advocates the same words so `ConvergenceStrategy.unanimous()` fires, against the council's two
-  named rules that differ so it does not; a 2-step supervisor plan nurse→specialist→done; and an
-  item-aware table so the mapper really does clear the croissant and condemn the cooked bone. Its
-  worry-routing rule must stay in step with `Parsing.CATEGORIES`, and its canned supervisor plan
-  names `TriageNurse` literally and reads `NEEDS: vet`/`trainer`/`everyday` out of the nurse's
-  answer to pick the second call — renaming her, or changing that marker, breaks the demo.
-  **Two traps this table has now sprung twice.** A rule whose trigger no prompt contains any more
-  is worse than no rule: it reads as live behaviour and its comment describes a demo that no
-  longer exists. Three such orphans survived two rewrites (the `parallel` demo's weather/pavement
-  veto, and a `tighten this note` rule left over from the `NoteTightener` the capstone stopped
-  using) — delete the rules a prompt change strands. And the holiday debate converges **via the
-  catch-all**, not via the `comes or stays` rule, which is the *judge's*: insert a rule between
-  them that tells the two advocates apart and that debate silently starts running two rounds like
-  the council's. `theDebateConvergesOnAgreementAndNotOtherwise` is what catches it.
+  against. It matches **the last user message** (never the accumulated conversation — that would
+  pin multi-turn planners to their first choice) against an **ordered rule table**, and returns
+  canned, PARSEABLE answers. Each rule's comment says what it stands in front of. What it does
+  that a canned table usually does not:
+  - **Tool calls.** When the request carries tool specifications it plans the calls from the
+    prompt (`toolPlan`), asks for ONE per turn as an `AiMessage` with a `ToolExecutionRequest`,
+    counts the `ToolExecutionResultMessage`s since the last user message, and only answers once
+    every planned call has a result — with the results appended to the text its rule reads. So
+    Mission 1's `tool-call` events are real round trips through the framework's tool loop, offline.
+    `MockStreamingChatModel` hands a tool-call turn over whole (`onCompleteResponse`), and streams
+    only text.
+  - **Item awareness** for the mappers (ducklings, ice spots) — eight identical lines would run a
+    mapper perfectly and demonstrate nothing — and a **reactive supervisor plan** that reads the
+    fair's problems out of the request and sends one Ranger per problem (`CALL_ARG` is the
+    responders' `Call` key spelled out; rename that key and the plan breaks).
+  - **Fifi alternates 2/4 then 4/4**, so both loops (3 and 17) visibly iterate once and exit; and
+    Howl's first draft is loud and incomplete, his second fixed, so the score is earned.
+  Hazards it already handles, each of which produced a wrong demo with no error at some point:
+  - **Whitespace is collapsed before matching**, because the prompts are text blocks and a phrase
+    that wraps is `"a\nb"` to `String.contains`.
+  - **Triggers are INSTRUCTIONS, never quoted content**: a refining loop feeds its own output
+    back in, and the merge/judge/verdict prompts quote every earlier answer — so the rule for the
+    quoting agent goes FIRST (Zao's merge, Fifi, Zao's culprit), and no canned answer contains
+    another rule's trigger.
+  - **Never a dog's name alone**: the same Ranger speaks in a dozen missions, so "you are sniff"
+    would claim them all. Triggers are the job ("find what this mission is looking for").
+  - **Read only what was asked**: `after(p, "the call:")` and friends take the text after the
+    LAST label, never the agent's own instructions — the classifier's prompt defines every
+    category's words, and matching against it would route every call the same way.
+  - **Two "at least"s**: Zoom's prompt says "at least" twice, and reading the last one found no
+    number and fetched the 5 m ladder — the test that pins the 7.5 m one is what caught it.
+  **A deterministic stand-in proves the wiring, never that a real model will follow a prompt** —
+  check a mission against Ollama after touching its prompts.
 - **`Errors`** — flattens a throwable's cause chain for display. LangChain4j reports every agent failure
   as `AgentInvocationException: Failed to invoke agent method`, so surfacing only `getMessage()` makes a
   dead Ollama and a parse failure look identical.
@@ -668,9 +739,15 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   different arrangements. A category chip on every card was the earlier design and it was worse
   twice over: it made the reader sort what the layout can sort for them, and it competed with the
   pattern's own name for the top-left of the card. The colour each chip carried survives as a
-  small dot on the group heading. A card holds the pattern's name, its `useful` line, and a
-  label-free thumbnail of its topology drawn by the same `layout()` the real diagram uses, so a
-  fan-out is recognisable from a chain at a glance. **Three cards a row at most** — the track
+  small dot on the group heading. A card reads top to bottom: **Mission N** (its catalogue
+  index, which is the mission number), the pattern's name in bold, its **`gist`** in ink — one
+  plain line saying what the mechanism IS, set at the end of each `define()` with
+  `.gist("…")` — then a label-free thumbnail of its topology, then the story beat, italic and
+  quiet, under a rule. The cards used to show only the story, and a grid of dog anecdotes did
+  not say which card was a fan-out and which a planner. The thumbnail uses the same `layout()`
+  as the real diagram but is **cropped to its boxes** (the live canvas's label margins left the
+  shape a smudge mid-frame) and inked with `--edge-line`; agents are accent-tinted, a
+  supervisor/router solid accent, a planner dashed, so a star reads as "one box in charge". **Three cards a row at most** — the track
   minimum is `max(255px, (100% - 28px)/3)`, so a wide screen lands on exactly three and a narrow
   one still falls back to two and then one, with no width in between that yields four. Unbounded
   `auto-fill` put five or six across a large monitor, which read as a list and shrank the
@@ -680,21 +757,38 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   in the gallery even before someone gives it a label. Cards are real `<a href="#/id">` anchors, so Back, keyboard and open-in-new-tab work
   without JS, and a pattern can be deep-linked straight from a slide. An unknown id falls back to the
   gallery rather than rendering a blank page. The tester's layout is
-  title → run controls → full-width SVG diagram → bottom dock. The dock has four tabs: **Result**
-  (rendered markdown), **Scope state** (a debugger-style variables table: name / type / value, with
-  the rows an agent just wrote highlighted, and long values clamped until clicked — expansion
-  survives the next update so a row doesn't collapse mid-run), **Run events**
-  (`/api/patterns/{id}/run`) and
-  **Server log** (`/api/logs`, with a level filter — the real prompts and answers land here from
-  `ChatCallLog`, interleaved with the framework's own lines). A dot flags a WARN/ERROR — or a finished result —
-  on a tab you haven't looked at. Finishing a run switches to Result automatically, *unless* the viewer
-  picked a tab themselves during that run (`tabPinned`) — never yank the view out from under someone.
+  title → run controls → **one stage showing ONE of two views**, switched by a Diagram / Data
+  control at the right end of the run bar (or the **V** key, outside a text field). It used to be
+  diagram above a bottom dock, and on a projector the diagram ended up too small to read — so the
+  diagram now gets the whole stage when it is the thing being presented. The **Data** view is
+  two stacked docks with their own tabs: **Result** / **Scope state** on top (what the run
+  produced) and **Run events** / **Server log** below (how it got there, and the real prompts from
+  `ChatCallLog`, with a level filter). The grip between them sets the bottom half's share as a
+  **fraction**, not pixels, so a resize or a browser zoom keeps the proportion; it is persisted
+  (`split`) with the chosen view (`view`). The Scope state tab is a debugger-style variables
+  table (name / type / value, rows an agent just wrote highlighted, long values clamped until
+  clicked, expansion surviving the next update). `showPane` switches only the half a pane
+  belongs to (`GROUPS`), and `paneVisible` is "its tab is active AND the data view is showing".
+  A run starts with the top half on Scope state (it fills as agents write) and ends on Result
+  — unless the viewer picked a top tab during that run (`tabPinned`; picking the server log does
+  not pin). **The view itself is never switched for the viewer**: on the diagram they are usually
+  pointing at the timings the run left behind, so a finished result, or a WARN/ERROR in the log,
+  puts a dot on the Data button instead.
+  **The diagram zooms** (wheel or trackpad pinch toward the pointer, drag to pan once zoomed,
+  double-click or `0` to fit, `+`/`−` keys and a corner −/%/+ bar). It is done on the **viewBox**,
+  so it stays vector-sharp, and the fitted view is kept apart in `svg.dataset.base` (set by
+  `drawGraph`) because zooming rewrites the live one. `fitEdgeLabels` measures against that BASE
+  view, on purpose: measured against the zoomed viewBox it would shrink the labels straight back
+  while everything else grew. A new diagram starts fitted; a run does not redraw, so you can zoom
+  into the part about to be discussed and THEN press Run. Panning is clamped so at least half
+  the drawing stays on the canvas.
 - **`[hidden]{display:none !important}` is declared once in `app.css`, and it has to be.** The
   `hidden` attribute is only `[hidden]{display:none}` in the browser's own stylesheet, so any
   author rule that sets `display` on the same element silently beats it. The runtime badge
   (`.ran{display:inline-flex}`) sat in the controls as an empty pill before the first run for
-  exactly that reason. Eight elements on this page are toggled with `el.hidden` — the badge, the
-  builds-on line, the human-in-the-loop panel, the two unread dots and the three dock panes — so
+  exactly that reason. A dozen elements on this page are toggled with `el.hidden` — the badge, the
+  builds-on line, the human-in-the-loop panel, the unread dots, the dock panes and the two views
+  (`.dataview` is `display:flex`, the newest case of exactly this) — so
   this is a rule about the page, not about one bug.
 - **The tester leads with the story; the teaching text is folded away.** `useful` and `caveat`
   live in a native `<details class="notes">`, **closed by default** — on stage the story beat is
@@ -728,26 +822,20 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   functional rather than decorative: ☰ for the rail toggle and ⚠ on the caveat.
   **This rule is about the chrome, not about the writing.** The `story` beats are the one place
   the humour belongs — they are what the speaker says out loud, the talk is three hours long, and
-  the room needs the laughs. The register is dry and observational (the sitter said yes *before*
-  reading the message; the dog is not sorry), and every punchline earns its place twice: `goap`'s
-  "He comes back indoors. Reliably. Indoors." **is** the precondition chain, `p2p`'s names why it
-  is not a supervisor, `customPlanner`'s is the cost ladder. A joke you have to stop and explain
+  the room needs the laughs. The register is dry and observational (Zao "would like it known that
+  this proves nothing"; Marmalade "has prepared"), and every punchline earns its place twice:
+  `p2p`'s "nobody is in charge — not even Zao, who is outside, eating corn" **is** why it is not a
+  supervisor, `bdi`'s "Squirrel. Kid. Squirrel." is the preempt-and-resume, `customPlanner`'s "Zoom is
+  hungry" is the first rule the planner fires. A joke you have to stop and explain
   costs more time than it buys, so it is the wrong joke. Beats are capped at
-  140 chars by `everyDemoHasItsBeatInTheNarration` — a beat is a sentence, not a paragraph.
+  140 chars by `everyMissionHasItsBeat` — a beat is a sentence, not a paragraph.
   **Wordplay is allowed in the writing and in the agent names, on one condition: the pun has to
   be the accurate name too.** This used to read "never wordplay", which was the wrong rule for a
-  Java audience — `LeadDeveloper` plans the walks where the whole question is the lead, and a room
-  of developers gets both halves before the next sentence. The condition is what keeps it from
-  turning into kitsch, and it is doing real work: `BeardOverflow` judges snacks, `RuffDraftCritic`
-  critiques a draft, `Watchdog` is a plain-Java guard, `FlatFile` is a lookup in a flat, `GardenLeave`
-  takes the puppy to the garden, `HelloWorld` teaches him his name first, `FinalBoarding` rules on
-  whether he flies. Names appear on the diagram, so a pun that costs the reader the mechanism is
-  the wrong pun and the plain name wins — which is why `EmergencyVet`, `DogTrainer`, `EverydayCare`,
-  `TriageNurse` are still plain: they are the cast five demos share,
-  and the routing only reads because their names say exactly what they are. Same test as the beats,
-  applied to a noun. Beat puns that hold: `parallel`'s "two threads, nothing shared, no locks",
-  `parallelMapper`'s "he did the scatter, you do the gather", `async`'s "nobody blocks the main
-  thread on hold music", `bdi`'s "get the order wrong and you mop".
+  Java audience — "Pawer Rangers" itself is the model: the pun is the name. The spec settles the
+  agent names: **the Ranger names say the job** (Sniff finds, Zoom runs, Dig digs), so they stay
+  plain on the diagram, and the jokes live in the beats and the canned answers. Beat lines that
+  hold: `async`'s "nobody blocks the main thread waiting for a Beagle", `blackboard`'s crumb in
+  Zao's beard (the spec's running gag), `goap`'s "the planner does not care".
   Visually it is a light, card-based shell — floating rounded surfaces with soft elevation on a
   tinted page — rather than the bordered-box admin look it started as. The primary action is ink,
   not brand colour; the accent is reserved for identity and selection (a tinted chip, not a
@@ -758,8 +846,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Every colour pair is checked against WCAG 4.5:1 in both themes — the event and log panes are dark
   in *both*, so their text colours are deliberately theme-independent (theme-following inks
   measured 2.8:1 there).
-  The rail collapses (header ☰) and the dock is drag-resizable by its grip (arrow keys too,
-  double-click to reset); both sizes persist in `localStorage` under `dashboard.layout`, so a reload
+  The rail collapses (header ☰) and the data view's split is drag-resizable by its grip (arrow
+  keys too, double-click to reset); both persist in `localStorage` under `dashboard.layout`, so a reload
   or a dev-mode restart mid-talk doesn't undo how the room's view was set up. Every storage access is
   wrapped — a private-mode browser where `localStorage` throws must still boot the page.
 - **Edge labels are placed, not just positioned** (`placeEdgeLabels` / `fitEdgeLabels` in
@@ -802,7 +890,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   - `parallelMapper` was a single box, so it said "one call" — the opposite of what a mapper
     does. The agent is now drawn as a stack, `once per item`.
   - `supervisor` was a symmetric star saying "talks to all four equally", which is a fan-out.
-    The nurse is now `1 · always first` with a two-way edge (the supervisor reads her answer),
+    The Beagle is now `1 · always first` with a two-way edge (the supervisor reads her answer),
     and the three desks are `2 · if she says so` behind one arrow.
   - `blackboard` was four identical satellites round a box, which said nothing about where the
     problem comes from, why the order is free, or how the run ever stops. Sub-lines were the
@@ -811,14 +899,11 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     bottom / left in declaration order, so `TrainerLead` — which can only act once all three
     notes exist, and is the step that *ends the run* — sat at the far **left**, where the eye
     starts, reading as a fourth peer. Plus eight arrows radiating from one box, no way in and
-    no way out. It is `stages` now: the three note-takers share **one column**, which is how a
-    picture says "no order"; the lead has its own after them, reached by an edge that arcs over
-    them (`all three notes` — what "reads the whole board" looks like drawn rather than said);
-    and the problem and the goal state are both on the page. The board keeps its own dashed
-    box, because the shared state really is this pattern.
-    Their three sub-lines are deliberately **identical** (`needs only the problem`): three boxes
-    that say the same thing are three agents with nothing to tell them apart, which is the
-    claim. The fourth reads differently because it is different.
+    no way out. It is `stages` now, with the board in the **middle** column and the Rangers
+    either side of it: the column a Ranger stands in is the earliest it CAN act (Sniff and Rivet
+    need only the crime; Dig and Doc need a clue; Zao needs two), every arrow goes into or out
+    of the board, and each box's sub-line says what it needs (`needs: the scent`). The problem
+    and the goal state are both on the page.
   - `goap`'s goal box says `registered: park first` while the boxes run indoor → garden → park.
     That one line is the pattern's whole claim; without it the order looks typed, and the reader
     has to be *told* it was derived — not having to be told is what the picture is for.
@@ -837,9 +922,9 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   spends its time denying. Both are `stages`, and a test pins them there.
   **Blackboard was the last holdout and it has gone the same way**, which retires the exception
   this note used to carve out for it ("the board is genuinely the centre and the contributors
-  genuinely have no order"). Half of that is still true — the three note-takers have no order —
-  but a pattern only needs **one** node with a position to lose the right to a circle, and the
-  lead is that node. `star` and `mesh` are now used by nothing; keep them for the pattern that
+  genuinely have no order"). Neither half is true any more — Mission 12's contributors have
+  preconditions — and a pattern only needs **one** node with a position to lose the right to a
+  circle. `star` and `mesh` are now used by nothing; keep them for the pattern that
   is genuinely orderless end to end, and reach for columns first. When *any* part of a pattern
   has a direction, give the whole thing columns and let the shared column carry the symmetry.
 - **Every diagram needs its way out drawn, not only its way round.** Three of them didn't:
@@ -876,10 +961,11 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   said only the last rung can answer.
   **The row layouts need this too, and for a long time did not.** `chain`/`dag`/`loop` place
   nodes in declaration order along one row, so an edge skipping a node is just as hidden — and
-  `bdi` paid for it: the edge from the first desire to the third, straight behind the second,
-  is the one that makes it a DAG of preconditions rather than a chain, and it was invisible.
-  `span` now measures the declaration-index gap for those layouts instead of returning 0, and a
-  test asserts `bdi` still has an edge that skips a node.
+  `bdi` paid for it when it was a row: the edge from the first desire to the third, straight
+  behind the second, was invisible. `span` now measures the declaration-index gap for those
+  layouts instead of returning 0. (`bdi` is `stages` now — one row per desire's plan, a
+  `planner` node in front, and the belief revision drawn as the edge coming back from the
+  chase's first step.)
 - **A label is trimmed at 22 characters and a sub-line at 26, silently.** `fit()` does it with no
   error, so an over-long one is simply wrong on the projector and nowhere else.
   `everyTopologyShowsWhatItsPatternActuallyDoes` caps labels at 22 and subs at **24** — not 26,
@@ -906,20 +992,24 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
 `AgenticServices.*Builder()` with the listener attached and invokes → agent callbacks + scope snapshots
 stream back as `RunEvent`s → the page animates the topology and updates the scope panel.
 
-## Adding a pattern (the common task)
+## Adding a mission (the common task)
 
 1. Make a package `demos/_NN_<id>/` — the position it takes in `PatternCatalog.build()`, then
    the pattern id in lowercase. The leading `_` is required: a package segment cannot start with
    a digit. Inserting rather than appending means renumbering the packages after it.
-2. Put one file per agent in it (one `@Agent` interface each), a `Keys.java` for any scope keys
-   it introduces, an `XxxPattern`, and a `package-info.java` saying what the demo shows. Then add
-   one line to `PatternCatalog.build()`.
+2. Write the mission the spec's way first: one sentence, the Rangers involved, the Pup Board pins,
+   when it stops. Then put one file per agent in the package (one `@Agent` interface each, named
+   for the Ranger's job here, built with `.name("<Ranger>")`), a `Keys.java` for the pins it
+   introduces, an `XxxPattern`, and a `package-info.java`. Reuse a Ranger from the mission that
+   introduced him rather than writing a new one. Give every Ranger box `.as("<ranger>")` so it
+   wears his colour, draw Rivet and gear as `code`, and pick a category from the four acts. Then
+   add one line to `PatternCatalog.build()`.
 3. If running under the mock, add a rule to `MockChatModel`'s table — and mind where you put it:
    the table is ordered, and a rule keyed on a word that appears in quoted content will hijack
    another agent's prompt.
-4. Extend `PatternCatalogTest.theDemoProblemsActuallyDemonstrateTheirPattern` with the claim the
-   new pattern makes, and `everyTopologyShowsWhatItsPatternActuallyDoes` with what its diagram
-   must show.
+4. Add a claim of its own to `PatternCatalogTest` — the thing the speaker says on stage, asserted —
+   and extend `everySchematicShowsWhatItsMissionActuallyDoes` with what its diagram must show.
+   Then run it against Ollama: the mock proves the wiring, not the prompts.
 The frontend needs no change — it renders whatever `/api/patterns` returns.
 
 ## Foreign agent config detected

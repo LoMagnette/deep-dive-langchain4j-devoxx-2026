@@ -3,83 +3,122 @@ package dev.devoxx.dashboard.demos._03_loop;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
-import static dev.devoxx.dashboard.support.Parsing.score;
+import static dev.devoxx.dashboard.support.Parsing.reviewScore;
 
 import java.util.List;
+import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._01_single.Keys.Notes;
-import dev.devoxx.dashboard.demos._02_sequential.FridgeMagnet;
-import dev.devoxx.dashboard.demos._03_loop.Keys.Score;
+import dev.devoxx.dashboard.demos._03_loop.Keys.Draft;
+import dev.devoxx.dashboard.demos._03_loop.Keys.Feedback;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>loop</b> demo — refine until four rules the room agrees with are satisfied.
+ * Wiring for <b>Mission 3</b> — a writer, a critic, and a bag of five treats.
  */
 public final class LoopPattern {
 
     private LoopPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    /** One treat per rewrite. When the bag is empty the loop stops, good poster or not. */
+    public static final int TREATS = 5;
+
+    /** Four rules nobody has to be persuaded of, so the room can score the poster too. */
+    public static final String POSTER_RULES =
+            "1. it gives the date from the brief; 2. it gives the place from the brief; "
+                    + "3. it says entry is free; 4. it is under 40 words";
+
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var writer = AgenticServices.agentBuilder(FridgeMagnet.class)
+        var howl = AgenticServices.agentBuilder(HowlWrites.class)
                 .chatModel(model)
-                .name("FridgeMagnet")
-                .outputKey(Notes.class)
+                .name("Howl")
+                .outputKey(Draft.class)
                 .build();
-        var check = AgenticServices.agentBuilder(RuffDraftCritic.class)
+        var fifi = AgenticServices.agentBuilder(FifiScores.class)
                 .chatModel(model)
-                .name("RuffDraftCritic")
-                .outputKey(Score.class)
+                .name("Fifi")
+                .outputKey(Feedback.class)
                 .build();
 
-        RefinementLoop app = AgenticServices.loopBuilder(RefinementLoop.class)
+        PosterLoop app = AgenticServices.loopBuilder(PosterLoop.class)
                 .name("Loop")
-                .subAgents(writer, check)
-                .maxIterations(5)
-                .exitCondition(s -> score(s.readState(Score.class)) >= 0.8)
+                .subAgents(howl, fifi)
+                .maxIterations(TREATS)
+                .exitCondition(scope -> reviewScore(scope.readState(Feedback.class)) >= 0.8)
                 .testExitAtLoopEnd(true)
-                .outputKey(Notes.class)
+                .outputKey(Draft.class)
                 .listener(listener)
                 .build();
 
-        return app.refine(input);
+        // Feedback is seeded because Howl's first pass reads it too: there is nothing to fix
+        // yet, and an absent input would stop the loop before the first word was written.
+        var r = app.refine(input, POSTER_RULES, "(none yet — this is the first draft)");
+        return everyPass(r.agenticScope(), String.valueOf(r.result()));
+    }
+
+    // ---- how the result is presented; the wiring above is the demo ----
+
+    /** Each draft with its score, as the spec asks: the loop is only visible if every pass is. */
+    static String everyPass(AgenticScope scope, String last) {
+        if (scope == null) {
+            return last;
+        }
+        List<AgentInvocation> calls = scope.agentInvocations();
+        StringBuilder out = new StringBuilder();
+        int pass = 0;
+        String draft = null;
+        for (AgentInvocation call : calls) {
+            if ("Howl".equals(call.agentName())) {
+                draft = String.valueOf(call.output());
+            } else if ("Fifi".equals(call.agentName()) && draft != null) {
+                pass++;
+                String review = String.valueOf(call.output());
+                out.append("**Pass ").append(pass).append(" · score ")
+                        .append(String.format(Locale.US, "%.2f", reviewScore(review)))
+                        .append("**\n\n").append(draft).append("\n\n*Fifi: ")
+                        .append(review.replaceAll("\\s+", " ").strip()).append("*\n\n");
+            }
+        }
+        out.append("---\n\n*").append(pass).append(" of ").append(TREATS)
+                .append(" treats used.*");
+        return out.toString();
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
         Topology.Graph topo = graph("loop",
-                // Demo 2's agent unchanged, with a critic and a loop drawn round it. Both ways
-                // out of the critic: the arc back AND the exit, which is what ends a loop.
-                List.of(node("in", "notes", "input"),
-                        node("writer", "FridgeMagnet", "agent"),
-                        node("check", "RuffDraftCritic", "agent").withSub("4 rules, scored"),
-                        node("out", "the note", "join").withSub("or after 5 passes")),
-                List.of(edge("in", "writer"), edge("writer", "check", "notes"),
-                        edge("check", "writer", "score < 0.8"),
-                        edge("check", "out", "score ≥ 0.8")));
+                // Both ways out of the critic: the arc back AND the exit, which is what ends a
+                // loop. The exit has two conditions and both are on the page.
+                List.of(node("in", "the brief", "input"),
+                        node("howl", "Howl", "agent").withSub("writes · rewrites").as("howl"),
+                        node("fifi", "Fifi", "agent").withSub("scores 4 rules").as("fifi"),
+                        node("out", "the poster", "join").withSub("or after 5 treats")),
+                List.of(edge("in", "howl"), edge("howl", "fifi", "draft"),
+                        edge("fifi", "howl", "score < 0.8 · feedback"),
+                        edge("fifi", "out", "score ≥ 0.8")));
         return new PatternDef("loop", "Loop / Iterative Refinement", "workflow",
-                "This is the note you actually sent last time. You can see the four things "
-                        + "wrong with it from there. So could they.",
-                "Demo 2's FridgeMagnet, unchanged. Nothing about the agent changed; a "
-                        + "critic and a loop were drawn around it.",
-                "Refine until a quality bar is met. The bar is four rules nobody has to be "
-                        + "persuaded of — every meal with a time and an amount, where the lead "
-                        + "is, the vet's number, short enough for the fridge door — so the score "
-                        + "is a fraction of rules satisfied, and you can see which one each pass "
-                        + "fixes.",
-                "Can spin forever or oscillate — always cap iterations and define a clear exit. A "
-                        + "critic scoring 'quality' out of 1.0 gives you a number nobody in the "
+                "The Town Fair is Saturday. Howl has written a poster. It is very loud, and it "
+                        + "does not say when the fair is.",
+                null,
+                "Refine until a quality bar is met. Fifi scores against four rules the room can "
+                        + "check for itself — the date, the place, free entry, under 40 words — "
+                        + "so the score is a fraction of rules that hold and every pass shows "
+                        + "which one it fixed. Howl reads her feedback on the next pass; the "
+                        + "result prints every draft with its score.",
+                "Can spin for ever or oscillate — so cap it. `maxIterations(5)` is Howl's bag "
+                        + "of treats: when it is empty the loop stops, good poster or not. And a "
+                        + "critic scoring \"quality\" out of 1.0 gives a number nobody in the "
                         + "room can check; score against named rules instead.",
                 topo,
-                // Fails three of the four rules on sight, which is the point: the audience can
-                // count the failures before the first agent runs.
-                "just feed him twice like normal and take him out when you can, he knows the "
-                        + "routine better than we do honestly. ring me if anything's up!! xx",
-                LoopPattern::run);
+                "Poster for the Barkville Town Fair: Saturday 12 October, on Barkville Green, "
+                        + "10:00 to 16:00. Free entry. Sausage stall, and the dog show at 14:00.",
+                LoopPattern::run)
+                .gist("Repeat a step until a critic's score clears the bar.");
     }
 }

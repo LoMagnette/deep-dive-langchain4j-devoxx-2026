@@ -148,6 +148,9 @@ function drawGraph(topo){
   svg.innerHTML='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end"><path d="M0 0L10 5L0 10z" fill="var(--edge-line)"/></marker></defs>';
   const {nodes,idx,cw,ch}=layout(topo);
   svg.setAttribute('viewBox',`0 0 ${cw} ${ch}`);
+  /* The fitted view, kept apart from the live viewBox because zooming (app.js) rewrites that.
+     A new diagram always starts unzoomed. */
+  svg.dataset.base = `0 0 ${cw} ${ch}`;
   const order={}; topo.nodes.forEach((n,i)=>order[n.id]=i);
   /* A->B and B->A drawn as straight lines land exactly on top of each other, so a mutual
      relationship (debate rebuttals, supervisor invoke/result, blackboard read/write) rendered
@@ -231,6 +234,16 @@ function drawGraph(topo){
     const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
     r.setAttribute('x',n.x-NW/2); r.setAttribute('y',n.y-NH/2); r.setAttribute('width',NW); r.setAttribute('height',NH); r.setAttribute('rx',14);
     g.appendChild(r);
+    /* "Color = job": every Pawer Ranger has one colour, and the box wears it as a badge in the
+       corner. A badge rather than a tinted fill or stroke because Doc is WHITE — a white stroke
+       vanishes on the light canvas, a white dot with an outline does not. */
+    if(n.ranger){
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('class','ranger');
+      c.setAttribute('cx',n.x-NW/2+13); c.setAttribute('cy',n.y-NH/2+13); c.setAttribute('r',6);
+      c.style.fill=`var(--r-${String(n.ranger).replace(/[^a-z]/g,'')}, var(--muted))`;
+      g.appendChild(c);
+    }
     /* A second line lets a box say WHY it is there — the key GOAP needed to order it, the
        priority BDI ranked it by — which is the difference between a diagram of the cast and a
        diagram of the mechanism. The name shifts up to make room rather than the box growing,
@@ -321,7 +334,10 @@ function placeEdgeLabels(svg, pending, nodes){
 const EDGE_FS = 12, EDGE_FS_MAX = 18;
 function fitEdgeLabels(svg){
   const box = svg.getBoundingClientRect();
-  const vb = svg.viewBox.baseVal;
+  /* Measured against the FITTED view, not the zoomed one: zooming in is asking for everything
+     to get bigger, labels included, and measuring the live viewBox would shrink them back. */
+  const base = (svg.dataset.base || '').split(' ').map(Number);
+  const vb = base.length === 4 ? {width: base[2], height: base[3]} : svg.viewBox.baseVal;
   if(!box.width || !vb || !vb.width) return;
   const scale = Math.min(box.width/vb.width, box.height/vb.height);
   if(!isFinite(scale) || scale <= 0) return;
@@ -365,8 +381,14 @@ function stampNode(g, took){
 }
 
 function drawThumb(svg, topo){
-  const {nodes, idx, cw, ch} = layout(topo);
-  svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
+  const {nodes, idx} = layout(topo);
+  /* Cropped to the boxes, not the full canvas: the canvas is sized for the live diagram's
+     labels and padding, and at thumbnail size that margin left the shape a smudge in the middle
+     of its frame. A margin of half a box keeps the outer strokes clear of the edge. */
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const x0 = Math.min(...xs) - NW/2 - NW/4, x1 = Math.max(...xs) + NW/2 + NW/4;
+  const y0 = Math.min(...ys) - NH/2 - NH/2, y1 = Math.max(...ys) + NH/2 + NH/2;
+  svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
   const parts = [];
   topo.edges.forEach(e => {
     const a = idx[e.from], b = idx[e.to];

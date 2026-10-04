@@ -1,17 +1,22 @@
 /* Application: routing, the pattern catalogue, live runs over SSE, the dock and the
    layout chrome. Rendering primitives live in render.js, which loads first. */
 
-const CAT_LABELS = {"workflow":"Workflows","pure-agent":"Pure agents",
-                    "pattern-zoo":"Pattern zoo","composite":"Putting it together",
-                    "production":"Running it for real"};
+/* The spec's four acts, in its running order, then the two groups outside the acts. The rail
+   and the gallery both group by these, so missions 1 and 8 sit together in Act 1 without the
+   catalogue (or the package numbers) being reordered. */
+const CAT_LABELS = {"classic":"Before the pack","team":"Act 1 · Meet the team","workflow":"Act 2 · Workflows",
+                    "planner":"Act 3 · Planners","minds":"Act 4 · Many minds, custom brains",
+                    "composite":"The Mega Mutt","production":"Running it for real"};
 /* One line per group, in the talk's own words (see the through-line diagram in the root README).
    The gallery separates the categories physically instead of tagging every card, and a heading
    that says what the group MEANS is the reason the separation is worth having — otherwise it is
    just the same cards with more whitespace. */
-const CAT_NOTES = {"workflow":"You decide the path",
-                   "pure-agent":"The model decides the path",
-                   "pattern-zoo":"The middle ground — a planner decides the turns",
-                   "composite":"Several patterns wired into one system",
+const CAT_NOTES = {"classic":"A plain AI service: tools and guardrails, no agentic system",
+                   "team":"An agent is a pup with a job — and some don't need a brain",
+                   "workflow":"You decide the order — Rangers combine into the Mega Mutt",
+                   "planner":"The system decides: Zao, a plan, or the pups themselves",
+                   "minds":"You can write the rules yourself",
+                   "composite":"Several missions wired into one bigger Ranger",
                    /* Not a position on the dial — a modifier you can bolt onto any of the above,
                       which is why this group sits outside the ordering rather than inside it. */
                    "production":"Not where on the dial — what it takes to run it"};
@@ -60,8 +65,8 @@ function route(){
 window.addEventListener('hashchange', route);
 
 function buildGallery(){
-  const n = patterns.filter(p => p.category !== 'composite').length;
-  const composites = patterns.length - n;
+  const n = patterns.filter(p => p.category !== 'composite' && p.category !== 'classic').length;
+  const composites = patterns.filter(p => p.category === 'composite').length;
   document.querySelector('.gallery-head h2').textContent = `${n} agentic patterns`;
   document.querySelector('.gallery-head p').textContent = composites
     ? `Each one runs live against a real model — plus ${composites === 1 ? 'a system that combines'
@@ -100,11 +105,17 @@ function buildGallery(){
       a.className = 'card';
       a.href = '#/' + encodeURIComponent(p.id);
       a.dataset.id = p.id;
-      /* The card shows the STORY, not the `useful` line: scanned top to bottom the gallery is
-         then the narration itself, and the tester page carries the explanation. */
-      a.innerHTML = `<h3>${escapeHtml(p.name)}</h3>`
-        + `<p class="story">${escapeHtml(p.story || p.useful)}</p>`
-        + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`;
+      /* Read top to bottom: which mission, what the pattern IS (name and gist — enough for
+         someone who has not heard the talk), its shape, and then the story beat, quieter, below
+         a rule. The story alone used to carry the card, and a grid of dog anecdotes did not say
+         which card was a fan-out and which a planner. The mission number is the index in the
+         catalogue, which is also the spec's mission number and the package's _NN_. */
+      const mission = patterns.indexOf(p);
+      a.innerHTML = `<span class="mission">Mission ${mission}</span>`
+        + `<h3>${escapeHtml(p.name)}</h3>`
+        + (p.gist ? `<p class="gist">${escapeHtml(p.gist)}</p>` : '')
+        + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`
+        + `<p class="story">${escapeHtml(p.story || p.useful)}</p>`;
       cards.appendChild(a);
       drawThumb(a.querySelector('.thumb'), p.topology);
     });
@@ -147,9 +158,11 @@ function select(id){
   document.getElementById('p-stream-wrap').hidden = !current.streams;
   document.getElementById('p-stream').checked = false;
   reset();
-  // Result and scope were just cleared, so land on the tab that has something to show.
+  // Result was just cleared, so each half lands on the tab that will fill as the run goes.
+  showPane('scope');
   showPane('console');
   drawGraph(current.topology);
+  zoomReset();   // a new diagram starts fitted, and the zoom readout must say so
 }
 
 function reset(){
@@ -193,7 +206,7 @@ function log(ev){
      lines that say nothing about the shape of the run, and it buries the six that do. */
   if(ev.type==='token') return;
   const c=document.getElementById('console');
-  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','run-result':'--c-result','run-done':'--c-done'};
+  const colors={'run-start':'--c-start','agent-before':'--c-before','agent-after':'--c-after','agent-error':'--c-error','human-ask':'--c-result','human-answer':'--c-after','tool-call':'--c-tool','tool-result':'--c-tool','guardrail':'--c-tool','run-result':'--c-result','run-done':'--c-done'};
   const div=document.createElement('div'); div.className='line';
   const col=`var(${colors[ev.type]||'--c-done'})`;
   const took = ev.millis==null ? '' : `<span class="took">${fmtMs(ev.millis)}</span>`;
@@ -237,7 +250,10 @@ function updateScope(scope){
 let tabPinned=false;
 function revealResult(){
   if(!tabPinned) showPane('result');
-  else if(activePane()!=='result') document.getElementById('result-dot').hidden=false;
+  else if(activePane('top')!=='result') document.getElementById('result-dot').hidden=false;
+  /* Never switch views for the viewer — on the diagram they are usually pointing at the timings
+     a run just left behind. Flag the Data button instead. */
+  if(currentView()!=='data') document.getElementById('data-dot').hidden=false;
 }
 
 /* The id the server gave this run, so an answer can be posted back against it: the SSE stream
@@ -284,6 +300,9 @@ function run(){
   hideAsk();
   runId=null;
   tabPinned=false;
+  // The result was just cleared; the scope is what fills while the run is going.
+  showPane('scope');
+  document.getElementById('data-dot').hidden=true;
   const input=encodeURIComponent(document.getElementById('input').value||'');
   const wantsTokens = current.streams && document.getElementById('p-stream').checked;
   streamed=''; document.getElementById('run').disabled=true;
@@ -294,6 +313,12 @@ function run(){
     log(ev); updateScope(ev.scope);
     if(ev.type==='run-start'){ runId=ev.data||null; agentMsSum=0; }
     else if(ev.type==='human-ask'){ showAsk(ev.message); markNode(ev.agent,'active'); }
+    /* A Ranger reaching for his gear: the tool's box is labelled "sniff(place)", whose leading
+       token is the tool name, so the message's name lights it — the model's choice, made visible. */
+    else if(ev.type==='tool-call') markNode(String(ev.message||'').split('(')[0],'active');
+    else if(ev.type==='tool-result') markNode(String(ev.message||'').split(' ')[0],'done', ev.millis);
+    /* Mission 0's guardrails report under their class name, which is their box's label. */
+    else if(ev.type==='guardrail') markNode(ev.agent,'done', ev.millis);
     else if(ev.type==='human-answer'){ hideAsk(); markNode(ev.agent,'done'); }
     else if(ev.type==='agent-before') markNode(ev.agent,'active');
     /* Tokens land as TEXT, not markdown: a half-arrived answer is usually half-way through a
@@ -328,22 +353,57 @@ function run(){
     document.getElementById('run').disabled=false; };
 }
 
-/* ---------- bottom dock: run events + live server log ---------- */
+/* ---------- the data view: result / scope over run events / server log ---------- */
 const LEVEL_RANK={TRACE:0,DEBUG:1,INFO:2,WARN:3,ERROR:4};
 let logLines=[];
 
-const PANES=['result','scope','console','log'];
+/* Two halves, each with its own tabs: what the run produced (top) and how it got there
+   (bottom). Showing a pane only switches the half it belongs to. */
+const GROUPS={top:['result','scope'], bottom:['console','log']};
+function groupOf(name){ return GROUPS.top.includes(name) ? 'top' : 'bottom'; }
 function showPane(name){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.pane===name));
-  PANES.forEach(p=>document.getElementById(p).hidden = p!==name);
+  const group=groupOf(name);
+  document.querySelectorAll(`.tab[data-group="${group}"]`).forEach(t=>
+    t.classList.toggle('active', t.dataset.pane===name));
+  GROUPS[group].forEach(p=>document.getElementById(p).hidden = p!==name);
   /* Per-tab controls: a level filter only means something for the log, and "clear" would be
      meaningless on panes that mirror the current run. */
-  document.getElementById('log-level').style.display = name==='log' ? '' : 'none';
-  document.getElementById('pane-clear').style.display = (name==='log'||name==='console') ? '' : 'none';
+  if(group==='bottom'){
+    document.getElementById('log-level').style.display = name==='log' ? '' : 'none';
+    document.getElementById('pane-clear').style.display = '';
+  }
   if(name==='log') document.getElementById('log-dot').hidden = true;
   if(name==='result') document.getElementById('result-dot').hidden = true;
 }
-function activePane(){ return document.querySelector('.tab.active').dataset.pane; }
+function activePane(group){
+  return document.querySelector(`.tab.active[data-group="${group}"]`).dataset.pane;
+}
+/* Whether the viewer can actually see a pane right now: its tab, AND the data view. */
+function paneVisible(name){ return currentView()==='data' && activePane(groupOf(name))===name; }
+
+/* ---------- the stage: diagram or data, one at a time ---------- */
+function currentView(){ return document.getElementById('view-data').hidden ? 'diagram' : 'data'; }
+function setView(view, persist){
+  document.getElementById('view-diagram').hidden = view!=='diagram';
+  document.getElementById('view-data').hidden = view!=='data';
+  document.querySelectorAll('.view').forEach(b=>{
+    const on = b.dataset.view===view;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  if(view==='data') document.getElementById('data-dot').hidden = true;
+  if(persist) savePrefs({view});
+}
+document.querySelectorAll('.view').forEach(b=>b.onclick=()=>setView(b.dataset.view, true));
+/* V flips the stage — handy with a clicker in one hand. Ignored while typing, so an input
+   containing a "v" stays typeable. */
+document.addEventListener('keydown', e=>{
+  if(e.key!=='v' && e.key!=='V') return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if(document.body.classList.contains('on-grid')) return;
+  setView(currentView()==='data' ? 'diagram' : 'data', true);
+});
 function minLevel(){ return document.getElementById('log-level').value; }
 function passes(l){ const m=minLevel(); return m==='ALL' || (LEVEL_RANK[l.level]??2) >= LEVEL_RANK[m]; }
 
@@ -364,8 +424,10 @@ function appendLog(l){
   logLines.push(l);
   if(logLines.length>1000) logLines.shift();
   /* A problem you can't see is a problem you debug on stage: flag warnings on the tab. */
-  if((l.level==='WARN'||l.level==='ERROR') && activePane()!=='log')
-    document.getElementById('log-dot').hidden=false;
+  if((l.level==='WARN'||l.level==='ERROR') && !paneVisible('log')){
+    if(activePane('bottom')!=='log') document.getElementById('log-dot').hidden=false;
+    if(currentView()!=='data') document.getElementById('data-dot').hidden=false;
+  }
   if(!passes(l)) return;
   const el=document.getElementById('log');
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -378,34 +440,33 @@ function connectLogs(){
   src.onmessage=e=>{ let l; try{ l=JSON.parse(e.data); }catch(_){ return; } appendLog(l); };
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tabPinned=true; showPane(t.dataset.pane); });
+/* Only a choice in the TOP half pins it: picking the server log says nothing about whether you
+   want the result shown when the run ends. */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  if(t.dataset.group==='top') tabPinned=true;
+  showPane(t.dataset.pane);
+});
 document.getElementById('log-level').onchange=renderLog;
 document.getElementById('pane-clear').onclick=()=>{
-  if(activePane()==='log'){ logLines=[]; renderLog(); }
+  if(activePane('bottom')==='log'){ logLines=[]; renderLog(); }
   else document.getElementById('console').innerHTML='';
 };
 
-/* ---------- layout chrome: collapsible rail, resizable dock ----------
-   Both remembered in localStorage: the speaker arranges the room's view once, and a reload
+/* ---------- layout chrome: collapsible rail, theme, view, data split ----------
+   All remembered in localStorage: the speaker arranges the room's view once, and a reload
    (or a dev-mode restart mid-talk) doesn't undo it. */
-const DOCK_MIN=120, STAGE_MIN=260, PREFS='dashboard.layout';
+const PREFS='dashboard.layout', SPLIT_MIN=0.15, SPLIT_MAX=0.85, SPLIT_DEFAULT=0.45;
 
 function loadPrefs(){ try{ return JSON.parse(localStorage.getItem(PREFS)) || {}; }catch(_){ return {}; } }
 function savePrefs(patch){ try{ localStorage.setItem(PREFS, JSON.stringify({...loadPrefs(), ...patch})); }catch(_){} }
 
-/* Prefer the height we last set over a measured rect: repeated drags would otherwise accumulate
-   sub-pixel drift, and before the first resize there is no inline value to read. */
-function dockHeight(){
-  const dock=document.getElementById('dock');
-  const inline=parseFloat(dock.style.height);
-  return Number.isFinite(inline) ? inline : dock.getBoundingClientRect().height;
-}
-function dockMax(){ return Math.max(DOCK_MIN, window.innerHeight - STAGE_MIN); }
-function setDockHeight(px, persist){
-  const h = Math.round(Math.min(dockMax(), Math.max(DOCK_MIN, px)));
-  document.getElementById('dock').style.height = h + 'px';
-  if(persist) savePrefs({dock:h});
-  return h;
+/* The bottom half's share of the data view, as a fraction. A fraction rather than pixels, so a
+   window resize or a browser zoom keeps the proportion instead of squeezing one half. */
+let split=SPLIT_DEFAULT;
+function setSplit(f, persist){
+  split = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, f));
+  document.getElementById('dock-bottom').style.flexBasis = (split*100).toFixed(1) + '%';
+  if(persist) savePrefs({split});
 }
 function prefersDark(){
   try{ return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; }
@@ -432,57 +493,142 @@ function setRailHidden(hidden, persist){
 document.getElementById('rail-toggle').onclick = () =>
   setRailHidden(!document.body.classList.contains('rail-hidden'), true);
 
-(function dockResizing(){
+(function splitResizing(){
   const grip=document.getElementById('grip');
-  let startY=0, startH=0, active=false;
+  const view=document.getElementById('view-data');
+  let active=false;
   grip.addEventListener('pointerdown', e=>{
-    active=true; startY=e.clientY; startH=dockHeight();
+    active=true;
     grip.setPointerCapture?.(e.pointerId);
     document.body.classList.add('resizing');
     e.preventDefault();
   });
   grip.addEventListener('pointermove', e=>{
-    if(active) setDockHeight(startH + (startY - e.clientY), false);   // drag up = taller
+    if(!active) return;
+    const box=view.getBoundingClientRect();
+    if(box.height) setSplit((box.bottom - e.clientY) / box.height, false);   // drag up = taller
   });
   const stop = e => {
     if(!active) return;
     active=false;
     document.body.classList.remove('resizing');
     try{ grip.releasePointerCapture?.(e.pointerId); }catch(_){}
-    savePrefs({dock:Math.round(dockHeight())});
+    savePrefs({split});
   };
   grip.addEventListener('pointerup', stop);
   grip.addEventListener('pointercancel', stop);
-  grip.addEventListener('dblclick', ()=> setDockHeight(window.innerHeight*0.34, true));
+  grip.addEventListener('dblclick', ()=> setSplit(SPLIT_DEFAULT, true));
   grip.addEventListener('keydown', e=>{
-    const step = e.shiftKey ? 60 : 15;
-    if(e.key==='ArrowUp') setDockHeight(dockHeight()+step, true);
-    else if(e.key==='ArrowDown') setDockHeight(dockHeight()-step, true);
+    const step = e.shiftKey ? 0.1 : 0.03;
+    if(e.key==='ArrowUp') setSplit(split+step, true);
+    else if(e.key==='ArrowDown') setSplit(split-step, true);
     else return;
     e.preventDefault();
-  });
-  // A shrinking window must never let the dock swallow the diagram. Rescaled by how much
-  // innerHeight actually changed, not just re-clamped: innerHeight itself shrinks when the
-  // page is zoomed in and grows when it is zoomed out (a CSS-pixel effect, not a real resize),
-  // and re-clamping a stale pixel height against that left the dock's share of the window
-  // growing on zoom-in and shrinking on zoom-out — so the diagram, which fills whatever the
-  // dock leaves it, visibly zoomed the opposite way from the rest of the page.
-  let lastInnerHeight = window.innerHeight;
-  window.addEventListener('resize', () => {
-    const ratio = window.innerHeight / lastInnerHeight;
-    lastInnerHeight = window.innerHeight;
-    setDockHeight(dockHeight() * ratio, false);
   });
 })();
 
 (function applySavedLayout(){
   const p=loadPrefs();
   applyTheme(currentTheme());
-  if(typeof p.dock === 'number') setDockHeight(p.dock, false);
+  setSplit(typeof p.split === 'number' ? p.split : SPLIT_DEFAULT, false);
+  setView(p.view === 'data' ? 'data' : 'diagram', false);
   setRailHidden(!!p.railHidden, false);
 })();
 
-/* The diagram is a viewBox scaled to fit its pane, so dragging the dock, collapsing the rail or
+/* ---------- zooming the diagram ----------
+   Done on the viewBox, so the drawing stays vector-sharp at any size: the live viewBox is a
+   window onto the fitted one (svg.dataset.base, set by drawGraph), ZOOM_MAX times smaller at
+   most. A new diagram resets it, because drawGraph rewrites both. Running does not redraw, so a
+   zoom set up before Run survives the run — zoom into the part of the topology you are about to
+   talk about, then press Run. */
+const ZOOM_MAX = 6, ZOOM_STEP = 1.25;
+const graphSvg = document.getElementById('graph');
+function baseBox(){
+  const b = (graphSvg.dataset.base || '').split(' ').map(Number);
+  return b.length === 4 && b[2] > 0 ? {x:b[0], y:b[1], w:b[2], h:b[3]} : null;
+}
+function viewBox(){ const v = graphSvg.viewBox.baseVal; return {x:v.x, y:v.y, w:v.width, h:v.height}; }
+function zoomLevel(){ const b = baseBox(); return b ? b.w / viewBox().w : 1; }
+/* Keep at least half the drawing on the canvas, so a pan can never lose it entirely. */
+function clampView(v, b){
+  const x = Math.min(b.x + b.w - v.w/2, Math.max(b.x - v.w/2, v.x));
+  const y = Math.min(b.y + b.h - v.h/2, Math.max(b.y - v.h/2, v.y));
+  return {x, y, w:v.w, h:v.h};
+}
+function setViewBox(v){
+  const b = baseBox(); if(!b) return;
+  const z = b.w / v.w;
+  if(z <= 1.0001) v = b; else v = clampView(v, b);
+  graphSvg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+  const zoomed = b.w / v.w > 1.0001;
+  document.getElementById('view-diagram').classList.toggle('zoomed', zoomed);
+  document.getElementById('zoom-reset').textContent = Math.round(100 * b.w / v.w) + '%';
+}
+/* The point under the pointer, in drawing units; the view centre when there is no pointer. */
+function svgPoint(clientX, clientY){
+  const v = viewBox();
+  const ctm = graphSvg.getScreenCTM();
+  if(clientX == null || !ctm) return {x: v.x + v.w/2, y: v.y + v.h/2};
+  const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+  return {x:p.x, y:p.y};
+}
+/* Zoom by a factor, keeping the point under the pointer exactly where it is on screen. */
+function zoomBy(factor, clientX, clientY){
+  const b = baseBox(); if(!b) return;
+  const v = viewBox();
+  const z = Math.min(ZOOM_MAX, Math.max(1, (b.w / v.w) * factor));
+  const w = b.w / z, h = b.h / z, r = w / v.w;
+  const p = svgPoint(clientX, clientY);
+  setViewBox({x: p.x - (p.x - v.x) * r, y: p.y - (p.y - v.y) * r, w, h});
+}
+function zoomReset(){ const b = baseBox(); if(b) setViewBox(b); }
+
+graphSvg.addEventListener('wheel', e=>{
+  e.preventDefault();
+  /* A trackpad pinch arrives as a wheel event with ctrlKey and small deltas; a mouse wheel as
+     ±100-ish. Scaling by the delta makes both feel proportionate. */
+  const delta = Math.max(-100, Math.min(100, e.deltaY * (e.deltaMode === 1 ? 33 : 1)));
+  zoomBy(Math.exp(-delta * (e.ctrlKey ? 0.01 : 0.0025)), e.clientX, e.clientY);
+}, {passive:false});
+(function panning(){
+  let from = null;
+  graphSvg.addEventListener('pointerdown', e=>{
+    if(e.button !== 0 || zoomLevel() <= 1.0001) return;
+    from = {x:e.clientX, y:e.clientY, v:viewBox()};
+    graphSvg.setPointerCapture?.(e.pointerId);
+    document.getElementById('view-diagram').classList.add('panning');
+  });
+  graphSvg.addEventListener('pointermove', e=>{
+    if(!from) return;
+    const ctm = graphSvg.getScreenCTM(); if(!ctm) return;
+    setViewBox({x: from.v.x - (e.clientX - from.x) / ctm.a,
+                y: from.v.y - (e.clientY - from.y) / ctm.d, w: from.v.w, h: from.v.h});
+  });
+  const stop = e=>{
+    if(!from) return;
+    from = null;
+    try{ graphSvg.releasePointerCapture?.(e.pointerId); }catch(_){}
+    document.getElementById('view-diagram').classList.remove('panning');
+  };
+  graphSvg.addEventListener('pointerup', stop);
+  graphSvg.addEventListener('pointercancel', stop);
+})();
+graphSvg.addEventListener('dblclick', zoomReset);
+document.getElementById('zoom-in').onclick = ()=>zoomBy(ZOOM_STEP);
+document.getElementById('zoom-out').onclick = ()=>zoomBy(1/ZOOM_STEP);
+document.getElementById('zoom-reset').onclick = zoomReset;
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if(document.body.classList.contains('on-grid') || currentView() !== 'diagram') return;
+  if(e.key === '+' || e.key === '=') zoomBy(ZOOM_STEP);
+  else if(e.key === '-' || e.key === '_') zoomBy(1/ZOOM_STEP);
+  else if(e.key === '0') zoomReset();
+  else return;
+  e.preventDefault();
+});
+
+/* The diagram is a viewBox scaled to fit its pane, so switching views, collapsing the rail or
    resizing the window all change how far it is scaled down — and with it how big the edge labels
    land on screen. Re-fit them rather than redraw: a redraw would throw away which nodes are
    mid-run, and mid-talk that is the one thing on the screen worth keeping. */

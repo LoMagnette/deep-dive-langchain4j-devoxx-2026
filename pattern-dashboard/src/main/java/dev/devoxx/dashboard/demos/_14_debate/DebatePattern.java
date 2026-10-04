@@ -8,82 +8,111 @@ import java.util.List;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
+import dev.devoxx.dashboard.demos._14_debate.Keys.HowlTurn;
+import dev.devoxx.dashboard.demos._14_debate.Keys.MarmaladeTurn;
 import dev.devoxx.dashboard.demos._14_debate.Keys.Verdict;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.debate.ConvergenceStrategy;
 import dev.langchain4j.agentic.patterns.debate.DebatePlanner;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>debate</b> demo — two strong cases, and a ruling the room can check.
+ * Wiring for <b>Mission 14</b> — two debaters and a judge, run by LangChain4j's DebatePlanner.
  */
 public final class DebatePattern {
 
     private DebatePattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    /** The council meets for three rounds, unless the two sides say exactly the same thing. */
+    public static final int ROUNDS = 3;
+
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var take = AgenticServices.agentBuilder(TeamTuscany.class)
-                .chatModel(model)
-                .name("TeamTuscany")
-                .build();
-        var leave = AgenticServices.agentBuilder(TeamStaycation.class)
-                .chatModel(model)
-                .name("TeamStaycation")
-                .build();
-        var verdict = AgenticServices.agentBuilder(FinalBoarding.class)
-                .chatModel(model)
-                .name("FinalBoarding")
-                .outputKey(Verdict.class)
-                .build();
+        var howl = AgenticServices.agentBuilder(HowlArgues.class)
+                .chatModel(model).name("Howl").outputKey(HowlTurn.class).build();
+        var marmalade = AgenticServices.agentBuilder(MarmaladeArgues.class)
+                .chatModel(model).name("Marmalade").outputKey(MarmaladeTurn.class).build();
+        var fifi = AgenticServices.agentBuilder(FifiJudges.class)
+                .chatModel(model).name("Fifi").outputKey(Verdict.class).build();
+
         Debate app = AgenticServices.plannerBuilder(Debate.class)
-                .subAgents(take, leave, verdict) // last sub-agent is the judge
-                .planner(() -> new DebatePlanner(2, ConvergenceStrategy.unanimous()))
+                // Every sub-agent but the LAST is a debater; the last one is the judge. That is
+                // the whole configuration of who plays which part — the order is the contract.
+                .subAgents(howl, marmalade, fifi)
+                // unanimous() ends the debate early only when both say exactly the same thing,
+                // which two sides of an argument never do — so it runs all three rounds.
+                .planner(() -> new DebatePlanner(ROUNDS, ConvergenceStrategy.unanimous()))
                 .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
-        return app.invoke(input);
+        var r = app.invoke(input);
+        return "**Fifi's verdict**\n\n" + r.result() + "\n\n---\n\n" + transcript(r.agenticScope());
+    }
+
+    // ---- how the result is presented; the wiring above is the demo ----
+
+    /**
+     * The whole debate, round by round. DebatePlanner only keeps the LAST round on the board
+     * (debateContext), so the full transcript is rebuilt from the scope's record of who said what.
+     */
+    private static String transcript(AgenticScope scope) {
+        List<AgentInvocation> turns = scope.agentInvocations().stream()
+                .filter(i -> List.of("Howl", "Marmalade").contains(i.agentName())).toList();
+        StringBuilder out = new StringBuilder();
+        int round = 0;
+        for (int i = 0; i < turns.size(); i++) {
+            if (i % 2 == 0) {
+                out.append(out.isEmpty() ? "" : "\n\n").append("Round ").append(++round);
+            }
+            out.append("\n").append(turns.get(i).agentName()).append(": ")
+                    .append(String.valueOf(turns.get(i).output()).strip());
+        }
+        return out.toString();
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Columns, not a circle: a debate has a direction — motion, argument, ruling. The two
-        // advocates share the middle column, so their rebuttals bow between them.
+        // The debaters never talk to each other directly: each round, the planner collects what
+        // both said and hands it back as debateContext. So the planner sits between them and
+        // the arrows go through it — and the judge is reached only from the planner, after the
+        // last round, because that is the only way the judge is ever called.
         Topology.Graph topo = graph("stages",
                 List.of(node("in", "motion", "input", 0),
-                        node("take", "TeamTuscany", "agent", 1),
-                        node("leave", "TeamStaycation", "agent", 1),
-                        // "only if they never agree" is what this said, and it was simply
-                        // false: DebatePlanner invokes the judge when the rounds END, and
-                        // convergence is one of the two ways they can end — the holiday debate
-                        // converges in round one and is still ruled on. What unanimous()
-                        // changes is how many rounds happen, which belongs on the edge between
-                        // the advocates, not on the judge.
-                        node("verdict", "FinalBoarding", "judge", 2)
-                                .withSub("always rules, at the end")),
-                List.of(edge("in", "take"), edge("in", "leave"),
-                        edge("take", "leave", "rebut"),
-                        edge("leave", "take", "≤2 rounds · unless unanimous"),
-                        edge("take", "verdict"), edge("leave", "verdict")));
-        return new PatternDef("debate", "Debate", "pattern-zoo",
-                "And before any of it, two weeks in Tuscany in August. Does he come? Both of "
-                        + "you are certain, and not about the same thing.",
+                        node("plan", "DebatePlanner", "planner", 1).withSub("3 rounds · unanimous()"),
+                        node("howl", "Howl", "agent", 2).withSub("for the dog park").as("howl"),
+                        node("marmalade", "Marmalade", "agent", 2).withSub("for the cat café").as("marmalade"),
+                        node("fifi", "Fifi", "judge", 3).withSub("the LAST sub-agent").as("fifi")),
+                List.of(edge("in", "plan"),
+                        edge("plan", "howl"), edge("howl", "plan", "each round"),
+                        edge("plan", "marmalade"), edge("marmalade", "plan"),
+                        edge("plan", "fifi", "closing statements")));
+        return new PatternDef("debate", "Debate", "minds",
+                "The town council must decide: the empty lot on Elm Street becomes a dog park, "
+                        + "or a cat café. Marmalade has prepared.",
                 null,
-                "Agents argue opposing sides for N rounds; a judge rules. The value is not the "
-                        + "drama: ask one agent and it picks a side and then rationalises it, "
-                        + "whereas a debate forces the case against the winner to be said out "
-                        + "loud first. Both sides here are genuinely strong, which is the only "
-                        + "time it is worth the tokens.",
-                // caveat: eloquence can beat correctness; more rounds cost more tokens.
-                "The most persuasive agent may win over the most correct one — and it is "
-                        + "token-hungry. Check the ruling against the facts yourself; that is why "
-                        + "the motion states them.",
+                "Two agents argue opposing sides for N rounds; a judge rules. LangChain4j's "
+                        + "`DebatePlanner` runs it: **every sub-agent but the last is a debater, "
+                        + "and the last is the judge**. Each round it calls both debaters, then "
+                        + "writes what they said into `debateContext`, which is what they answer "
+                        + "next round — so each side answers the other's LAST round. It stops when "
+                        + "the `ConvergenceStrategy` says the sides agree, or after `maxRounds`, and "
+                        + "only then calls the judge. Ask one agent and it picks a side and "
+                        + "rationalises it; a debate makes the case against the winner get said "
+                        + "out loud first.",
+                "The planner keeps only the last round on the board: `debateContext` is "
+                        + "overwritten every round, so Fifi rules on the CLOSING statements, not the "
+                        + "whole debate — the full transcript below the verdict is rebuilt for the "
+                        + "room from the scope's invocations. `unanimous()` means word-for-word "
+                        + "identical, which prose never is, so this always runs all three rounds "
+                        + "(`unanimousLastWord()` converges when both END on the same word). And it "
+                        + "is token-hungry: three rounds is six calls before anyone rules.",
                 topo,
-                "two weeks in Tuscany in August: take Zao, or leave him with a sitter? Twelve "
-                        + "hours in the car, a house with no shade, and a black double-coated dog "
-                        + "who has never been left for more than two nights.",
-                DebatePattern::run);
+                "Barkville town council: should the empty lot on Elm Street become a dog park or a "
+                        + "cat café? Howl speaks for the dog park, Marmalade for the cat café.",
+                DebatePattern::run)
+                .gist("Agents argue in rounds; a judge rules at the end.");
     }
 }

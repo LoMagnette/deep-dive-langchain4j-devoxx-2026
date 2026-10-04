@@ -33,7 +33,7 @@ final class FlakyModel implements ChatModel {
             // Thrown from inside the model, exactly where a dropped connection would be. The
             // framework wraps it in an AgentInvocationException, which is what the error handler
             // is handed — and what Errors.explain has to dig through to say anything useful.
-            throw new IllegalStateException("the practice's line dropped");
+            throw new IllegalStateException("Sniff's collar radio dropped the call");
         }
         return delegate.chat(request);
     }

@@ -3,16 +3,19 @@ package dev.devoxx.dashboard.demos._12_blackboard;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.stream.Collectors.joining;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._04_parallel.Keys.Walks;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Causes;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Home;
-import dev.devoxx.dashboard.demos._12_blackboard.Keys.Routine;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.CameraClue;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.CrumbClue;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.Culprit;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.ScentClue;
+import dev.devoxx.dashboard.demos._12_blackboard.Keys.TunnelClue;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardPlanner;
@@ -21,110 +24,112 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>blackboard</b> demo — three kinds of knowledge, contributed in any order.
+ * Wiring for <b>Mission 12</b> — five Rangers, each able to act only once the board holds what
+ * they need.
  */
 public final class BlackboardPattern {
 
     private BlackboardPattern() {
     }
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // The three note-takers read ONLY 'problem', so any of them can go first and the
-        // board accumulates three different KINDS of knowledge. Chain them — each reading the
-        // last one's output — and you have a sequence wearing a blackboard's coat.
-        var walks = AgenticServices.agentBuilder(WalkNotes.class)
+        // Each Ranger's @K parameters are its PRECONDITION: the planner will not pick an agent
+        // until every pin it reads is on the board. Sniff and Rivet need only the crime; Dig needs
+        // Sniff's scent; Doc needs Rivet's cameras; Zao needs Dig's prints and Doc's crumb.
+        var sniff = AgenticServices.agentBuilder(SniffTrails.class)
                 .chatModel(model)
-                .name("WalkNotes")
-                .outputKey(Walks.class)
+                .name("Sniff")
+                .outputKey(ScentClue.class)
                 .build();
-        var routine = AgenticServices.agentBuilder(RoutineNotes.class)
+        var rivet = new RivetCameras();
+        var dig = AgenticServices.agentBuilder(DigTunnels.class)
                 .chatModel(model)
-                .name("RoutineNotes")
-                .outputKey(Routine.class)
+                .name("Dig")
+                .outputKey(TunnelClue.class)
                 .build();
-        var home = AgenticServices.agentBuilder(HomeNotes.class)
+        var doc = AgenticServices.agentBuilder(DocTestsTheCrumb.class)
                 .chatModel(model)
-                .name("HomeNotes")
-                .outputKey(Home.class)
+                .name("Doc")
+                .outputKey(CrumbClue.class)
                 .build();
-        var lead = AgenticServices.agentBuilder(TrainerLead.class)
+        var zao = AgenticServices.agentBuilder(ZaoNamesTheCulprit.class)
                 .chatModel(model)
-                .name("TrainerLead")
-                .outputKey(Causes.class)
+                .name("Zao")
+                .outputKey(Culprit.class)
                 .build();
-        Predicate<AgenticScope> goal = s -> s.hasState(Causes.class);
+        Predicate<AgenticScope> solved = s -> s.hasState(Culprit.class);
         Investigation app = AgenticServices.plannerBuilder(Investigation.class)
-                .subAgents(walks, routine, home, lead)
-                .planner(() -> new BlackboardPlanner(goal,
+                // Registered BACKWARDS on purpose, Zao first. If this list were the order, Zao
+                // would rule on an empty board. It is not: it is only the tie-break among the
+                // Rangers who are able to act at that moment — that is what the conflict
+                // resolution strategy is for.
+                .subAgents(zao, doc, dig, rivet, sniff)
+                .planner(() -> new BlackboardPlanner(solved,
                         ConflictResolutionStrategy.declarationOrder()))
-                .outputKey(Causes.class)
+                .outputKey(Culprit.class)
                 .listener(listener)
                 .build();
-        return app.invoke(input);
+        var r = app.invoke(input);
+        return ruling(r.agenticScope(), r.result());
+    }
+
+    // ---- how the result is presented ----
+
+    /** The ruling, then the order the clues actually went up in — which nobody typed. */
+    private static String ruling(AgenticScope scope, String culprit) {
+        String order = scope.agentInvocations().stream()
+                .map(i -> i.agentName())
+                .filter(n -> List.of("Sniff", "Rivet", "Dig", "Doc", "Zao").contains(n))
+                .collect(joining(" → "));
+        return Objects.requireNonNullElse(culprit, "(no ruling)").strip()
+                + "\n\n*Clues went up in this order: " + order
+                + " — registered as Zao, Doc, Dig, Rivet, Sniff. The board decided.*";
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // This was a `star`: the board in the middle with all four agents evenly round it. The
-        // circle got one thing right — the three note-takers genuinely have no order — and
-        // three things wrong, each of which this diagram had already been fixed for elsewhere.
-        // The problem arrived from nowhere; the run ended nowhere; and TrainerLead, which can
-        // only act once all three notes exist and is the thing that ENDS the run, was drawn as
-        // a fourth identical satellite. Worse, `star` places satellites at top/right/bottom/
-        // left in declaration order, so the one box that must go last sat at the far LEFT,
-        // where the eye starts. Eight arrows radiating from one box did not help.
-        //
-        // Columns instead, with the board kept as its own dashed box because here the shared
-        // state really is the pattern — the one diagram in the catalogue that draws the scope.
-        // The three peers share a column, which is how a picture says "no order"; the lead has
-        // its own, after them; and the way in and the way out are both drawn.
+        // The board sits in the MIDDLE column, with the Rangers either side of it, because every
+        // arrow goes through it: nobody hands anything to anybody. Each box says what it needs on
+        // the board before it can act, and each arrow back says what it pins. The columns are the
+        // earliest a Ranger CAN act, not an order anyone wrote.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "the problem", "input", 0),
-                        node("board", "The board", "board", 1)
-                                .withSub("problem + every note"),
-                        node("walks", "WalkNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        node("routine", "RoutineNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        node("home", "HomeNotes", "agent", 2)
-                                .withSub("needs only the problem"),
-                        // Three identical sub-lines are the point: three boxes that say the
-                        // same thing are three agents with nothing to tell them apart, which
-                        // is exactly why any of them can go first. The fourth reads
-                        // differently because it IS different.
-                        node("lead", "TrainerLead", "agent", 3)
-                                .withSub("needs all three · last"),
-                        node("out", "ranked causes", "join", 4)
-                                .withSub("the goal state")),
-                // Contributors read the board as well as write to it — that mutual dependency
-                // is why the pattern needs a conflict-resolution strategy at all. Only the
-                // write half is labelled, as with the supervisor's pair: of the two it is the
-                // contribution that carries the mechanism.
+                List.of(node("in", "the crime", "input", 0),
+                        node("sniff", "Sniff", "agent", 1).withSub("needs: the crime").as("sniff"),
+                        node("rivet", "Rivet", "code", 1).withSub("needs: the crime").as("rivet"),
+                        node("board", "Pup Board", "board", 2).withSub("every clue pinned here"),
+                        node("dig", "Dig", "agent", 3).withSub("needs: the scent").as("dig"),
+                        node("doc", "Doc", "agent", 3).withSub("needs: the cameras").as("doc"),
+                        node("zao", "Zao", "agent", 4).withSub("needs: prints + crumb").as("zao"),
+                        node("out", "culprit", "join", 5).withSub("the goal state")),
                 List.of(edge("in", "board"),
-                        edge("board", "walks"), edge("walks", "board", "exercise"),
-                        edge("board", "routine"), edge("routine", "board", "the shift"),
-                        edge("board", "home"), edge("home", "board", "the window"),
-                        // Skips the contributors' column, so it arcs over them — which is what
-                        // "reads the whole board" looks like when it is drawn rather than said.
-                        edge("board", "lead", "all three notes"),
-                        edge("lead", "out", "ranked causes")));
-        return new PatternDef("blackboard", "Blackboard", "pattern-zoo",
-                "Meanwhile the neighbour has complained twice. He barks all day now. Nothing "
-                        + "has changed, except everything that has changed.",
+                        edge("board", "sniff"), edge("sniff", "board", "the scent"),
+                        edge("board", "rivet"), edge("rivet", "board", "cameras"),
+                        edge("board", "dig"), edge("dig", "board", "paw prints"),
+                        edge("board", "doc"), edge("doc", "board", "the crumb"),
+                        edge("board", "zao", "prints + crumb"),
+                        edge("zao", "out", "names the culprit")));
+        return new PatternDef("blackboard", "Blackboard", "planner",
+                "The town's sausages are gone from the butcher's. There is a sausage crumb in "
+                        + "Zao's beard. Zao would like it known that this proves nothing.",
                 null,
-                "Contributors read and write a shared board until a goal state exists. This is "
-                        + "debugging, which is what a blackboard is for: barking while you are "
-                        + "out is an exercise question, a what-changed question and a "
-                        + "what-can-he-see question until the board says which one it is.",
-                // caveat: concurrent writers need a conflict-resolution strategy.
-                "Shared mutable state invites conflicts; pick a conflict-resolution strategy. And "
-                        + "be honest about whether your contributors really are order-independent.",
+                "Specialists watch a shared board and contribute **whenever what they need is on "
+                        + "it** — the AgenticScope is the Pup Board, and an agent's inputs are "
+                        + "its precondition. Sniff and Rivet can start at once; Dig can only "
+                        + "crawl a drain once Sniff has pinned which one; Doc can only test the "
+                        + "crumb once Rivet's cameras are up; Zao rules once the prints and the "
+                        + "crumb are both there. The order the clues go up in is not written "
+                        + "anywhere — the Rangers are even registered backwards — it emerges "
+                        + "from what is on the board, one contribution at a time.",
+                "Shared state invites conflicts: when several Rangers can act at once, a "
+                        + "`ConflictResolutionStrategy` picks which goes first (here, "
+                        + "declaration order — and the declaration is backwards). And the goal "
+                        + "predicate must be the CONTENT you want: stop on \"any clue exists\" "
+                        + "and the case closes after one pin.",
                 topo,
-                "he's started barking all day while we're at work and the neighbour has "
-                        + "complained twice. He never used to. Nothing has changed — except my "
-                        + "new shift, and we moved his bed under the front window, and he gets a "
-                        + "shorter walk now. But nothing has changed.",
-                BlackboardPattern::run);
+                "Paws up, Rangers! The Great Sausage Heist: every sausage in the butcher's "
+                        + "window is gone, the door was locked, and a sausage crumb has been found "
+                        + "in Zao's beard.",
+                BlackboardPattern::run)
+                .gist("Specialists add to a shared board as soon as they are able to.");
     }
 }

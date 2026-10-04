@@ -1,7 +1,8 @@
 /**
- * <b>Non-AI agents</b>
+ * <b>Mission 8 · Non-AI agent: Rivet's Ladder Math</b>
  *
- * <p>Your own Java as an agent, on both ends of an LLM step — the far left of the
- * dial, where the model decides nothing at all.
+ * <p>Rivet, the silver robot dog — no brain, never wrong. A plain Java class with one
+ * {@code @Agent} method, in the same workflow as an AI agent, and the workflow cannot tell. "Not
+ * every dog needs a brain."
  */
 package dev.devoxx.dashboard.demos._08_nonaiagent;

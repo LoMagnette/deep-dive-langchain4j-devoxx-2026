@@ -24,16 +24,25 @@ public final class Topology {
      *                collection. Without it a mapper looks like a single call.
      */
     public record Node(String id, String label, String sub, String role, Integer stage,
-                       boolean stacked) {
+                       boolean stacked, String ranger) {
 
         /** The same node with a second line under its name. */
         public Node withSub(String text) {
-            return new Node(id, label, text, role, stage, stacked);
+            return new Node(id, label, text, role, stage, stacked, ranger);
         }
 
         /** The same node drawn as many, for a fan-out over a collection. */
         public Node asStack() {
-            return new Node(id, label, sub, role, stage, true);
+            return new Node(id, label, sub, role, stage, true, ranger);
+        }
+
+        /**
+         * Which Pawer Ranger this box is — "Color = job", so the page draws the Ranger's colour
+         * as a badge on the box. Lowercase name ({@code sniff}, {@code zao}, {@code rivet}, …);
+         * {@code render.js} turns it into {@code var(--r-<name>)}.
+         */
+        public Node as(String rangerName) {
+            return new Node(id, label, sub, role, stage, stacked, rangerName);
         }
     }
 
@@ -45,12 +54,12 @@ public final class Topology {
     }
 
     public static Node node(String id, String label, String role) {
-        return new Node(id, label, null, role, null, false);
+        return new Node(id, label, null, role, null, false, null);
     }
 
     /** A node pinned to a column of the {@code stages} layout. */
     public static Node node(String id, String label, String role, int stage) {
-        return new Node(id, label, null, role, stage, false);
+        return new Node(id, label, null, role, stage, false, null);
     }
 
     public static Edge edge(String from, String to) {

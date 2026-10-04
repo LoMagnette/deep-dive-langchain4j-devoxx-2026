@@ -3,15 +3,16 @@ package dev.devoxx.dashboard.demos._09_supervisor;
 import static dev.devoxx.dashboard.catalog.Topology.edge;
 import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
+import static java.util.stream.Collectors.joining;
 
 import java.util.List;
-import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._06_conditional.DogTrainer;
-import dev.devoxx.dashboard.demos._06_conditional.EmergencyVet;
-import dev.devoxx.dashboard.demos._06_conditional.EverydayCare;
+import dev.devoxx.dashboard.demos._06_conditional.DigOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.DocOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.SniffOnCall;
+import dev.devoxx.dashboard.demos._06_conditional.ZoomOnCall;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.scope.AgentInvocation;
@@ -21,167 +22,104 @@ import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>supervisor</b> demo — the same three people the router chose between, except
- * that now nobody wrote down who to ask.
+ * Wiring for <b>Mission 9</b> — Mission 6's four Rangers, and nobody wrote down who goes first.
  */
 public final class SupervisorPattern {
 
     private SupervisorPattern() {
     }
 
-    /** Everyone this supervisor may call: the nurse it adds, then the routing demo's three. */
-    private static final List<String> DESKS =
-            List.of("TriageNurse", "EverydayCare", "DogTrainer", "EmergencyVet");
+    /** The bench: Mission 6's four Rangers on call, unchanged. */
+    private static final List<String> RANGERS = List.of("Sniff", "Zoom", "Dig", "Doc");
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var nurse = AgenticServices.agentBuilder(TriageNurse.class)
-                .chatModel(model)
-                .name("TriageNurse")
-                .build();
+        var sniff = AgenticServices.agentBuilder(SniffOnCall.class)
+                .chatModel(model).name("Sniff").build();
+        var zoom = AgenticServices.agentBuilder(ZoomOnCall.class)
+                .chatModel(model).name("Zoom").build();
+        var dig = AgenticServices.agentBuilder(DigOnCall.class)
+                .chatModel(model).name("Dig").build();
+        var doc = AgenticServices.agentBuilder(DocOnCall.class)
+                .chatModel(model).name("Doc").build();
 
-        var care = AgenticServices.agentBuilder(EverydayCare.class)
-                .chatModel(model)
-                .name("EverydayCare")
-                .build();
-
-        var trainer = AgenticServices.agentBuilder(DogTrainer.class)
-                .chatModel(model)
-                .name("DogTrainer")
-                .build();
-
-        var vet = AgenticServices.agentBuilder(EmergencyVet.class)
-                .chatModel(model)
-                .name("EmergencyVet")
-                .build();
-
-        SupervisorAgent sup = AgenticServices.supervisorBuilder()
-                .subAgents(nurse, care, trainer, vet)
+        SupervisorAgent zao = AgenticServices.supervisorBuilder()
+                .subAgents(sniff, zoom, dig, doc)
                 .chatModel(model)
                 .supervisorContext("""
-                        Always call the nurse first: she takes the call, works out what is \
-                        going on, and ends by naming who it needs. She never treats and \
-                        never trains, so her answer is NEVER the answer to give back — it \
-                        tells you who to call next. When she says NEEDS: vet, call the vet \
-                        with the original worry; NEEDS: trainer, call the trainer; NEEDS: \
-                        everyday care, call everyday care. Only when she says NEEDS: nobody \
-                        is her own answer enough. You are finished once the specialist she \
-                        named has answered.""")
+                        You are Zao, leader of the Pawer Rangers. The fair has several separate \
+                        problems. Send ONE Ranger at a time, to ONE problem, with that problem \
+                        as the call: Sniff finds the lost, Zoom catches anything running away, \
+                        Dig deals with holes and tight spots, Doc deals with anyone hurt. Read \
+                        each report before deciding who goes next. When every problem has had \
+                        a Ranger, finish, and say in one sentence whether the fair is under \
+                        control.""")
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY)
-                .maxAgentsInvocations(4)
-                .output(SupervisorPattern::answerWithItsRoute)
+                .maxAgentsInvocations(6)
+                .output(SupervisorPattern::fairStatus)
                 .listener(listener)
                 .build();
-        var r = sup.invokeWithAgenticScope(input);
-        return String.valueOf(r.result());
+        return String.valueOf(zao.invokeWithAgenticScope(input).result());
     }
 
     // ---- how the result is presented; the wiring above is the demo ----
 
-    /**
-     * Who was actually called, and what each of them said.
-     */
-    private static String answerWithItsRoute(AgenticScope scope) {
+    /** The route Zao chose, then each Ranger's report — the order is the thing to compare. */
+    private static String fairStatus(AgenticScope scope) {
         var calls = scope.agentInvocations().stream()
-                .filter(i -> DESKS.contains(i.agentName()))
+                .filter(i -> RANGERS.contains(i.agentName()))
                 .toList();
         if (calls.isEmpty()) {
-            return "The supervisor called nobody.";
+            return "Zao sent nobody.";
         }
-
-        var settled = calls.get(calls.size() - 1);
-        String answer = strip(settled.output());
-        if (calls.size() == 1) {
-            return "**" + settled.agentName() + " answered it.**\n\n" + answer;
-        }
-
-        String path = calls.stream().map(AgentInvocation::agentName)
-                .collect(java.util.stream.Collectors.joining(" → "));
-        StringBuilder out = new StringBuilder("**" + path + "**\n\n" + answer + "\n\n---\n");
-
-
-        for (int i = 0; i < calls.size() - 1; i++) {
-            out.append("\n*").append(calls.get(i).agentName()).append(" did not answer it — \"")
-                    .append(firstSentence(strip(calls.get(i).output())))
-                    .append("\" — and named ").append(calls.get(i + 1).agentName())
-                    .append(", so that is who the supervisor called.*\n");
-        }
-        return out.toString();
-    }
-
-    /**
-     * The answer without the protocol on the end of it. Both markers have to go: the desks sign
-     * off with ANSWERED or ESCALATE, and the nurse ends by naming who is needed — words the
-     * planner acts on and a reader should never have to see.
-     */
-    private static String strip(Object output) {
-        return String.valueOf(output)
-                .replaceAll("(?is)\\s*NEEDS:\\s*\\w[\\w ]*$", "")
-                .replaceAll("(?is)\\s*(ANSWERED|ESCALATE)\\s*$", "")
-                .strip();
-    }
-
-    /** Enough of a declined answer to see why it was declined, and no more. */
-    private static String firstSentence(String text) {
-        int stop = text.indexOf(". ");
-        return stop < 0 || stop > 160 ? text.substring(0, Math.min(160, text.length())).strip()
-                : text.substring(0, stop).strip();
+        String route = calls.stream().map(AgentInvocation::agentName).collect(joining(" → "));
+        String reports = calls.stream()
+                .map(i -> "- **" + i.agentName() + "** — " + String.valueOf(i.output()).strip())
+                .collect(joining("\n"));
+        return "**" + route + "**\n\n" + reports
+                + "\n\n*Run it again: Zao may send them in a different order, because the "
+                + "model decides — not the code.*";
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        // Columns, not a star: a wheel of equal spokes is a picture of the fan-out this demo
-        // exists to deny. The worry arrives at the supervisor, never at an agent.
+        // Columns, not a wheel: a star of equal spokes is a picture of a fan-out, and this is a
+        // conversation — Zao sends, reads, sends again. The mission arrives at Zao, never at a
+        // Ranger, and every Ranger edge is two-way because he reads every report.
         Topology.Graph topo = graph("stages",
-                List.of(node("in", "worry", "input", 0),
-                        node("supervisor", "Supervisor", "supervisor", 1)
-                                .withSub("asks, reads, asks again"),
-                        node("nurse", "TriageNurse", "agent", 2).withSub("1 · always first"),
-                        node("care", "EverydayCare", "agent", 2).withSub("2 · if she says so"),
-                        node("trainer", "DogTrainer", "agent", 2).withSub("2 · if she says so"),
-                        node("vet", "EmergencyVet", "agent", 2).withSub("2 · if she says so")),
-                // Two-way on the nurse only — the supervisor reads her answer, and that is the
-                // edge the demo turns on. Only the return half is labelled: both halves bow
-                // through the same gap, and the answer is the one carrying the mechanism.
-                List.of(edge("in", "supervisor"),
-                        edge("supervisor", "nurse"),
-                        edge("nurse", "supervisor", "names who it needs"),
-                        edge("supervisor", "care"),
-                        edge("supervisor", "trainer", "then one of these"),
-                        edge("supervisor", "vet")));
-
-        return new PatternDef("supervisor", "Supervisor", "pure-agent",
-                "Then something that is not like him at all. You cannot tell if it is "
-                        + "behaviour or something worse, and neither can one phone call.",
-                "Demo 6's three desks again, unchanged, plus one new agent: the nurse who "
-                        + "takes the call. Routing picks one desk; this picks several and "
-                        + "decides when to stop.",
-                "An LLM supervisor decides which specialist to invoke, and when to stop. Watch "
-                        + "the order: the **TriageNurse** takes the call, works out what is going "
-                        + "on and ends by naming who is needed — and **that answer is what makes "
-                        + "it call the vet.** A router gets one call and stops. A fan-out would "
-                        + "have asked all three desks at once and learned nothing from any of "
-                        + "them. Neither can produce a second call that exists only because of "
-                        + "what the first one said. Change the input and the route changes with "
-                        + "it: pulling and barking reach the trainer, grass-eating settles with "
-                        + "the nurse and stops there. Note what the result shows: **one answer**, "
-                        + "with the route to it underneath. The nurse did not give an opinion "
-                        + "worth keeping — she assessed, and assessing is work, not output.",
-                "Non-deterministic, and the roll-call is honest about it: a weaker planner will "
-                        + "sometimes take the nurse's assessment as the answer and stop. Bound "
-                        + "the invocations. Note also what it took to make the hand-off reliable "
-                        + "— an agent whose job **is** to hand on, rather than one that declines; "
-                        + "a model asked to refuse under a positive instruction will follow the "
-                        + "positive one. And ask the hard question first: if you can write down "
-                        + "\"nurse, then whoever she names\", that is a sequence with a "
-                        + "condition, and it is cheaper and debuggable. Reach for this when you "
-                        + "genuinely cannot enumerate who is needed.",
+                List.of(node("in", "mission", "input", 0).withSub("three problems"),
+                        node("zao", "Zao", "supervisor", 1).withSub("sends, reads, decides").as("zao"),
+                        node("sniff", "Sniff", "agent", 2).withSub("if Zao sends him").as("sniff"),
+                        node("zoom", "Zoom", "agent", 2).withSub("if Zao sends him").as("zoom"),
+                        node("dig", "Dig", "agent", 2).withSub("if Zao sends him").as("dig"),
+                        node("doc", "Doc", "agent", 2).withSub("if Zao sends him").as("doc"),
+                        node("out", "fairStatus", "join", 3).withSub("when Zao says so")),
+                List.of(edge("in", "zao"),
+                        edge("zao", "sniff"), edge("sniff", "zao", "report"),
+                        edge("zao", "zoom"), edge("zoom", "zao"),
+                        edge("zao", "dig"), edge("dig", "zao"),
+                        edge("zao", "doc"), edge("doc", "zao"),
+                        edge("zao", "out", "under control")));
+        return new PatternDef("supervisor", "Supervisor", "planner",
+                "The Town Fair is chaos: a lost child, a runaway sausage cart, and a hole in the "
+                        + "bouncy castle. Zao has four Rangers.",
+                "Mission 6's four Rangers on call, unchanged. Routing sent one; Zao sends as "
+                        + "many as it takes.",
+                "An LLM supervisor decides which Ranger to send, reads the report, and decides "
+                        + "again — until the fair is under control. Nobody wrote down the order: "
+                        + "**run it twice and it can change**, because the model decides, not "
+                        + "the code. A router gets one call and stops; a fan-out would send "
+                        + "everyone at once. This is the first mission where the system, not "
+                        + "you, picks the next pup.",
+                "Non-deterministic, and the route printed at the top is honest about it: a weaker "
+                        + "model may stop early or send two Rangers to one problem. Bound the "
+                        + "invocations (`maxAgentsInvocations`). And ask the hard question first: "
+                        + "if you can write the order down, that is a sequence, and it is cheaper "
+                        + "and debuggable. Reach for this when you genuinely cannot.",
                 topo,
-                // Reads as a training problem, and is not one — which nobody can know until the
-                // trainer has looked at it. That is the point: the second call is not in anyone's
-                // plan at the start, it is caused by the first agent's answer.
-                "he is four and he has started snapping when the children go near his bed. He has "
-                        + "never done that in his life. Nothing here has changed except him.",
-                SupervisorPattern::run);
+                "Paws up, Rangers! The Town Fair is chaos: a lost child by the carousel, a "
+                        + "runaway sausage cart rolling towards the duck pond, and a hole in the "
+                        + "bouncy castle.",
+                SupervisorPattern::run)
+                .gist("A model decides who to call next, and when to stop.");
     }
 }

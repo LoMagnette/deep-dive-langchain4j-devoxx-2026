@@ -5,106 +5,132 @@ import static dev.devoxx.dashboard.catalog.Topology.graph;
 import static dev.devoxx.dashboard.catalog.Topology.node;
 import static java.util.Objects.requireNonNullElse;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
-import dev.devoxx.dashboard.demos._07_humanapproval.Keys.Decision;
-import dev.devoxx.dashboard.demos._13_voting.Keys.MoneyVote;
-import dev.devoxx.dashboard.demos._13_voting.Keys.SpaceVote;
-import dev.devoxx.dashboard.demos._13_voting.Keys.ZaoVote;
+import dev.devoxx.dashboard.demos._13_voting.Keys.Verdict;
+import dev.devoxx.dashboard.demos._13_voting.Keys.Vote1;
+import dev.devoxx.dashboard.demos._13_voting.Keys.Vote2;
+import dev.devoxx.dashboard.demos._13_voting.Keys.Vote3;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
 import dev.langchain4j.agentic.patterns.voting.VotingStrategy;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for the <b>voting</b> demo — three criteria that can genuinely disagree.
+ * Wiring for <b>Mission 13</b> — three independent votes, and a strategy for counting them.
  */
 public final class VotingPattern {
 
     private VotingPattern() {
     }
 
-    /**
-     * The household the three criteria judge. Shared with the council demo, which puts the same
-     * question through a whole debate before these same three assessors ratify the answer.
-     */
-    public static final String HOUSEHOLD =
-            "two-bedroom flat, no garden, both of us out from eight until six. We can afford a "
-                    + "second one comfortably — that is the only part of this that is easy. Zao "
-                    + "is four, and when another dog comes at him in the park he goes stiff and "
-                    + "makes a noise I do not have a word for.";
+    /** Shared with Mission 18, which puts the same lake through a whole inspection first. */
+    public static final String LAKE =
+            "The Mayor wants a skating party on Barkville Lake this afternoon. The ice is 12 cm "
+                    + "thick in the middle. There is a dark patch near the reeds where the stream "
+                    + "comes in, and the ducks are walking about on it quite happily.";
 
-    /** The wiring. Everything below it is the dashboard telling itself how to draw this. */
+    /**
+     * The rule for ice: one NOT SAFE is a veto. {@code VotingStrategy} is a one-method interface,
+     * so a safety rule is a lambda — the strategy is part of the design, and this is the design.
+     */
+    public static final VotingStrategy VETO =
+            votes -> votes.stream().allMatch(VotingPattern::isSafe) ? "SAFE" : "NOT SAFE";
+
     static String run(ChatModel model, String input, StreamingListener listener) {
-        // Three DIFFERENT criteria, or the tally is decoration. Each voter writes its own key
-        // too: the strategy does not need it, but a split is invisible without it.
-        var space = AgenticServices.agentBuilder(SpaceAndTime.class)
-                .chatModel(model)
-                .name("SpaceAndTime")
-                .outputKey(SpaceVote.class)
-                .build();
-        var money = AgenticServices.agentBuilder(MoneyAndVet.class)
-                .chatModel(model)
-                .name("MoneyAndVet")
-                .outputKey(MoneyVote.class)
-                .build();
-        var zao = AgenticServices.agentBuilder(AskZaoHimself.class)
-                .chatModel(model)
-                .name("AskZaoHimself")
-                .outputKey(ZaoVote.class)
-                .build();
-        Ballot app = AgenticServices.plannerBuilder(Ballot.class)
-                .subAgents(space, money, zao)
-                .planner(() -> new VotingPlanner(VotingStrategy.majority()))
-                .outputKey(Decision.class)
+        // Three DIFFERENT ways of judging, or the count is decoration: a nose, a medic, a ruler.
+        var sniff = AgenticServices.agentBuilder(SniffVotes.class)
+                .chatModel(model).name("Sniff").outputKey(Vote1.class).build();
+        var doc = AgenticServices.agentBuilder(DocVotes.class)
+                .chatModel(model).name("Doc").outputKey(Vote2.class).build();
+        var rivet = new RivetVotes();
+
+        IceVote app = AgenticServices.plannerBuilder(IceVote.class)
+                .subAgents(sniff, doc, rivet)
+                // VotingPlanner calls every voter at once, collects what each returned, and
+                // hands the collection to the strategy — whose answer is the verdict.
+                .planner(() -> new VotingPlanner(VETO))
+                .outputKey(Verdict.class)
                 .listener(listener)
                 .build();
         var r = app.invoke(input);
-        var scope = r.agenticScope();
-        if (scope == null) {
-            return String.valueOf(r.result());
-        }
-        String decision = requireNonNullElse(scope.readState(Decision.class), "");
-        String spaceVote = requireNonNullElse(scope.readState(SpaceVote.class), "");
-        String moneyVote = requireNonNullElse(scope.readState(MoneyVote.class), "");
-        String zaoVote = requireNonNullElse(scope.readState(ZaoVote.class), "");
-        return "**Majority: " + decision + "**\n\n"
-                + "- Space and hours alone: " + spaceVote + "\n"
-                + "- Money: " + moneyVote + "\n"
-                + "- Zao himself: " + zaoVote;
+        return explain(r.agenticScope(), String.valueOf(r.result()));
+    }
+
+    // ---- how the result is presented: both strategies, side by side ----
+
+    /**
+     * The verdict the planner returned, each vote, and what the library's own
+     * {@code VotingStrategy.majority()} would have said about the same three votes — so the
+     * room sees the strategy decide, not the voters.
+     */
+    public static String explain(AgenticScope scope, String verdict) {
+        List<String> votes = List.of(
+                requireNonNullElse(scope.readState(Vote1.class), ""),
+                requireNonNullElse(scope.readState(Vote2.class), ""),
+                requireNonNullElse(scope.readState(Vote3.class), ""));
+        // majority() counts EQUAL votes, and a vote is "SAFE — the ducks are on it", so each is
+        // read down to its verdict word first — exactly what a real ensemble has to do.
+        Object majority = VotingStrategy.majority().aggregate(words(votes));
+        return "**Verdict: " + verdict + "** — the veto strategy: one NOT SAFE wins, because this "
+                + "is ice.\n\n"
+                + "- Sniff: " + votes.get(0) + "\n"
+                + "- Doc: " + votes.get(1) + "\n"
+                + "- Rivet: " + votes.get(2) + "\n\n"
+                + "*`VotingStrategy.majority()` on the same three votes would have said " + majority
+                + ". That rule is fine for naming the HQ mascot.*";
+    }
+
+    private static List<Object> words(Collection<String> votes) {
+        return votes.stream().map(v -> (Object) (isSafe(v) ? "SAFE" : "NOT SAFE")).toList();
+    }
+
+    /** NOT SAFE contains SAFE, so the negative is checked first. */
+    static boolean isSafe(Object vote) {
+        String v = String.valueOf(vote).toUpperCase(Locale.ROOT);
+        return !v.contains("NOT SAFE") && !v.contains("UNSAFE") && v.contains("SAFE");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        Topology.Graph topo = graph("fanout",
-                List.of(node("in", "household", "input"),
-                        node("space", "SpaceAndTime", "agent"),
-                        node("money", "MoneyAndVet", "agent"),
-                        node("zao", "AskZaoHimself", "agent"),
-                        // Without the tally this is just a fan-out; the tally IS the pattern.
-                        // The sub-line is the thing people get wrong about ensembles: a
-                        // strategy can only tally answers that can be EQUAL, which is why
-                        // every voter here is asked for one word.
-                        node("vote", "majority()", "join").withSub("tallies one-word votes")),
-                List.of(edge("in", "space"), edge("in", "money"), edge("in", "zao"),
-                        edge("space", "vote", "YES / LATER"),
-                        edge("money", "vote"), edge("zao", "vote")));
-        return new PatternDef("voting", "Voting / Ensemble", "pattern-zoo",
-                "The question that will not go away: would he be happier with another dog? "
-                        + "Everyone in the house already has an answer.",
-                "Introduces the three assessors the council reuses in demo 18.",
-                "Several agents answer independently; a strategy aggregates (majority, average, "
-                        + "highest). Worth the tokens when one judgement is not trustworthy "
-                        + "enough to act on — and this household is a genuine split, because the "
-                        + "money is fine and everything else is not.",
-                // caveat: correlated models vote alike, so an ensemble can be confidently wrong.
-                "Correlated voters agree on the same mistake — diversity of criteria is what "
-                        + "buys robustness, not running the same prompt three times. Note the "
-                        + "price: each voter answers in ONE word, because a strategy can only "
-                        + "tally answers that can be equal.",
-                topo, HOUSEHOLD, VotingPattern::run);
+        // The planner fans out to all three at once — no voter sees another — and the strategy is
+        // drawn as its own box, labelled with its rule, because the rule IS the design.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "the lake", "input", 0),
+                        node("plan", "VotingPlanner", "planner", 1).withSub("all three at once"),
+                        node("sniff", "Sniff", "agent", 2).withSub("nose and eyes").as("sniff"),
+                        node("doc", "Doc", "agent", 2).withSub("the medic").as("doc"),
+                        node("rivet", "Rivet", "code", 2).withSub("the ruler · ≥ 10 cm").as("rivet"),
+                        node("vote", "VETO", "join", 3).withSub("one NOT SAFE wins")),
+                List.of(edge("in", "plan"),
+                        edge("plan", "sniff"), edge("plan", "doc", "votes independently"),
+                        edge("plan", "rivet"),
+                        edge("sniff", "vote", "vote1"), edge("doc", "vote", "vote2"),
+                        edge("rivet", "vote", "vote3")));
+        return new PatternDef("voting", "Voting / Ensemble", "minds",
+                "The Mayor wants a skating party on the lake. Twelve centimetres of ice, a dark "
+                        + "patch by the reeds, and some very confident ducks.",
+                "Introduces the three voters the Lake Party reuses in Mission 18.",
+                "Several agents answer independently; a strategy aggregates. LangChain4j's "
+                        + "`VotingPlanner` calls every voter at once, collects what each returned, "
+                        + "and hands the lot to a `VotingStrategy` — `majority()`, `average()`, "
+                        + "`highest()`, or your own, because it is a one-method interface. Sniff "
+                        + "judges by nose, Doc by what could go wrong, Rivet by a ruler. **The "
+                        + "strategy is part of the design**: here it is a veto — one NOT SAFE "
+                        + "wins — and the result shows what `majority()` would have said instead "
+                        + "(2 of 3 say SAFE).",
+                "Correlated voters agree on the same mistake — diversity of criteria buys "
+                        + "robustness, not the same prompt three times. And `majority()` counts "
+                        + "EQUAL votes: \"SAFE — the ducks are on it\" and \"SAFE, 12 cm\" are two "
+                        + "different votes to it, so every vote has to be read down to a word a "
+                        + "tally can compare before any strategy means anything.",
+                topo, LAKE, VotingPattern::run)
+                .gist("Several agents vote; a strategy turns the votes into a decision.");
     }
 }
