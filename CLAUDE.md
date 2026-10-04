@@ -246,12 +246,12 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   only says "it did not throw", which is true of a pattern that has quietly turned back into a
   sequence. Three demos went a long time with nothing else — and they were the wrong three, since
   `blackboard` is one of the patterns this file records as having *been* a straight line once:
-  the fix was made and never pinned. They now have `theDebateConvergesOnAgreementAndNotOtherwise`,
-  `theTwoPeersSettleOnThePredicateRatherThanRunningOutOfRounds` and
-  `anyBlackboardContributorCouldGoFirstAndOnlyTheLeadCanGoLast`. The last of those asserts from
-  the **interfaces**, not from a run, and that is the general lesson: a run shows one order, and
-  one order is exactly what a sequence shows too — so the claim "any of them could go first" has
-  to be read off the declared `@K` keys, which is what actually makes it true.
+  the fix was made and never pinned. They now have `theCouncilArguesThreeRoundsBeforeFifiRules`,
+  `oneScentWakesTwoPeersAndTheSearchEndsOnTheGoat` and
+  `eachClueUnlocksTheNextAndTheBoardDecidesTheOrder`. The last two assert from the
+  **interfaces** first, then from a run, and that is the general lesson: a run shows one order,
+  and one order is exactly what a sequence shows too — so "who can act when" has to be read off
+  the declared `@K` keys, which is what actually makes it true.
 - **There is an untyped version of demos 1–6 in the history, for the live demo.** Commit
   `31c3967` ("Example without typedkey: demo 1-6") is the whole catalogue with demos 1–6 using
   `@V("Notes")` / `.outputKey("Notes")` instead of `@K` and `TypedKey`, so §5 can argue for typed
@@ -388,8 +388,10 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     any box labelled as a Ranger without a colour.
   - **Bolt is always drawn as `code`**, never as an agent — wherever he appears. And **a non-AI
     agent is invisible to the listener in a sequence** (see the non-AI note above), so Bolt's box
-    never lights there; his effect is on the Scope tab. Oddly he IS reported inside a parallel
-    workflow (Missions 13 and 18) — the inheritance gap is specific to how the sequence attaches it.
+    never lights there; his effect is on the Scope tab. Oddly, whether he is reported depends on how he
+    is nested: invisible as a direct sub-agent of a sequence or of Mission 13's top-level
+    VotingPlanner, but reported when that planner is nested one level down (Mission 18). Do not
+    build anything on either behaviour — read his effect from the scope.
   - **Gear is real tools, and the model picks them.** `SniffGear`/`ZoomGear` are `@Tool` classes
     passed with `.tools(...)`; `@P(name = "place", ...)` is needed because the build does not keep
     parameter names (without it the model is offered `arg0`). `StreamingListener` emits
@@ -409,7 +411,19 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     triggers key on an INSTRUCTION, never on a dog's name alone (the same Ranger speaks in a dozen
     missions); and a verdict-giving agent is told that "not proven" is not a verdict.
   - **Pins that must grow need an appender.** An agent's output OVERWRITES its key, so the spec's
-    `clues` list (Mission 12) is three pins, one per clue-finder.
+    `clues` list (Mission 12) is one pin per clue — which is also what lets a clue be the
+    precondition of somebody else's contribution.
+  - **Mission 13 is LangChain4j's `VotingPlanner`, not a parallel workflow with a hand count** —
+    which is what it was for a while. The planner calls EVERY sub-agent at once, collects each
+    output as a vote, and returns `strategy.aggregate(votes)` as the result. `VotingStrategy` is a
+    one-method interface, so the spec's safety rule is a lambda: `VotingPattern.VETO` (one NOT SAFE
+    wins), passed as `new VotingPlanner(VETO)`. The result also shows what the library's own
+    `VotingStrategy.majority()` would have said on the same votes — the spec's "majority for the
+    mascot, veto for safety" made literal, with both strategies real. One trap: `majority()` counts
+    EQUAL votes, and "SAFE — the ducks are on it" is a different vote from "SAFE, 12 cm", so votes
+    are read down to their verdict word before `majority()` sees them. Mission 18 nests the same
+    planner and strategy as one step of its sequence. `theVetoOverrulesTheMajorityOnIce` asserts
+    both use `VotingPlanner` and neither uses `parallelBuilder`.
   - **Mission 14 is LangChain4j's `DebatePlanner`, not a loop dressed as one** — it was a
     `loopBuilder` of Howl, Mittens and a Bolt minute-taker for a while, which showed a loop and
     called it a debate. How the real planner works, read from its bytecode in `1.20.0-beta30`:
@@ -427,17 +441,49 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     so `Keys.DebateContext` is the one `TypedKey` that overrides `name()` — with the library's
     constant, `DebatePlanner.DEBATE_CONTEXT_KEY`. `theCouncilArguesThreeRoundsBeforeFifiRules`
     asserts the planner is used and both debaters read that key.
-  - **Peers need a finish line they can reach, and EITHER peer may cross it.** Live, the corn maze
-    ran ten rounds with Zoom reporting "a faint bleat to the north" and Sniff never signing: his
-    "start with FOUND: only if…" was a conditional under a positive instruction, and the positive
-    one won. Fixed structurally, not by rewording: the decision goes FIRST in Sniff's prompt, Zoom
-    is told the goat is in the middle (which is what the mission says), and the exit predicate
-    reads BOTH pins, so whichever pup finds her ends the search — truer to peer-to-peer, too.
-    Three live runs out of three now end in two to four turns.
-  - **Facts the room must convict on belong to the plain-Java step.** Zao once convicted "a
-    Rodent", because Bolt's camera log said "small shape, tail up". The log now says "a tabby
-    cat" and ends at Mittens' cat flap: the twist is only fair if the evidence on the board makes
-    it, and Bolt is the one Ranger whose evidence a model cannot reword.
+  - **Missions 11, 12 and 15 were rebuilt because they were too simple to show their pattern.**
+    Two peers alternating looked like a loop; three clue-finders reading only the crime plus a
+    judge looked like a fan-out and a join; and BDI's beliefs never changed during the run, so it
+    was a priority list. Each now makes the ONE behaviour that distinguishes it visible in the
+    Run events, and each was read out of the library's bytecode first — worth doing again on a
+    version bump, because these planners are small and their semantics are the whole demo:
+    - **P2P (corn maze): three peers, one pin with two listeners.** `P2PPlanner` runs every agent
+      whose input pins all exist, and after EACH agent finishes, re-arms every agent that reads
+      the key it wrote — then calls everything activatable at once. So Sniff (reads Zoom's
+      `Clearing` and Dig's `Burrows`) writes `Scent`, which wakes Zoom AND Dig together, and
+      each of their reports wakes Sniff again. Seed `Clearing`/`Burrows` or nobody moves
+      ("stable after 0 invocations"). It is genuinely chatty: when two reports land a moment
+      apart, Sniff fires once for each — a live run took 13 turns, hence the cap of 20 and the
+      caveat saying so. The test asserts Sniff first, then {Zoom, Dig} as a wave, and that the
+      predicate (FOUND: in any pin) stopped it — never the exact interleaving, which is the
+      planner's. The prompts are explicit if/else scripts on what the OTHER pups said: on
+      gemma, "once your run takes you to the middle" let Zoom find the goat on his first run,
+      and the peers never needed each other.
+    - **Blackboard (sausage heist): preconditions, not a fan-out.** `BlackboardPlanner` picks,
+      each step, ONE agent whose inputs are all on the board and that has not fired since they
+      last changed, using a `ConflictResolutionStrategy` when several qualify. So the inputs ARE
+      the preconditions: Sniff and Bolt need the crime; Dig needs Sniff's `ScentClue`; Doc needs
+      Bolt's `CameraClue`; Zao needs `TunnelClue` + `CrumbClue` and writing `Culprit` is the goal.
+      They are registered **backwards** (Zao, Doc, Dig, Bolt, Sniff) and `declarationOrder()`
+      only breaks ties among the eligible, so the run goes Bolt → Doc → Sniff → Dig → Zao —
+      interleaving two chains nobody wrote — and the result prints that order beside the
+      registration order. The diagram has NO agent→agent edge (the test pins it): every arrow
+      goes into or out of the board, which sits in the middle column.
+    - **BDI (squirrel!): multi-step intentions, preemption, resumption.** A `Desire` is
+      priority + achievable + satisfied + a PLAN (its agent types, in order). `BDIPlanner`
+      commits to the highest achievable unsatisfied desire, and after EVERY step re-checks: if
+      a higher desire has become achievable it preempts, remembering the cursor
+      (`desireProgress`), and later resumes there; a plan that runs out without satisfying its
+      desire is an `IllegalStateException`, not a retry. The demo needs a belief that changes
+      mid-run, so Zoom's squirrel plan step 1 (`ZoomUpTheBank`) writes `Lookout` — what he
+      sees — and the rescue is achievable only once that says "stranded". The run is squirrel
+      1/2 → rescue 1/2 → rescue 2/2 → squirrel **2/2** → nap; with "Officer Jo already has the
+      kid, safe" on the radio it is squirrel 1/2 → 2/2 → nap. Beliefs are read in plain Java.
+    - **On gemma, "pin your clue on the Pup Board" is an invitation to role-play** — headings,
+      emoji pins, "Clue Status: PLACED" — and the facts the next Ranger needs fall out. Clue
+      prompts are "Report it in two short plain sentences, no headings", and they carry the
+      facts (cat's prints, number 9, the 07:02 snack): the twist is only fair if the board
+      makes it, and a small model will otherwise convict "the Rat".
   - **A voter's criterion must be narrow enough to disagree.** Mission 13's whole lesson is a 2–1
     SAFE majority overruled by a veto. When Sniff judged "what you can sniff and see", he saw the
     dark patch too and voted NOT SAFE, so majority and veto agreed and the lesson vanished. He now
@@ -456,8 +502,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
       one. It now scores a **fraction of four named rules**.
     - *Patterns that are secretly a sequence.* GOAP, BDI and blackboard were all straight lines.
       GOAP now has a real precondition chain and is registered **backwards on purpose**; BDI has
-      three desires whose priorities (not declaration order) pick the winner; blackboard's three
-      contributors each read only `problem`, so any of them can go first.
+      ranked multi-step plans and a belief that changes mid-run; blackboard's contributors each
+      need a different clue on the board, so the order emerges. See the Missions 11/12/15 note.
       **`p2p` was the fourth, and it hid for longer because its exit predicate looked fine.**
       It was `hasState(Agreement.class)`, and `Agreement` was the *second peer's own output
       key* — so it was true the instant that peer had run, on any model, and the run always
@@ -752,7 +798,7 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   the room needs the laughs. The register is dry and observational (Zao "would like it known that
   this proves nothing"; Mittens "has prepared"), and every punchline earns its place twice:
   `p2p`'s "nobody is in charge — not even Zao, who is outside, eating corn" **is** why it is not a
-  supervisor, `bdi`'s "Then: a squirrel." is the belief update, `customPlanner`'s "Zoom is
+  supervisor, `bdi`'s "Squirrel. Kid. Squirrel." is the preempt-and-resume, `customPlanner`'s "Zoom is
   hungry" is the first rule the planner fires. A joke you have to stop and explain
   costs more time than it buys, so it is the wrong joke. Beats are capped at
   140 chars by `everyMissionHasItsBeat` — a beat is a sentence, not a paragraph.
@@ -826,14 +872,11 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
     bottom / left in declaration order, so `TrainerLead` — which can only act once all three
     notes exist, and is the step that *ends the run* — sat at the far **left**, where the eye
     starts, reading as a fourth peer. Plus eight arrows radiating from one box, no way in and
-    no way out. It is `stages` now: the three note-takers share **one column**, which is how a
-    picture says "no order"; the lead has its own after them, reached by an edge that arcs over
-    them (`all three notes` — what "reads the whole board" looks like drawn rather than said);
-    and the problem and the goal state are both on the page. The board keeps its own dashed
-    box, because the shared state really is this pattern.
-    Their three sub-lines are deliberately **identical** (`needs only the problem`): three boxes
-    that say the same thing are three agents with nothing to tell them apart, which is the
-    claim. The fourth reads differently because it is different.
+    no way out. It is `stages` now, with the board in the **middle** column and the Rangers
+    either side of it: the column a Ranger stands in is the earliest it CAN act (Sniff and Bolt
+    need only the crime; Dig and Doc need a clue; Zao needs two), every arrow goes into or out
+    of the board, and each box's sub-line says what it needs (`needs: the scent`). The problem
+    and the goal state are both on the page.
   - `goap`'s goal box says `registered: park first` while the boxes run indoor → garden → park.
     That one line is the pattern's whole claim; without it the order looks typed, and the reader
     has to be *told* it was derived — not having to be told is what the picture is for.
@@ -852,9 +895,9 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   spends its time denying. Both are `stages`, and a test pins them there.
   **Blackboard was the last holdout and it has gone the same way**, which retires the exception
   this note used to carve out for it ("the board is genuinely the centre and the contributors
-  genuinely have no order"). Half of that is still true — the three note-takers have no order —
-  but a pattern only needs **one** node with a position to lose the right to a circle, and the
-  lead is that node. `star` and `mesh` are now used by nothing; keep them for the pattern that
+  genuinely have no order"). Neither half is true any more — Mission 12's contributors have
+  preconditions — and a pattern only needs **one** node with a position to lose the right to a
+  circle. `star` and `mesh` are now used by nothing; keep them for the pattern that
   is genuinely orderless end to end, and reach for columns first. When *any* part of a pattern
   has a direction, give the whole thing columns and let the shared column carry the symmetry.
 - **Every diagram needs its way out drawn, not only its way round.** Three of them didn't:
@@ -891,10 +934,11 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   said only the last rung can answer.
   **The row layouts need this too, and for a long time did not.** `chain`/`dag`/`loop` place
   nodes in declaration order along one row, so an edge skipping a node is just as hidden — and
-  `bdi` paid for it: the edge from the first desire to the third, straight behind the second,
-  is the one that makes it a DAG of preconditions rather than a chain, and it was invisible.
-  `span` now measures the declaration-index gap for those layouts instead of returning 0, and a
-  test asserts `bdi` still has an edge that skips a node.
+  `bdi` paid for it when it was a row: the edge from the first desire to the third, straight
+  behind the second, was invisible. `span` now measures the declaration-index gap for those
+  layouts instead of returning 0. (`bdi` is `stages` now — one row per desire's plan, a
+  `planner` node in front, and the belief revision drawn as the edge coming back from the
+  chase's first step.)
 - **A label is trimmed at 22 characters and a sub-line at 26, silently.** `fit()` does it with no
   error, so an over-long one is simply wrong on the projector and nowhere else.
   `everyTopologyShowsWhatItsPatternActuallyDoes` caps labels at 22 and subs at **24** — not 26,

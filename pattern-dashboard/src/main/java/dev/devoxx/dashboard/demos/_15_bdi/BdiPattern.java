@@ -12,9 +12,11 @@ import java.util.Map;
 import dev.devoxx.dashboard.catalog.PatternDef;
 import dev.devoxx.dashboard.catalog.Topology;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Beliefs;
-import dev.devoxx.dashboard.demos._15_bdi.Keys.Chased;
+import dev.devoxx.dashboard.demos._15_bdi.Keys.Crossing;
+import dev.devoxx.dashboard.demos._15_bdi.Keys.Lookout;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Napped;
 import dev.devoxx.dashboard.demos._15_bdi.Keys.Rescued;
+import dev.devoxx.dashboard.demos._15_bdi.Keys.Treed;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.patterns.bdi.BDIPlanner;
@@ -23,7 +25,8 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Wiring for <b>Mission 15</b> — three desires, ranked, and one dog who keeps his word.
+ * Wiring for <b>Mission 15</b> — three ranked desires, each with a two-step plan, and one belief
+ * that changes halfway through.
  */
 public final class BdiPattern {
 
@@ -31,30 +34,37 @@ public final class BdiPattern {
     }
 
     static String run(ChatModel model, String input, StreamingListener listener) {
-        var rescue = AgenticServices.agentBuilder(ZoomRescuesTheKid.class)
-                .chatModel(model).name("ZoomRescue").outputKey(Rescued.class).build();
-        var squirrel = AgenticServices.agentBuilder(ZoomChasesTheSquirrel.class)
-                .chatModel(model).name("ZoomSquirrel").outputKey(Chased.class).build();
+        var upTheBank = AgenticServices.agentBuilder(ZoomUpTheBank.class)
+                .chatModel(model).name("ZoomUpTheBank").outputKey(Lookout.class).build();
+        var treesIt = AgenticServices.agentBuilder(ZoomTreesTheSquirrel.class)
+                .chatModel(model).name("ZoomTreesIt").outputKey(Treed.class).build();
+        var toTheFord = AgenticServices.agentBuilder(ZoomToTheFord.class)
+                .chatModel(model).name("ZoomToTheFord").outputKey(Crossing.class).build();
+        var bringsKid = AgenticServices.agentBuilder(ZoomBringsTheKidBack.class)
+                .chatModel(model).name("ZoomBringsKidBack").outputKey(Rescued.class).build();
         var nap = AgenticServices.agentBuilder(ZoomNaps.class)
-                .chatModel(model).name("ZoomNap").outputKey(Napped.class).build();
+                .chatModel(model).name("ZoomNaps").outputKey(Napped.class).build();
 
-        // Priorities, not declaration order: shuffle these three and Zoom behaves the same. The
-        // squirrel ranks above the nap and below the kid — the whole of a Greyhound's character
-        // in three numbers — and the kid's desire is only ACHIEVABLE while Zoom believes the
-        // kid is still stranded. Change the belief and the intention is dropped.
+        // A desire is a priority, two predicates over the beliefs, and a PLAN — the agent types
+        // after the predicates, run in that order. The planner commits to the highest desire that
+        // is achievable and not yet satisfied, and after EVERY step it looks again: if a higher
+        // desire has become achievable, the current plan is preempted and its place remembered.
         List<Desire> desires = List.of(
                 Desire.of("rescue the kid", 100,
-                        s -> believes(s, "stranded") && !believes(s, "already safe"),
-                        s -> s.hasState(Rescued.class), ZoomRescuesTheKid.class),
+                        s -> sees(s, "stranded"),          // only once he has SEEN the kid
+                        s -> s.hasState(Rescued.class),
+                        ZoomToTheFord.class, ZoomBringsTheKidBack.class),
                 Desire.of("chase that squirrel", 50,
-                        s -> believes(s, "squirrel"),
-                        s -> s.hasState(Chased.class), ZoomChasesTheSquirrel.class),
+                        s -> told(s, "squirrel"),
+                        s -> s.hasState(Treed.class),
+                        ZoomUpTheBank.class, ZoomTreesTheSquirrel.class),
                 Desire.of("nap", 10,
                         s -> true,
-                        s -> s.hasState(Napped.class), ZoomNaps.class));
+                        s -> s.hasState(Napped.class),
+                        ZoomNaps.class));
 
         ZoomsHead app = AgenticServices.plannerBuilder(ZoomsHead.class)
-                .subAgents(rescue, squirrel, nap)
+                .subAgents(upTheBank, treesIt, toTheFord, bringsKid, nap)
                 .planner(() -> new BDIPlanner(desires))
                 .outputKey(Napped.class)
                 .listener(listener)
@@ -64,68 +74,91 @@ public final class BdiPattern {
     }
 
     /**
-     * A belief is a phrase on the radio, read in plain Java. Deciding what Zoom KNOWS is not a
-     * judgement — it is what the radio said — and keeping it out of the model is what makes the
-     * intention change predictably when the belief does.
+     * Beliefs are read in plain Java: what the radio said, and what Zoom reported seeing. Deciding
+     * what Zoom KNOWS is not a judgement, and keeping it out of the model is what makes the
+     * intention change exactly when the belief does.
      */
-    static boolean believes(AgenticScope scope, String phrase) {
-        String b = scope.readState(Beliefs.class);
-        return b != null && b.toLowerCase(Locale.ROOT).contains(phrase);
+    static boolean told(AgenticScope scope, String phrase) {
+        return mentions(scope.readState(Beliefs.class), phrase);
+    }
+
+    static boolean sees(AgenticScope scope, String phrase) {
+        return mentions(scope.readState(Lookout.class), phrase);
+    }
+
+    private static boolean mentions(String text, String phrase) {
+        return text != null && text.toLowerCase(Locale.ROOT).contains(phrase);
     }
 
     // ---- how the result is presented ----
 
-    private static final Map<String, String> DESIRE = Map.of(
-            "ZoomRescue", "rescue the kid", "ZoomSquirrel", "chase that squirrel", "ZoomNap", "nap");
+    /** Which desire each step served, and which step of its plan it was. */
+    private static final Map<String, String> STEP = Map.of(
+            "ZoomUpTheBank", "squirrel 1/2", "ZoomTreesIt", "squirrel 2/2",
+            "ZoomToTheFord", "rescue 1/2", "ZoomBringsKidBack", "rescue 2/2",
+            "ZoomNaps", "nap 1/1");
 
     private static String intentions(AgenticScope scope) {
         var acted = scope.agentInvocations().stream()
-                .filter(i -> DESIRE.containsKey(i.agentName())).toList();
-        String order = acted.stream().map(i -> DESIRE.get(i.agentName())).collect(joining(" → "));
+                .filter(i -> STEP.containsKey(i.agentName())).toList();
+        List<String> names = acted.stream().map(i -> i.agentName()).toList();
         String what = acted.stream()
-                .map(i -> "- **" + DESIRE.get(i.agentName()) + "** — " + String.valueOf(i.output()).strip())
+                .map(i -> "- *" + STEP.get(i.agentName()) + "* — " + String.valueOf(i.output()).strip())
                 .collect(joining("\n"));
-        boolean dropped = acted.stream().noneMatch(i -> "ZoomRescue".equals(i.agentName()));
-        return "**Intentions, in the order Zoom committed to them: " + order + "**\n\n" + what
-                + (dropped ? "\n\n*The rescue was dropped: Zoom no longer believes anyone is "
-                        + "stranded, so that desire is not achievable — and the squirrel wins.*"
-                        : "\n\n*The squirrel appeared before the rescue was done, and Zoom kept "
-                        + "his intention: a stranded kid outranks a squirrel.*");
+        boolean preempted = names.indexOf("ZoomToTheFord") > names.indexOf("ZoomUpTheBank")
+                && names.indexOf("ZoomToTheFord") < names.indexOf("ZoomTreesIt");
+        return "**" + acted.stream().map(i -> STEP.get(i.agentName())).collect(joining(" → "))
+                + "**\n\n" + what + "\n\n"
+                + (preempted
+                ? "*From the top of the bank Zoom saw a kid stranded — a new belief. That made "
+                + "the rescue achievable, and it outranks the squirrel, so the chase was "
+                + "preempted mid-plan. Once the kid was safe, the chase resumed at step 2, not "
+                + "from the start.*"
+                : "*Zoom never saw anyone stranded, so the rescue never became achievable: the "
+                + "squirrel plan ran straight through.*");
     }
 
     /** How the page draws it, and what the catalogue shows. */
     public static PatternDef define() {
-        Topology.Graph topo = graph("dag",
-                List.of(node("in", "beliefs", "input").withSub("from the radio"),
-                        node("rescue", "ZoomRescue", "agent").withSub("desire · priority 100").as("zoom"),
-                        node("squirrel", "ZoomSquirrel", "agent").withSub("desire · priority 50").as("zoom"),
-                        node("nap", "ZoomNap", "agent").withSub("desire · priority 10").as("zoom")),
-                // Gated on beliefs, not wired as an order: the edges are what each desire needs to
-                // be achievable, and the one that skips a node is what makes this a DAG of
-                // preconditions rather than a chain.
-                List.of(edge("in", "rescue", "kid stranded"),
-                        edge("rescue", "squirrel", "rescue done"),
-                        edge("in", "squirrel", "squirrel seen"),
-                        edge("squirrel", "nap", "nothing left"),
-                        edge("rescue", "nap")));
+        // One ROW per desire, its plan left to right, and the planner in front of all three —
+        // the picture of "three plans, one commitment at a time". The edge that matters is the
+        // one coming BACK from step 1 of the squirrel plan: that is the belief revision, and it is
+        // what sends the planner to the rescue row halfway through.
+        Topology.Graph topo = graph("stages",
+                List.of(node("in", "beliefs", "input", 0).withSub("from the radio"),
+                        node("bdi", "BDIPlanner", "planner", 1).withSub("highest achievable"),
+                        node("ford", "ZoomToTheFord", "agent", 2).withSub("rescue · step 1").as("zoom"),
+                        node("bank", "ZoomUpTheBank", "agent", 2).withSub("squirrel · step 1").as("zoom"),
+                        node("nap", "ZoomNaps", "agent", 2).withSub("nap · step 1").as("zoom"),
+                        node("kid", "ZoomBringsKidBack", "agent", 3).withSub("rescue · step 2").as("zoom"),
+                        node("tree", "ZoomTreesIt", "agent", 3).withSub("squirrel · step 2").as("zoom")),
+                List.of(edge("in", "bdi"),
+                        edge("bdi", "ford", "100 · once kid seen"),
+                        edge("bdi", "bank"),
+                        edge("bank", "bdi", "50 · sees the kid!"),
+                        edge("bdi", "nap", "10 · always"),
+                        edge("ford", "kid"),
+                        edge("bank", "tree", "resumed later")));
         return new PatternDef("bdi", "BDI (Belief-Desire-Intention)", "minds",
-                "The bridge is out and a kid is stranded on the far bank. Zoom is on his way. "
-                        + "Then: a squirrel.",
+                "Zoom is chasing a squirrel up the riverbank. From the top he can see the bridge "
+                        + "is out, and a kid on the far side. Squirrel. Kid. Squirrel.",
                 null,
-                "Zoom's head in three parts. **Beliefs**: the bridge is out, a kid is stranded, "
-                        + "a squirrel just appeared. **Desires**, ranked: rescue the kid (100), "
-                        + "chase the squirrel (50), nap (10). **Intention**: the highest desire "
-                        + "that is achievable and not yet met — so the squirrel changes nothing "
-                        + "while the kid is stranded. Then send a second belief update, \"the kid "
-                        + "is already safe\", and watch the rescue intention dropped.",
+                "Zoom's head in three parts. **Beliefs**: what the radio said, and what he sees. "
+                        + "**Desires**, ranked: rescue a kid (100), chase the squirrel (50), nap "
+                        + "(10), each with a two-step plan. **Intention**: the plan of the highest "
+                        + "desire that is achievable right now. Watch it happen: the squirrel "
+                        + "plan starts, step 1 reveals a stranded kid, the rescue **preempts** "
+                        + "the chase mid-plan, and once the kid is safe the chase **resumes at "
+                        + "step 2**. Then, at last, the nap.",
                 "Powerful but fiddly: the achievable and satisfied predicates are hard to get "
-                        + "right, and a desire that can never be satisfied stalls the whole plan. "
-                        + "Here the beliefs are read in plain Java on purpose — if a model decided "
-                        + "what Zoom believes, the intention would change for reasons nobody can "
-                        + "point at.",
+                        + "right, and a plan that finishes without satisfying its desire is an "
+                        + "error, not a retry. Beliefs are read in plain Java here on purpose — if "
+                        + "a model decided what Zoom believes, the intention would change for "
+                        + "reasons nobody can point at. Try the radio saying \"Officer Jo already "
+                        + "has the kid, safe\": the rescue never becomes achievable.",
                 topo,
-                "Radio: the bridge over the river is out. A kid is stranded on the other side. "
-                        + "Also — SQUIRREL — a squirrel has just appeared on the riverbank.",
+                "Radio: a squirrel has just run off towards the riverbank. Also, the old bridge "
+                        + "over the river came down in the storm last night.",
                 BdiPattern::run);
     }
 }

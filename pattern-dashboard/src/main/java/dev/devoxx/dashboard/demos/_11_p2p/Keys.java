@@ -5,19 +5,21 @@ import dev.langchain4j.agentic.declarative.TypedKey;
 /**
  * The Pup Board pins this mission introduces. See {@code demos/package-info.java}.
  *
- * <p>Two pins, one per peer, and each peer reads the OTHER's. That shape is not decoration:
- * {@code P2PPlanner} is reactive — an agent re-fires whenever an input of its changes — so two
- * peers writing one shared pin trigger each other and themselves, race, and run to the cap.
- * Distinct pins give the conversation a direction without giving either pup authority.
+ * <p>One pin per pup, and each pup listens to the OTHERS' pins, never its own. That shape is the
+ * whole wiring: {@code P2PPlanner} re-runs a pup whenever a pin it reads changes, so who listens
+ * to what IS the coordination. (A pup that read its own pin would wake itself up for ever.)
  */
 public final class Keys {
 
     private Keys() {
     }
 
-    /** What Zoom has run through. Read by Sniff, written only by Zoom. */
-    public record ClearedAreas() implements TypedKey<String> {}
+    /** What Sniff's nose says, and — once it is — "FOUND:". Zoom and Dig both listen to it. */
+    public record Scent() implements TypedKey<String> {}
 
-    /** What Sniff's nose says, and — once it is — "FOUND:". Read by Zoom, written only by Sniff. */
-    public record GoatSighting() implements TypedKey<String> {}
+    /** What Zoom has run through and seen. Sniff listens to it. */
+    public record Clearing() implements TypedKey<String> {}
+
+    /** What Dig found underground and under the hedges. Sniff listens to it. */
+    public record Burrows() implements TypedKey<String> {}
 }

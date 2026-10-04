@@ -291,32 +291,49 @@ public class MockChatModel implements ChatModel {
                         p -> "Up the ladder, Mittens under one paw, down again. She is unhurt, "
                                 + "ungrateful, and has scratched my nose."),
 
-                // --- Mission 11. The maze. Sniff signs only once Zoom's report puts the goat in
-                // front of him, so the run is nose → legs → nose, and found.
+                // --- Mission 11. The maze. Three peers, and the rules only read what the OTHER
+                // pups reported: Sniff's first scent splits (path AND hedge) so Zoom and Dig are
+                // woken together; their two reports wake Sniff, who now points at the middle; and
+                // Zoom, sent there, sees the goat.
                 new Rule(p -> p.contains("you are sniff, in a giant corn maze"),
-                        p -> after(p, "zoom has cleared:").contains("scarecrow")
+                        p -> after(p, "zoom reports:").contains("found:")
+                                ? "FOUND: confirmed by nose — Gertrude is in the middle of the maze."
+                                : after(p, "zoom reports:").contains("towards the middle")
+                                ? "Scent is strong now and runs north, along the paths towards "
+                                + "the middle. Nothing goes underground — Dig, that burrow is a "
+                                + "dead end. Zoom, the middle."
+                                : "Goat scent at the entrance, and it splits: one trail along the "
+                                + "east path, one under the west hedge. Zoom, the east path. Dig, "
+                                + "the hedge."),
+                new Rule(p -> p.contains("you are zoom, in a giant corn maze"),
+                        p -> after(p, "sniff says:").contains("middle")
                                 ? "FOUND: Gertrude is in the very middle of the maze, eating the "
                                 + "scarecrow's hat."
-                                : "Goat scent, faint, coming from the east side. Zoom — run the "
-                                + "east loops."),
-                new Rule(p -> p.contains("you are zoom, in a giant corn maze"),
-                        p -> "Ran the east loops: east and north are cleared. Fresh hoof prints "
-                                + "heading for the scarecrow in the middle."),
+                                : "Ran the east path: cleared, no goat. Fresh hoof prints turn "
+                                + "north, towards the middle."),
+                new Rule(p -> p.contains("you are dig, in a giant corn maze"),
+                        p -> after(p, "sniff says:").contains("west hedge")
+                                ? "Under the west hedge: a rabbit burrow, far too small for a "
+                                + "goat. Dead end — and one cross rabbit."
+                                : "Nothing under the north hedges. Standing down, as told."),
 
-                // --- Mission 12. Zao FIRST: his prompt quotes every clue.
-                new Rule(p -> p.contains("read every clue on the board and name the culprit"),
-                        p -> "The culprit is Mittens: four-toed, clawless prints in the tunnel, "
-                                + "and the cameras show a cat at 02:14 and 02:31. The crumb in my "
-                                + "beard proves only that a sausage was dropped on Pup HQ's mat at "
-                                + "02:33 — at 02:20 I was asleep in my basket, on camera. I am "
-                                + "innocent. It was Mittens."),
-                new Rule(p -> p.contains("follow the sausage scent from the scene of the crime"),
-                        p -> "The scent runs from the butcher's back door to Pup HQ's front step, "
-                                + "and on past it, to the cat flap at number 9.\nIt never goes "
-                                + "inside Pup HQ."),
-                new Rule(p -> p.contains("crawl the drain tunnel under the butcher's"),
-                        p -> "Small paw prints, four toes, no claw marks — a cat's.\nThey go in "
-                                + "light and come out dragging something."),
+                // --- Mission 12. Zao FIRST: his prompt quotes Dig's and Doc's clues.
+                new Rule(p -> p.contains("read the clues on the board and name the culprit"),
+                        p -> "The culprit is Mittens: four-toed, clawless prints run from the "
+                                + "drain to her garden at number 9. The crumb in my beard is from "
+                                + "the sausage dropped on our mat at 02:33, which I ate at 07:02 — "
+                                + "at 02:20 I was asleep in my basket, on camera. I am innocent. "
+                                + "It was Mittens."),
+                new Rule(p -> p.contains("examine the crumb in zao's beard"),
+                        p -> "The crumb is from the sausage dropped on Pup HQ's mat at 02:33, "
+                                + "which Zao ate at 07:02.\nAt 02:20, while the sausages were "
+                                + "going, he was asleep in his basket: cleared."),
+                new Rule(p -> p.contains("report what your nose found, in two short plain sentences"),
+                        p -> "The scent runs from the butcher's back door, along the alley, and "
+                                + "down the storm drain at the end.\nIt never goes near Pup HQ."),
+                new Rule(p -> p.contains("you have just crawled the drain sniff found"),
+                        p -> "Small paw prints, four toes, no claw marks — a cat's, not a "
+                                + "dog's.\nThey come up in the garden of number 9."),
 
                 // --- Mission 14. Fifi FIRST: her prompt quotes the whole transcript.
                 new Rule(p -> p.contains("moderating the barkville town council"),
@@ -344,14 +361,26 @@ public class MockChatModel implements ChatModel {
                                 "The school would learn more from a cat than from a dog. I rest "
                                         + "my case, and then I rest."})),
 
-                // --- Mission 15. Zoom's three desires.
-                new Rule(p -> p.contains("you have committed to the rescue"),
-                        p -> "Downstream to the old ford, across, and back up the far bank: two "
-                                + "kilometres the long way round.\nThe kid is safe, wet to the "
-                                + "knees, and very impressed."),
-                new Rule(p -> p.contains("there is a squirrel. chase it"),
-                        p -> "Up the riverbank, round the oak twice, and up the oak.\nDid not "
-                                + "catch it. Will not catch it. Will try again."),
+                // --- Mission 15. Zoom's five plan steps. The lookout is the belief revision: it
+                // reports a STRANDED kid unless the radio already said the kid is safe — which is
+                // the whole difference between a preempted chase and a straight one.
+                new Rule(p -> p.contains("step one, chase it up the riverbank"),
+                        p -> after(p, "what the radio said:").contains("safe")
+                                ? "From the top of the bank: the bridge is out, and the far bank "
+                                + "is empty — Officer Jo has the kid.\nThe squirrel is still in "
+                                + "sight."
+                                : "From the top of the bank: the bridge is out, and a kid is "
+                                + "STRANDED on the far bank, waving.\nThe squirrel is still in "
+                                + "sight."),
+                new Rule(p -> p.contains("step two, chase it up a tree"),
+                        p -> "Up the big oak by the river, round it twice, and it went up.\nDid "
+                                + "not catch it. Will not catch it. Will try again."),
+                new Rule(p -> p.contains("step one, the bridge is out, so run downstream"),
+                        p -> "Downstream to the old ford, two kilometres the long way round.\n"
+                                + "Knee-deep and very cold."),
+                new Rule(p -> p.contains("step two of the rescue"),
+                        p -> "Reached the kid, and back over the ford with them holding my "
+                                + "collar.\nSafe, wet to the knees, and very impressed."),
                 new Rule(p -> p.contains("everything that matters is done. nap"),
                         p -> "On the warm stones by the river, for an hour and a half."),
 

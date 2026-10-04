@@ -5,10 +5,11 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface ZoomNaps {
-    @Agent(description = "Zoom the Greyhound: naps")
+    @Agent(description = "Zoom: naps")
     @UserMessage("""
-            You are Zoom, and everything that matters is done. Nap. One plain line: where, and for how long.
+            You are Zoom the Greyhound, and everything that matters is done. Nap. One plain
+            line: where, and for how long.
 
-            What you believe: {{Beliefs}}""")
+            What the radio said: {{Beliefs}}""")
     String act(@K(Keys.Beliefs.class) String beliefs);
 }

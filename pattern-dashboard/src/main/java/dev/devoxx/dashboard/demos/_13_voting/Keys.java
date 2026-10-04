@@ -16,4 +16,7 @@ public final class Keys {
 
     /** Bolt's vote — computed, not judged. */
     public record Vote3() implements TypedKey<String> {}
+
+    /** What the strategy made of the three: SAFE or NOT SAFE. */
+    public record Verdict() implements TypedKey<String> {}
 }

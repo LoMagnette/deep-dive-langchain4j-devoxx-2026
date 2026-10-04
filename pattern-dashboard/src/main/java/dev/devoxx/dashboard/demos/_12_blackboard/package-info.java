@@ -1,8 +1,12 @@
 /**
  * <b>Mission 12 · Blackboard: The Great Sausage Heist</b>
  *
- * <p>Sniff, Dig and Bolt each pin a clue when they can — any of them can go first — and Zao names
- * the culprit once the board holds enough. The twist: a sausage crumb in Zao's own beard. He is
- * innocent. It was Mittens.
+ * <p>Five Rangers stand round the Pup Board, and each one can only contribute once the board holds
+ * what they need: Sniff and Bolt need only the crime; Dig can only crawl a drain once Sniff has
+ * pinned which one; Doc can only test the crumb once Bolt's cameras are up; Zao rules once the
+ * prints and the crumb are both there. Nobody wrote the order the clues go up in — the board's
+ * contents decide who is able to act next, and the planner picks one of them.
+ *
+ * <p>The twist: a sausage crumb in Zao's own beard. He is innocent. It was Mittens.
  */
 package dev.devoxx.dashboard.demos._12_blackboard;

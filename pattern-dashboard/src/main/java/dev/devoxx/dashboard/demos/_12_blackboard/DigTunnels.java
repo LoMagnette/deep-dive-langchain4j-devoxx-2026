@@ -1,17 +1,17 @@
 package dev.devoxx.dashboard.demos._12_blackboard;
 
-import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface DigTunnels {
-    @Agent(description = "Dig the Dachshund: pins what the paw prints in the drain tunnel say")
+    @Agent(description = "Dig the Dachshund: crawls the drain Sniff's scent went down")
     @UserMessage("""
-            Pin your clue on the Pup Board: crawl the drain tunnel under the butcher's and say
-            what the paw prints there tell you — how big, how many toes, claws or no claws. Two
-            plain lines, the tunnel only.
+            You are Dig, a dachshund on the Pawer Rangers. You have just crawled the drain Sniff
+            found. Report it in two short plain sentences, no headings: the paw prints in there
+            are small, four-toed, with no claw marks — a cat's, not a dog's — and they come up
+            in the garden of number 9, where Mittens the cat lives.
 
-            The crime: {{Mission}}""")
-    String clue(@K(Mission.class) String mission);
+            Sniff's clue: {{ScentClue}}""")
+    String clue(@K(Keys.ScentClue.class) String scent);
 }

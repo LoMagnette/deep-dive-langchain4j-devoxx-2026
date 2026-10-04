@@ -6,19 +6,21 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
 
 public interface SniffInTheMaze {
-    @Agent(description = "Sniff the Beagle: follows the goat's scent through the maze, and says where Zoom should run")
+    @Agent(description = "Sniff the Beagle: reads the scent, and says where it leads")
     @UserMessage("""
-            You are Sniff, in a giant corn maze with Zoom, looking for the Mayor's goat. Nobody
-            is in charge.
+            You are Sniff, in a giant corn maze with Zoom and Dig, looking for the Mayor's goat.
+            Nobody is in charge: you only hear what the others report. Answer in one or two
+            short plain sentences — no stage directions, no headings.
 
-            First decide: has Zoom seen the goat, or heard her bleat? If he has, she is exactly
-            where he heard her, and your nose confirms it. Answer with ONE line that starts with
-            "FOUND:" and says where she is — nothing else.
-
-            Otherwise, over your collar, in one or two plain sentences: what your nose says now,
-            and where Zoom should run next.
+            - If Zoom has SEEN the goat: start with "FOUND:" and say where.
+            - Else, if Zoom reports hoof prints heading for the middle: say the scent now leads
+              along the paths to the middle of the maze, and nothing goes underground.
+            - Else (nobody has reported anything yet): say the scent splits at the entrance —
+              one trail along the east path for Zoom, one under the west hedge for Dig.
 
             The mission: {{Mission}}
-            Zoom has cleared: {{ClearedAreas}}""")
-    String sniff(@K(Mission.class) String mission, @K(Keys.ClearedAreas.class) String cleared);
+            Zoom reports: {{Clearing}}
+            Dig reports: {{Burrows}}""")
+    String sniff(@K(Mission.class) String mission, @K(Keys.Clearing.class) String clearing,
+                 @K(Keys.Burrows.class) String burrows);
 }

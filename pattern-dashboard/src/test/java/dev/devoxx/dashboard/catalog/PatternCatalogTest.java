@@ -12,8 +12,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import dev.devoxx.dashboard.demos._02_sequential.DocChecks;
 import dev.devoxx.dashboard.demos._02_sequential.HowlWritesStory;
 import dev.devoxx.dashboard.demos._02_sequential.ZoomRescues;
+import dev.devoxx.dashboard.demos._11_p2p.DigInTheMaze;
+import dev.devoxx.dashboard.demos._11_p2p.SniffInTheMaze;
+import dev.devoxx.dashboard.demos._11_p2p.ZoomInTheMaze;
 import dev.devoxx.dashboard.demos._12_blackboard.BoltCameras;
 import dev.devoxx.dashboard.demos._12_blackboard.DigTunnels;
+import dev.devoxx.dashboard.demos._12_blackboard.DocTestsTheCrumb;
 import dev.devoxx.dashboard.demos._12_blackboard.SniffTrails;
 import dev.devoxx.dashboard.demos._12_blackboard.ZaoNamesTheCulprit;
 import dev.devoxx.dashboard.model.MockChatModel;
@@ -345,33 +349,55 @@ class PatternCatalogTest {
         assertTrue(r.result().contains("Mittens"), r.result());
     }
 
-    /** Mission 11: no leader, and the search ends on the predicate — nose, legs, nose. */
+    /**
+     * Mission 11: no leader, and no written order. Who listens to what is read off the declared
+     * inputs — one pin with two listeners, and two pins both waking Sniff — and the run shows the
+     * consequence: Zoom and Dig woken TOGETHER by one scent report, twice, then the predicate.
+     */
     @Test
-    void thePeersStopWhenTheGoatIsFound() {
+    void oneScentWakesTwoPeersAndTheSearchEndsOnTheGoat() {
+        assertEquals(List.of("Mission", "Clearing", "Burrows"), inputKeys(SniffInTheMaze.class));
+        assertEquals(List.of("Mission", "Scent"), inputKeys(ZoomInTheMaze.class));
+        assertEquals(List.of("Mission", "Scent"), inputKeys(DigInTheMaze.class));
+
         Run r = run(mission("p2p"));
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
-        // THREE turns, precisely: two would mean the predicate fired on the mere presence of a
-        // pin, ten would mean it never fires and the cap is doing the stopping.
-        assertEquals(List.of("Sniff", "Zoom", "Sniff"), r.rangers("Sniff", "Zoom"), r.invoked().toString());
+        List<String> turns = r.rangers("Sniff", "Zoom", "Dig");
+        // Sniff first (nobody else's pins are complete), then ONE scent report wakes Zoom and Dig
+        // together. After that a pup re-fires the moment any pin it reads changes, so the exact
+        // interleaving is the planner's and is not asserted — only that it went round again and
+        // that the predicate, not the cap of 20, did the stopping.
+        assertEquals("Sniff", turns.get(0), turns.toString());
+        assertEquals(Set.of("Zoom", "Dig"), Set.copyOf(turns.subList(1, 3)), turns.toString());
+        assertTrue(times(r, "Sniff") >= 2 && times(r, "Zoom") >= 2, turns.toString());
+        assertTrue(turns.size() < 20, "the goat stopped it, not the cap: " + turns);
         assertTrue(r.result().startsWith("**Goat found.**"), r.result());
+        assertTrue(r.result().contains("nobody chose it"), r.result());
     }
 
     /**
-     * Mission 12: any clue-finder can go first. That is a property of the declared inputs, not of
-     * one run — a run shows one order, and one order is what a sequence shows too.
+     * Mission 12: a contribution is only possible once its inputs are on the board, so the order
+     * is the board's and not the registration's. The preconditions are read off the declared
+     * inputs; the run shows them honoured although the Rangers are registered backwards.
      */
     @Test
-    void anyClueCanBePinnedFirstAndOnlyZaoCanGoLast() {
+    void eachClueUnlocksTheNextAndTheBoardDecidesTheOrder() {
         assertEquals(List.of("Mission"), inputKeys(SniffTrails.class));
-        assertEquals(List.of("Mission"), inputKeys(DigTunnels.class));
         assertEquals(List.of("Mission"), inputKeys(BoltCameras.class));
-        assertEquals(List.of("ScentClue", "TunnelClue", "CameraClue"),
-                inputKeys(ZaoNamesTheCulprit.class));
+        assertEquals(List.of("ScentClue"), inputKeys(DigTunnels.class));
+        assertEquals(List.of("CameraClue"), inputKeys(DocTestsTheCrumb.class));
+        assertEquals(List.of("TunnelClue", "CrumbClue"), inputKeys(ZaoNamesTheCulprit.class));
+
         Run r = run(mission("blackboard"));
         assertTrue(r.errors().isEmpty(), r.errors()::toString);
-        assertEquals("Zao", r.rangers("Sniff", "Dig", "Zao").getLast());
+        List<String> order = r.rangers("Sniff", "Dig", "Doc", "Zao");
+        assertEquals("Zao", order.getLast(), order.toString());
+        assertTrue(order.indexOf("Sniff") < order.indexOf("Dig"), "Dig needs the scent: " + order);
+        assertEquals(1, times(r, "Zao"), "the goal state ends the run");
         assertTrue(r.result().contains("Mittens") && r.result().contains("innocent"),
                 "the twist: " + r.result());
+        // Bolt may be invisible to the listener, but not to the scope: Doc read his footage.
+        assertTrue(r.result().contains("registered as Zao, Doc, Dig, Bolt, Sniff"), r.result());
     }
 
     // ------------------------------------------------------------------------------------------
@@ -380,10 +406,21 @@ class PatternCatalogTest {
 
     /** Mission 13: the strategy is the design — a majority says SAFE, the veto says no. */
     @Test
-    void theVetoOverrulesTheMajorityOnIce() {
+    void theVetoOverrulesTheMajorityOnIce() throws Exception {
+        // LangChain4j's VotingPlanner with a strategy — not a parallel workflow and a hand count.
+        for (String file : List.of("_13_voting/VotingPattern", "_18_lakeparty/LakePartyPattern")) {
+            var src = java.nio.file.Files.readString(java.nio.file.Path.of(
+                    "src/main/java/dev/devoxx/dashboard/demos/" + file + ".java"));
+            assertTrue(src.contains("new VotingPlanner(") && !src.contains("parallelBuilder"),
+                    file + " must vote through VotingPlanner");
+        }
         Run r = run(mission("voting"));
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(List.of("Doc", "Sniff"), r.rangers("Sniff", "Doc").stream().sorted().toList(),
+                "both model voters vote");
         assertTrue(r.result().startsWith("**Verdict: NOT SAFE**"), r.result());
-        assertTrue(r.result().contains("majority would have said SAFE (2 of 3)"), r.result());
+        assertTrue(r.result().contains("`VotingStrategy.majority()` on the same three votes would "
+                + "have said SAFE"), "the library's own majority, on the same votes: " + r.result());
         assertTrue(r.result().contains("Bolt: SAFE — measured 12.0 cm"), r.result());
     }
 
@@ -414,19 +451,25 @@ class PatternCatalogTest {
         assertTrue(r.result().contains("school next door"), "Howl reached his round-3 line: " + r.result());
     }
 
-    /** Mission 15: the squirrel changes nothing while the kid is stranded; a belief update does. */
+    /**
+     * Mission 15: a new belief mid-plan preempts a lower desire, and the preempted plan RESUMES
+     * where it stopped. Without the belief, nothing preempts anything.
+     */
     @Test
-    void zoomKeepsHisIntentionUntilTheBeliefChanges() {
+    void theKidPreemptsTheSquirrelAndTheChaseResumesAtStepTwo() {
         var def = mission("bdi");
-        assertEquals(List.of("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
-                run(def).rangers("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
-                "rescue first, squirrel after — the intention is kept");
-        Run safe = run(def, "Radio: the bridge is out. The kid is already safe. And a SQUIRREL "
-                + "has just appeared.");
-        assertEquals(List.of("ZoomSquirrel", "ZoomNap"),
-                safe.rangers("ZoomRescue", "ZoomSquirrel", "ZoomNap"),
-                "with nobody stranded, the rescue is dropped: " + safe.invoked());
-        assertTrue(safe.result().contains("dropped"), safe.result());
+        String[] zoom = {"ZoomUpTheBank", "ZoomTreesIt", "ZoomToTheFord", "ZoomBringsKidBack", "ZoomNaps"};
+        Run r = run(def);
+        assertTrue(r.errors().isEmpty(), r.errors()::toString);
+        assertEquals(List.of("ZoomUpTheBank", "ZoomToTheFord", "ZoomBringsKidBack", "ZoomTreesIt",
+                        "ZoomNaps"), r.rangers(zoom),
+                "squirrel step 1, preempted by the rescue, then squirrel step 2 — not step 1 again");
+        assertTrue(r.result().contains("preempted"), r.result());
+
+        Run safe = run(def, "Radio: a squirrel has just run off towards the riverbank. Officer Jo "
+                + "already has the kid, safe.");
+        assertEquals(List.of("ZoomUpTheBank", "ZoomTreesIt", "ZoomNaps"), safe.rangers(zoom),
+                "nobody stranded, so the rescue never becomes achievable: " + safe.invoked());
     }
 
     /** Mission 16: the rule, asserted — feed the hungry, rest the tired, nobody twice in a row. */
@@ -800,18 +843,24 @@ class PatternCatalogTest {
                 .noneMatch(e -> goapRangers.contains(e.from()) && goapRangers.contains(e.to())));
         assertEquals(4, edges(catalog, "goap").stream()
                 .filter(e -> e.label() != null && e.label().startsWith("runs")).count());
-        // Mission 11: the mission reaches BOTH peers; one arrow in would crown the first one.
-        assertEquals(2, edges(catalog, "p2p").stream().filter(e -> e.from().equals("in")).count());
+        // Mission 11: the mission reaches every peer — one arrow in would crown the first — one
+        // pin is drawn going to two listeners, and every peer can reach the exit.
+        assertEquals(3, edges(catalog, "p2p").stream().filter(e -> e.from().equals("in")).count());
+        assertEquals(2, edges(catalog, "p2p").stream().filter(e -> e.from().equals("sniff")
+                && !e.to().equals("out")).count(), "one scent, two listeners");
+        assertEquals(3, edges(catalog, "p2p").stream().filter(e -> e.to().equals("out")).count());
         assertNotNull(role(catalog, "p2p", "join"), "the exit predicate is drawn");
-        // Mission 12: the three clue-finders share a column, and Zao stands after them.
-        var peers = Set.copyOf(List.of(stageOf(catalog, "blackboard", "sniff"),
-                stageOf(catalog, "blackboard", "dig"), stageOf(catalog, "blackboard", "bolt")));
-        assertEquals(1, peers.size(), "no order between the clues: " + peers);
-        assertTrue(stageOf(catalog, "blackboard", "zao") > peers.iterator().next());
-        // Mission 15: a DAG of preconditions, so one edge skips a node.
-        var bdiOrder = nodes(catalog, "bdi").stream().map(Topology.Node::id).toList();
-        assertTrue(edges(catalog, "bdi").stream().anyMatch(e ->
-                Math.abs(bdiOrder.indexOf(e.to()) - bdiOrder.indexOf(e.from())) > 1));
+        // Mission 12: nobody hands anything to anybody — every agent edge goes through the board.
+        assertTrue(edges(catalog, "blackboard").stream()
+                        .filter(e -> !e.from().equals("in") && !e.to().equals("out"))
+                        .allMatch(e -> e.from().equals("board") || e.to().equals("board")),
+                "a blackboard Ranger reads and writes the board, never another Ranger");
+        assertTrue(stageOf(catalog, "blackboard", "dig") > stageOf(catalog, "blackboard", "sniff"));
+        assertTrue(stageOf(catalog, "blackboard", "zao") > stageOf(catalog, "blackboard", "doc"));
+        // Mission 15: the planner is drawn, and the belief revision comes back to it.
+        assertNotNull(role(catalog, "bdi", "planner"));
+        assertTrue(edges(catalog, "bdi").stream().anyMatch(e -> e.from().equals("bank")
+                && e.to().equals("bdi")), "step 1 of the chase reports back what Zoom saw");
         // Mission 20: the async edge skips columns, or it hides behind the boxes it spans.
         assertEquals(3, stageOf(catalog, "async", "join") - stageOf(catalog, "async", "forest"));
 

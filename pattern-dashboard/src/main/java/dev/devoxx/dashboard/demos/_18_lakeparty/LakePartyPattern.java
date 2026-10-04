@@ -22,6 +22,7 @@ import dev.devoxx.dashboard.demos._18_lakeparty.Keys.IceVerdict;
 import dev.devoxx.dashboard.demos._18_lakeparty.Keys.Spots;
 import dev.devoxx.dashboard.run.StreamingListener;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.patterns.voting.VotingPlanner;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
@@ -50,16 +51,15 @@ public final class LakePartyPattern {
         // 2. Glue — the findings written back into the mission the voters read.
         var report = new IceReport();
 
-        // 3. Mission 13's vote, unchanged, with its veto. Its output is pinned this time, so the
-        //    announcement can read it — the count is the same function either way.
+        // 3. Mission 13's vote, unchanged: the same VotingPlanner, the same VETO strategy, nested
+        //    as one step. Its verdict is pinned this time, so the announcement can read it.
         var sniff = AgenticServices.agentBuilder(SniffVotes.class)
                 .chatModel(model).name("SniffVote").outputKey(Vote1.class).build();
         var doc = AgenticServices.agentBuilder(DocVotes.class)
                 .chatModel(model).name("Doc").outputKey(Vote2.class).build();
-        IceBallot ballot = AgenticServices.parallelBuilder(IceBallot.class)
-                .name("Parallel")
+        IceBallot ballot = AgenticServices.plannerBuilder(IceBallot.class)
                 .subAgents(sniff, doc, new BoltVotes())
-                .output(VotingPattern::count)
+                .planner(() -> new VotingPlanner(VotingPattern.VETO))
                 .outputKey(IceVerdict.class)
                 .build();
 
@@ -75,7 +75,8 @@ public final class LakePartyPattern {
                 .build();
         var r = app.decide(input, SPOTS);
         return "**Howl, to all of Barkville:** " + r.result() + "\n\n---\n\n"
-                + requireNonNullElse(r.agenticScope().readState(IceVerdict.class), "");
+                + VotingPattern.explain(r.agenticScope(),
+                        requireNonNullElse(r.agenticScope().readState(IceVerdict.class), ""));
     }
 
     /** How the page draws it, and what the catalogue shows. */
@@ -87,7 +88,7 @@ public final class LakePartyPattern {
                         node("vsniff", "SniffVote", "agent", 3).withSub("Mission 13").as("sniff"),
                         node("doc", "Doc", "agent", 3).withSub("Mission 13").as("doc"),
                         node("bolt", "Bolt", "code", 3).withSub("Mission 13").as("bolt"),
-                        node("veto", "veto()", "join", 4).withSub("one NOT SAFE wins"),
+                        node("veto", "VETO", "join", 4).withSub("VotingPlanner's strategy"),
                         node("howl", "Howl", "agent", 5).withSub("tells the town").as("howl")),
                 List.of(edge("in", "spot", "4 spots"),
                         edge("spot", "report", "findings"),
