@@ -39,30 +39,30 @@ public final class SequentialPattern {
                 .chatModel(model)
                 .tools(new SniffGear())
                 .name("Sniff")
-                .outputKey("Location")
+                .outputKey(Location.class)
                 .build();
         var zoom = AgenticServices.agentBuilder(ZoomRescues.class)
                 .chatModel(model)
                 .name("Zoom")
-                .outputKey("RescueStatus")
+                .outputKey(RescueStatus.class)
                 .build();
         var doc = AgenticServices.agentBuilder(DocChecks.class)
                 .chatModel(model)
                 .name("Doc")
-                .outputKey("HealthReport")
+                .outputKey(HealthReport.class)
                 .build();
         var howl = AgenticServices.agentBuilder(HowlWritesStory.class)
                 .chatModel(model)
                 .name("Howl")
-                .outputKey("Article")
+                .outputKey(Article.class)
                 .build();
 
         UntypedAgent app = AgenticServices.sequenceBuilder()
                                           .subAgents(sniff, zoom, doc, howl)
-                                          .outputKey("Article")
+                                          .outputKey(Article.class)
                                           .listener(listener)
                                           .build();
-        var r = app.invokeWithAgenticScope(Map.of("Mission", input));
+        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
         return String.valueOf(r.result());
     }
 

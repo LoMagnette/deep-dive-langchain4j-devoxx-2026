@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._03_loop;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface HowlWrites {
     @Agent(description = "Howl the Husky: writes the piece the brief asks for, and rewrites it from Fifi's feedback")
@@ -12,5 +12,5 @@ public interface HowlWrites {
 
             The brief: {{Brief}}
             Fifi's feedback on your last version: {{Feedback}}""")
-    String write(@V("Brief") String brief, @V("Feedback") String feedback);
+    String write(@K(Keys.Brief.class) String brief, @K(Keys.Feedback.class) String feedback);
 }

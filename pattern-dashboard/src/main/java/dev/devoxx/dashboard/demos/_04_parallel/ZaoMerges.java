@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._04_parallel;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /** Zao the Bouvier, black Ranger: the leader, who decides who goes where. */
 public interface ZaoMerges {
@@ -15,6 +15,6 @@ public interface ZaoMerges {
             Bridge: {{BridgeReport}}
             Forest: {{ForestReport}}
             Tunnels: {{TunnelReport}}""")
-    String merge(@V("BridgeReport") String bridge, @V("ForestReport") String forest,
-                 @V("TunnelReport") String tunnels);
+    String merge(@K(Keys.BridgeReport.class) String bridge, @K(Keys.ForestReport.class) String forest,
+                 @K(Keys.TunnelReport.class) String tunnels);
 }

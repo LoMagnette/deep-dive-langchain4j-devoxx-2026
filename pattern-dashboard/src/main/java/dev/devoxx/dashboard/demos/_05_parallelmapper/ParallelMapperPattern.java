@@ -31,13 +31,13 @@ public final class ParallelMapperPattern {
         var sniff = AgenticServices.agentBuilder(SniffSearches.class)
                 .chatModel(model)
                 .name("Sniff")
-                .outputKey("Sighting")
+                .outputKey(Sighting.class)
                 .build();
         DucklingSearch app = AgenticServices.parallelMapperBuilder(DucklingSearch.class)
                 .name("ParallelMapper")
                 .subAgents(sniff)
-                .itemsProvider("Ducklings")
-                .outputKey("FoundDucklings")
+                .itemsProvider(new Ducklings().name())
+                .outputKey(FoundDucklings.class)
                 .listener(listener)
                 .build();
         // The ducklings come from what was typed (one per line or semicolon), so the input box

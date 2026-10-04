@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos._04_parallel;
 
+import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface DigChecksTunnels {
     @Agent(description = "Dig the Dachshund: inspects the old drainage tunnels before the storm")
@@ -11,5 +12,5 @@ public interface DigChecksTunnels {
             CLOSED. Only the old drainage tunnels — the other Rangers are checking everything else.
 
             Storm warning: {{Mission}}""")
-    String tunnels(@V("Mission") String mission);
+    String tunnels(@K(Mission.class) String mission);
 }

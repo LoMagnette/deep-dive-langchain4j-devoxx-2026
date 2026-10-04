@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface ZoomOnCall {
     @Agent(description = "Zoom the Greyhound: runs fast, fetches and delivers")
@@ -11,5 +11,5 @@ public interface ZoomOnCall {
             Two plain sentences.
 
             The call: {{Call}}""")
-    String answer(@V("Call") String call);
+    String answer(@K(Keys.Call.class) String call);
 }

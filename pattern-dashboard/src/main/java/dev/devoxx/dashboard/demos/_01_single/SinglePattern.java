@@ -38,15 +38,15 @@ public final class SinglePattern {
                 .chatModel(model)
                 .tools(new SniffGear())
                 .name("Sniff")
-                .outputKey("Location")
+                .outputKey(Location.class)
                 .build();
 
         UntypedAgent app = AgenticServices.sequenceBuilder()
                                           .subAgents(sniff)
-                                          .outputKey("Location")
+                                          .outputKey(Location.class)
                                           .listener(listener)
                                           .build();
-        var r = app.invokeWithAgenticScope(Map.of("Mission", input));
+        var r = app.invokeWithAgenticScope(Map.of(new Mission().name(), input));
         return String.valueOf(r.result());
     }
 
@@ -60,11 +60,11 @@ public final class SinglePattern {
                 .streamingChatModel(listener.streamingModel())
                 .tools(new SniffGear())
                 .name("Sniff")
-                .outputKey("Location")
+                .outputKey(Location.class)
                 .build();
         UntypedAgent app = AgenticServices.sequenceBuilder()
-                .subAgents(sniff).outputKey("Location").listener(listener).build();
-        Object result = app.invokeWithAgenticScope(Map.of("Mission", input)).result();
+                .subAgents(sniff).outputKey(Location.class).listener(listener).build();
+        Object result = app.invokeWithAgenticScope(Map.of(new Mission().name(), input)).result();
         if (!(result instanceof TokenStream stream)) {
             return String.valueOf(result);   // right answer, just not streamed
         }

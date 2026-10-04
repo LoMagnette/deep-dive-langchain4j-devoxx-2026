@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos._02_sequential;
 
+import dev.devoxx.dashboard.demos._01_single.Keys.Location;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /** Zoom the Greyhound, yellow Ranger: runs, fetches, delivers. */
 public interface ZoomRescues {
@@ -13,5 +14,5 @@ public interface ZoomRescues {
             they reached the ground. Do not stop for squirrels.
 
             Where Sniff found them: {{Location}}""")
-    String rescue(@V("Location") String location);
+    String rescue(@K(Location.class) String location);
 }

@@ -38,21 +38,21 @@ public final class LoopPattern {
         var howl = AgenticServices.agentBuilder(HowlWrites.class)
                 .chatModel(model)
                 .name("Howl")
-                .outputKey("Draft")
+                .outputKey(Draft.class)
                 .build();
         var fifi = AgenticServices.agentBuilder(FifiScores.class)
                 .chatModel(model)
                 .name("Fifi")
-                .outputKey("Feedback")
+                .outputKey(Feedback.class)
                 .build();
 
         PosterLoop app = AgenticServices.loopBuilder(PosterLoop.class)
                 .name("Loop")
                 .subAgents(howl, fifi)
                 .maxIterations(TREATS)
-                .exitCondition(scope -> reviewScore(scope.readState("Feedback", "")) >= 0.8)
+                .exitCondition(scope -> reviewScore(scope.readState(Feedback.class)) >= 0.8)
                 .testExitAtLoopEnd(true)
-                .outputKey("Draft")
+                .outputKey(Draft.class)
                 .listener(listener)
                 .build();
 

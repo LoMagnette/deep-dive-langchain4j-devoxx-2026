@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._03_loop;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /** Fifi the Poodle, pink Ranger: critic and judge. Nothing is ever perfect. */
 public interface FifiScores {
@@ -16,5 +16,6 @@ public interface FifiScores {
             The rules: {{Rules}}
             The brief: {{Brief}}
             The draft: {{Draft}}""")
-    String review(@V("Rules") String rules, @V("Brief") String brief, @V("Draft") String draft);
+    String review(@K(Keys.Rules.class) String rules, @K(Keys.Brief.class) String brief,
+                  @K(Keys.Draft.class) String draft);
 }

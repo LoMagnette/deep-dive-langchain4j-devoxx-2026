@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._02_sequential;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /** Howl the Husky, purple Ranger: writes and argues. Loud and dramatic. */
 public interface HowlWritesStory {
@@ -13,5 +13,5 @@ public interface HowlWritesStory {
             were not there.
 
             Doc's report: {{HealthReport}}""")
-    String write(@V("HealthReport") String healthReport);
+    String write(@K(Keys.HealthReport.class) String healthReport);
 }

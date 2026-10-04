@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._06_conditional;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface ZaoClassifies {
     @Agent(description = "Zao the Bouvier: decides which kind of emergency the call is")
@@ -14,5 +14,5 @@ public interface ZaoClassifies {
             it is hurt, whatever else is going on. Return one word only.
 
             The call: {{Call}}""")
-    String classify(@V("Call") String call);
+    String classify(@K(Keys.Call.class) String call);
 }

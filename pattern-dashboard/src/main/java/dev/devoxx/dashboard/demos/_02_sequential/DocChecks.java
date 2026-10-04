@@ -1,8 +1,8 @@
 package dev.devoxx.dashboard.demos._02_sequential;
 
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 /** Doc the St. Bernard, white Ranger: the medic, who decides what is safe — and says no often. */
 public interface DocChecks {
@@ -13,5 +13,5 @@ public interface DocChecks {
             where they were found, because the next Ranger only reads your report.
 
             The rescue: {{RescueStatus}}""")
-    String check(@V("RescueStatus") String rescueStatus);
+    String check(@K(Keys.RescueStatus.class) String rescueStatus);
 }

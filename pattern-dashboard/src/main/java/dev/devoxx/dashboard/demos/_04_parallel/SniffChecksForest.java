@@ -1,8 +1,9 @@
 package dev.devoxx.dashboard.demos._04_parallel;
 
+import dev.devoxx.dashboard.demos._01_single.Keys.Mission;
 import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.service.UserMessage;
-import dev.langchain4j.service.V;
 
 public interface SniffChecksForest {
     @Agent(description = "Sniff the Beagle: inspects the forest path before the storm")
@@ -11,5 +12,5 @@ public interface SniffChecksForest {
             CLOSED. Only the forest path — the other Rangers are checking everything else.
 
             Storm warning: {{Mission}}""")
-    String forest(@V("Mission") String mission);
+    String forest(@K(Mission.class) String mission);
 }
