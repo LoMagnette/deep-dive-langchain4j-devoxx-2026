@@ -87,6 +87,13 @@
            moment you reset or switch pattern: a stale number next to a Run button reads as
            this run's. -->
       <span class="ran" id="p-time" hidden></span>
+      <!-- The stage below shows ONE of two views, so the diagram gets the whole height when it
+           is the thing being presented. A dot on Data flags a result or a warning you have not
+           seen yet. Press V (outside a text field) to flip between them. -->
+      <div class="views" role="tablist" aria-label="What the stage shows">
+        <button class="view active" role="tab" data-view="diagram" aria-selected="true">Diagram</button>
+        <button class="view" role="tab" data-view="data" aria-selected="false">Data <span class="dot" id="data-dot" hidden>•</span></button>
+      </div>
     </div>
     <!-- Shown only while a run is stopped waiting for a person. The run is blocked on a thread
          until this is answered or it times out, which is the pattern, not a bug. -->
@@ -97,28 +104,36 @@
         <button class="btn-run" id="ask-send">Send</button>
       </div>
     </div>
-    <div class="graphwrap"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
-    <div class="dock" id="dock">
+    <div class="graphwrap" id="view-diagram"><svg id="graph" viewBox="0 0 820 440" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <!-- The data view: what the run produced on top, how it got there underneath. Each half has
+         its own tabs, so the scope and the event log can be read side by side in time. -->
+    <div class="dataview" id="view-data" hidden>
+      <div class="dock" id="dock-top">
+        <div class="tabs">
+          <button class="tab" data-group="top" data-pane="result">Result <span class="dot" id="result-dot" hidden>•</span></button>
+          <button class="tab active" data-group="top" data-pane="scope">Scope state</button>
+        </div>
+        <div class="pane doc" id="result" hidden><span class="empty">No run yet.</span></div>
+        <div class="pane doc" id="scope"><span class="empty">Empty until an agent writes to it.</span></div>
+      </div>
       <div class="grip" id="grip" role="separator" aria-orientation="horizontal" tabindex="0"
            title="Drag to resize — double-click to reset"></div>
-      <div class="tabs">
-        <button class="tab" data-pane="result">Result <span class="dot" id="result-dot" hidden>•</span></button>
-        <button class="tab" data-pane="scope">Scope state</button>
-        <button class="tab active" data-pane="console">Run events</button>
-        <button class="tab" data-pane="log">Server log <span class="dot" id="log-dot" hidden>•</span></button>
-        <span class="spacer"></span>
-        <select id="log-level" title="minimum level" style="display:none">
-          <option value="ALL">all levels</option>
-          <option value="INFO" selected>INFO and up</option>
-          <option value="WARN">WARN and up</option>
-          <option value="ERROR">errors only</option>
-        </select>
-        <button class="mini" id="pane-clear">clear</button>
+      <div class="dock" id="dock-bottom">
+        <div class="tabs">
+          <button class="tab active" data-group="bottom" data-pane="console">Run events</button>
+          <button class="tab" data-group="bottom" data-pane="log">Server log <span class="dot" id="log-dot" hidden>•</span></button>
+          <span class="spacer"></span>
+          <select id="log-level" title="minimum level" style="display:none">
+            <option value="ALL">all levels</option>
+            <option value="INFO" selected>INFO and up</option>
+            <option value="WARN">WARN and up</option>
+            <option value="ERROR">errors only</option>
+          </select>
+          <button class="mini" id="pane-clear">clear</button>
+        </div>
+        <div class="pane term" id="console"></div>
+        <div class="pane term" id="log" hidden></div>
       </div>
-      <div class="pane doc" id="result" hidden><span class="empty">No run yet.</span></div>
-      <div class="pane doc" id="scope" hidden><span class="empty">Empty until an agent writes to it.</span></div>
-      <div class="pane term" id="console"></div>
-      <div class="pane term" id="log" hidden></div>
     </div>
   </section>
 </div>

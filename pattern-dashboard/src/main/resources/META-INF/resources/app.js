@@ -152,7 +152,8 @@ function select(id){
   document.getElementById('p-stream-wrap').hidden = !current.streams;
   document.getElementById('p-stream').checked = false;
   reset();
-  // Result and scope were just cleared, so land on the tab that has something to show.
+  // Result was just cleared, so each half lands on the tab that will fill as the run goes.
+  showPane('scope');
   showPane('console');
   drawGraph(current.topology);
 }
@@ -242,7 +243,10 @@ function updateScope(scope){
 let tabPinned=false;
 function revealResult(){
   if(!tabPinned) showPane('result');
-  else if(activePane()!=='result') document.getElementById('result-dot').hidden=false;
+  else if(activePane('top')!=='result') document.getElementById('result-dot').hidden=false;
+  /* Never switch views for the viewer — on the diagram they are usually pointing at the timings
+     a run just left behind. Flag the Data button instead. */
+  if(currentView()!=='data') document.getElementById('data-dot').hidden=false;
 }
 
 /* The id the server gave this run, so an answer can be posted back against it: the SSE stream
@@ -289,6 +293,9 @@ function run(){
   hideAsk();
   runId=null;
   tabPinned=false;
+  // The result was just cleared; the scope is what fills while the run is going.
+  showPane('scope');
+  document.getElementById('data-dot').hidden=true;
   const input=encodeURIComponent(document.getElementById('input').value||'');
   const wantsTokens = current.streams && document.getElementById('p-stream').checked;
   streamed=''; document.getElementById('run').disabled=true;
@@ -339,22 +346,57 @@ function run(){
     document.getElementById('run').disabled=false; };
 }
 
-/* ---------- bottom dock: run events + live server log ---------- */
+/* ---------- the data view: result / scope over run events / server log ---------- */
 const LEVEL_RANK={TRACE:0,DEBUG:1,INFO:2,WARN:3,ERROR:4};
 let logLines=[];
 
-const PANES=['result','scope','console','log'];
+/* Two halves, each with its own tabs: what the run produced (top) and how it got there
+   (bottom). Showing a pane only switches the half it belongs to. */
+const GROUPS={top:['result','scope'], bottom:['console','log']};
+function groupOf(name){ return GROUPS.top.includes(name) ? 'top' : 'bottom'; }
 function showPane(name){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.pane===name));
-  PANES.forEach(p=>document.getElementById(p).hidden = p!==name);
+  const group=groupOf(name);
+  document.querySelectorAll(`.tab[data-group="${group}"]`).forEach(t=>
+    t.classList.toggle('active', t.dataset.pane===name));
+  GROUPS[group].forEach(p=>document.getElementById(p).hidden = p!==name);
   /* Per-tab controls: a level filter only means something for the log, and "clear" would be
      meaningless on panes that mirror the current run. */
-  document.getElementById('log-level').style.display = name==='log' ? '' : 'none';
-  document.getElementById('pane-clear').style.display = (name==='log'||name==='console') ? '' : 'none';
+  if(group==='bottom'){
+    document.getElementById('log-level').style.display = name==='log' ? '' : 'none';
+    document.getElementById('pane-clear').style.display = '';
+  }
   if(name==='log') document.getElementById('log-dot').hidden = true;
   if(name==='result') document.getElementById('result-dot').hidden = true;
 }
-function activePane(){ return document.querySelector('.tab.active').dataset.pane; }
+function activePane(group){
+  return document.querySelector(`.tab.active[data-group="${group}"]`).dataset.pane;
+}
+/* Whether the viewer can actually see a pane right now: its tab, AND the data view. */
+function paneVisible(name){ return currentView()==='data' && activePane(groupOf(name))===name; }
+
+/* ---------- the stage: diagram or data, one at a time ---------- */
+function currentView(){ return document.getElementById('view-data').hidden ? 'diagram' : 'data'; }
+function setView(view, persist){
+  document.getElementById('view-diagram').hidden = view!=='diagram';
+  document.getElementById('view-data').hidden = view!=='data';
+  document.querySelectorAll('.view').forEach(b=>{
+    const on = b.dataset.view===view;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  if(view==='data') document.getElementById('data-dot').hidden = true;
+  if(persist) savePrefs({view});
+}
+document.querySelectorAll('.view').forEach(b=>b.onclick=()=>setView(b.dataset.view, true));
+/* V flips the stage — handy with a clicker in one hand. Ignored while typing, so an input
+   containing a "v" stays typeable. */
+document.addEventListener('keydown', e=>{
+  if(e.key!=='v' && e.key!=='V') return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.target.closest && e.target.closest('input,textarea,select,[contenteditable]')) return;
+  if(document.body.classList.contains('on-grid')) return;
+  setView(currentView()==='data' ? 'diagram' : 'data', true);
+});
 function minLevel(){ return document.getElementById('log-level').value; }
 function passes(l){ const m=minLevel(); return m==='ALL' || (LEVEL_RANK[l.level]??2) >= LEVEL_RANK[m]; }
 
@@ -375,8 +417,10 @@ function appendLog(l){
   logLines.push(l);
   if(logLines.length>1000) logLines.shift();
   /* A problem you can't see is a problem you debug on stage: flag warnings on the tab. */
-  if((l.level==='WARN'||l.level==='ERROR') && activePane()!=='log')
-    document.getElementById('log-dot').hidden=false;
+  if((l.level==='WARN'||l.level==='ERROR') && !paneVisible('log')){
+    if(activePane('bottom')!=='log') document.getElementById('log-dot').hidden=false;
+    if(currentView()!=='data') document.getElementById('data-dot').hidden=false;
+  }
   if(!passes(l)) return;
   const el=document.getElementById('log');
   const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -389,34 +433,33 @@ function connectLogs(){
   src.onmessage=e=>{ let l; try{ l=JSON.parse(e.data); }catch(_){ return; } appendLog(l); };
 }
 
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tabPinned=true; showPane(t.dataset.pane); });
+/* Only a choice in the TOP half pins it: picking the server log says nothing about whether you
+   want the result shown when the run ends. */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  if(t.dataset.group==='top') tabPinned=true;
+  showPane(t.dataset.pane);
+});
 document.getElementById('log-level').onchange=renderLog;
 document.getElementById('pane-clear').onclick=()=>{
-  if(activePane()==='log'){ logLines=[]; renderLog(); }
+  if(activePane('bottom')==='log'){ logLines=[]; renderLog(); }
   else document.getElementById('console').innerHTML='';
 };
 
-/* ---------- layout chrome: collapsible rail, resizable dock ----------
-   Both remembered in localStorage: the speaker arranges the room's view once, and a reload
+/* ---------- layout chrome: collapsible rail, theme, view, data split ----------
+   All remembered in localStorage: the speaker arranges the room's view once, and a reload
    (or a dev-mode restart mid-talk) doesn't undo it. */
-const DOCK_MIN=120, STAGE_MIN=260, PREFS='dashboard.layout';
+const PREFS='dashboard.layout', SPLIT_MIN=0.15, SPLIT_MAX=0.85, SPLIT_DEFAULT=0.45;
 
 function loadPrefs(){ try{ return JSON.parse(localStorage.getItem(PREFS)) || {}; }catch(_){ return {}; } }
 function savePrefs(patch){ try{ localStorage.setItem(PREFS, JSON.stringify({...loadPrefs(), ...patch})); }catch(_){} }
 
-/* Prefer the height we last set over a measured rect: repeated drags would otherwise accumulate
-   sub-pixel drift, and before the first resize there is no inline value to read. */
-function dockHeight(){
-  const dock=document.getElementById('dock');
-  const inline=parseFloat(dock.style.height);
-  return Number.isFinite(inline) ? inline : dock.getBoundingClientRect().height;
-}
-function dockMax(){ return Math.max(DOCK_MIN, window.innerHeight - STAGE_MIN); }
-function setDockHeight(px, persist){
-  const h = Math.round(Math.min(dockMax(), Math.max(DOCK_MIN, px)));
-  document.getElementById('dock').style.height = h + 'px';
-  if(persist) savePrefs({dock:h});
-  return h;
+/* The bottom half's share of the data view, as a fraction. A fraction rather than pixels, so a
+   window resize or a browser zoom keeps the proportion instead of squeezing one half. */
+let split=SPLIT_DEFAULT;
+function setSplit(f, persist){
+  split = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, f));
+  document.getElementById('dock-bottom').style.flexBasis = (split*100).toFixed(1) + '%';
+  if(persist) savePrefs({split});
 }
 function prefersDark(){
   try{ return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; }
@@ -443,57 +486,49 @@ function setRailHidden(hidden, persist){
 document.getElementById('rail-toggle').onclick = () =>
   setRailHidden(!document.body.classList.contains('rail-hidden'), true);
 
-(function dockResizing(){
+(function splitResizing(){
   const grip=document.getElementById('grip');
-  let startY=0, startH=0, active=false;
+  const view=document.getElementById('view-data');
+  let active=false;
   grip.addEventListener('pointerdown', e=>{
-    active=true; startY=e.clientY; startH=dockHeight();
+    active=true;
     grip.setPointerCapture?.(e.pointerId);
     document.body.classList.add('resizing');
     e.preventDefault();
   });
   grip.addEventListener('pointermove', e=>{
-    if(active) setDockHeight(startH + (startY - e.clientY), false);   // drag up = taller
+    if(!active) return;
+    const box=view.getBoundingClientRect();
+    if(box.height) setSplit((box.bottom - e.clientY) / box.height, false);   // drag up = taller
   });
   const stop = e => {
     if(!active) return;
     active=false;
     document.body.classList.remove('resizing');
     try{ grip.releasePointerCapture?.(e.pointerId); }catch(_){}
-    savePrefs({dock:Math.round(dockHeight())});
+    savePrefs({split});
   };
   grip.addEventListener('pointerup', stop);
   grip.addEventListener('pointercancel', stop);
-  grip.addEventListener('dblclick', ()=> setDockHeight(window.innerHeight*0.34, true));
+  grip.addEventListener('dblclick', ()=> setSplit(SPLIT_DEFAULT, true));
   grip.addEventListener('keydown', e=>{
-    const step = e.shiftKey ? 60 : 15;
-    if(e.key==='ArrowUp') setDockHeight(dockHeight()+step, true);
-    else if(e.key==='ArrowDown') setDockHeight(dockHeight()-step, true);
+    const step = e.shiftKey ? 0.1 : 0.03;
+    if(e.key==='ArrowUp') setSplit(split+step, true);
+    else if(e.key==='ArrowDown') setSplit(split-step, true);
     else return;
     e.preventDefault();
-  });
-  // A shrinking window must never let the dock swallow the diagram. Rescaled by how much
-  // innerHeight actually changed, not just re-clamped: innerHeight itself shrinks when the
-  // page is zoomed in and grows when it is zoomed out (a CSS-pixel effect, not a real resize),
-  // and re-clamping a stale pixel height against that left the dock's share of the window
-  // growing on zoom-in and shrinking on zoom-out — so the diagram, which fills whatever the
-  // dock leaves it, visibly zoomed the opposite way from the rest of the page.
-  let lastInnerHeight = window.innerHeight;
-  window.addEventListener('resize', () => {
-    const ratio = window.innerHeight / lastInnerHeight;
-    lastInnerHeight = window.innerHeight;
-    setDockHeight(dockHeight() * ratio, false);
   });
 })();
 
 (function applySavedLayout(){
   const p=loadPrefs();
   applyTheme(currentTheme());
-  if(typeof p.dock === 'number') setDockHeight(p.dock, false);
+  setSplit(typeof p.split === 'number' ? p.split : SPLIT_DEFAULT, false);
+  setView(p.view === 'data' ? 'data' : 'diagram', false);
   setRailHidden(!!p.railHidden, false);
 })();
 
-/* The diagram is a viewBox scaled to fit its pane, so dragging the dock, collapsing the rail or
+/* The diagram is a viewBox scaled to fit its pane, so switching views, collapsing the rail or
    resizing the window all change how far it is scaled down — and with it how big the edge labels
    land on screen. Re-fit them rather than redraw: a redraw would throw away which nodes are
    mid-run, and mid-talk that is the one thing on the screen worth keeping. */

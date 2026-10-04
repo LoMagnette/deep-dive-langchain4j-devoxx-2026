@@ -94,7 +94,7 @@ body.rail-hidden .rail{width:0;padding-left:0;padding-right:0;visibility:hidden;
 [hidden]{display:none !important}
 
 /* Two routes share this column: the gallery (#/) and one pattern (#/<id>). */
-body.on-grid .head, body.on-grid .controls, body.on-grid .graphwrap, body.on-grid .dock{display:none}
+body.on-grid .head, body.on-grid .controls, body.on-grid .graphwrap, body.on-grid .dataview{display:none}
 body:not(.on-grid) .gallery{display:none}
 .gallery{flex:1 1 auto;min-height:0;overflow-y:auto;padding:4px 2px 0}
 .gallery-head{padding:14px 4px 16px}
@@ -283,12 +283,22 @@ table.vars tr.changed .name::before{content:'';position:absolute;left:-10px;top:
 
 .pale{color:var(--muted);font-weight:600}
 .head h2{font-family:var(--display)}
-/* bottom dock: run events + server log */
-/* Taller than a pure log strip: the result and the scope live in here now. Drag-resizable,
-   because how much room the log deserves depends on which pattern is being demoed. */
-.dock{height:34vh;min-height:120px;flex:0 0 auto;display:flex;flex-direction:column;background:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
-.grip{height:9px;flex:0 0 auto;cursor:ns-resize;background:var(--panel);position:relative}
-.grip::after{content:'';position:absolute;left:50%;top:4px;width:40px;height:3px;margin-left:-20px;border-radius:3px;background:var(--line)}
+/* The stage: one view at a time, diagram or data, so the diagram can have the full height on a
+   projector. The data view is two docks, what the run produced over how it got there, split by a
+   draggable grip; the bottom one's share is a percentage, so a window resize or a browser zoom
+   keeps the proportion rather than squeezing one half. */
+.views{display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--panel2);flex:0 0 auto}
+.controls .views button.view{padding:6px 16px;font-size:14px;font-weight:600;background:none;color:var(--muted);border-radius:999px}
+.controls .views button.view:hover{color:var(--ink)}
+.controls .views button.view.active{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
+.view .dot{color:#f87171;font-size:16px;line-height:0;vertical-align:middle}
+.dataview{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.dock{min-height:90px;display:flex;flex-direction:column;background:var(--panel);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+#dock-top{flex:1 1 0}
+#dock-bottom{flex:0 0 45%}
+.dock .tabs{padding-top:8px}
+.grip{height:12px;flex:0 0 auto;cursor:ns-resize;position:relative}
+.grip::after{content:'';position:absolute;left:50%;top:4px;width:40px;height:4px;margin-left:-20px;border-radius:3px;background:var(--line)}
 .grip:hover::after,.grip:focus-visible::after{background:var(--accent)}
 .grip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 body.resizing{cursor:ns-resize;user-select:none}

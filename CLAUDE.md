@@ -751,21 +751,30 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   in the gallery even before someone gives it a label. Cards are real `<a href="#/id">` anchors, so Back, keyboard and open-in-new-tab work
   without JS, and a pattern can be deep-linked straight from a slide. An unknown id falls back to the
   gallery rather than rendering a blank page. The tester's layout is
-  title → run controls → full-width SVG diagram → bottom dock. The dock has four tabs: **Result**
-  (rendered markdown), **Scope state** (a debugger-style variables table: name / type / value, with
-  the rows an agent just wrote highlighted, and long values clamped until clicked — expansion
-  survives the next update so a row doesn't collapse mid-run), **Run events**
-  (`/api/patterns/{id}/run`) and
-  **Server log** (`/api/logs`, with a level filter — the real prompts and answers land here from
-  `ChatCallLog`, interleaved with the framework's own lines). A dot flags a WARN/ERROR — or a finished result —
-  on a tab you haven't looked at. Finishing a run switches to Result automatically, *unless* the viewer
-  picked a tab themselves during that run (`tabPinned`) — never yank the view out from under someone.
+  title → run controls → **one stage showing ONE of two views**, switched by a Diagram / Data
+  control at the right end of the run bar (or the **V** key, outside a text field). It used to be
+  diagram above a bottom dock, and on a projector the diagram ended up too small to read — so the
+  diagram now gets the whole stage when it is the thing being presented. The **Data** view is
+  two stacked docks with their own tabs: **Result** / **Scope state** on top (what the run
+  produced) and **Run events** / **Server log** below (how it got there, and the real prompts from
+  `ChatCallLog`, with a level filter). The grip between them sets the bottom half's share as a
+  **fraction**, not pixels, so a resize or a browser zoom keeps the proportion; it is persisted
+  (`split`) with the chosen view (`view`). The Scope state tab is a debugger-style variables
+  table (name / type / value, rows an agent just wrote highlighted, long values clamped until
+  clicked, expansion surviving the next update). `showPane` switches only the half a pane
+  belongs to (`GROUPS`), and `paneVisible` is "its tab is active AND the data view is showing".
+  A run starts with the top half on Scope state (it fills as agents write) and ends on Result
+  — unless the viewer picked a top tab during that run (`tabPinned`; picking the server log does
+  not pin). **The view itself is never switched for the viewer**: on the diagram they are usually
+  pointing at the timings the run left behind, so a finished result, or a WARN/ERROR in the log,
+  puts a dot on the Data button instead.
 - **`[hidden]{display:none !important}` is declared once in `app.css`, and it has to be.** The
   `hidden` attribute is only `[hidden]{display:none}` in the browser's own stylesheet, so any
   author rule that sets `display` on the same element silently beats it. The runtime badge
   (`.ran{display:inline-flex}`) sat in the controls as an empty pill before the first run for
-  exactly that reason. Eight elements on this page are toggled with `el.hidden` — the badge, the
-  builds-on line, the human-in-the-loop panel, the two unread dots and the three dock panes — so
+  exactly that reason. A dozen elements on this page are toggled with `el.hidden` — the badge, the
+  builds-on line, the human-in-the-loop panel, the unread dots, the dock panes and the two views
+  (`.dataview` is `display:flex`, the newest case of exactly this) — so
   this is a rule about the page, not about one bug.
 - **The tester leads with the story; the teaching text is folded away.** `useful` and `caveat`
   live in a native `<details class="notes">`, **closed by default** — on stage the story beat is
@@ -823,8 +832,8 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   Every colour pair is checked against WCAG 4.5:1 in both themes — the event and log panes are dark
   in *both*, so their text colours are deliberately theme-independent (theme-following inks
   measured 2.8:1 there).
-  The rail collapses (header ☰) and the dock is drag-resizable by its grip (arrow keys too,
-  double-click to reset); both sizes persist in `localStorage` under `dashboard.layout`, so a reload
+  The rail collapses (header ☰) and the data view's split is drag-resizable by its grip (arrow
+  keys too, double-click to reset); both persist in `localStorage` under `dashboard.layout`, so a reload
   or a dev-mode restart mid-talk doesn't undo how the room's view was set up. Every storage access is
   wrapped — a private-mode browser where `localStorage` throws must still boot the page.
 - **Edge labels are placed, not just positioned** (`placeEdgeLabels` / `fitEdgeLabels` in
