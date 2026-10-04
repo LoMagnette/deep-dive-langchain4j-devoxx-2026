@@ -57,8 +57,13 @@ public final class SequentialPattern {
                 .outputKey("Article")
                 .build();
 
-        // TODO live: sequenceBuilder
-        return "TODO live: sequenceBuilder";
+        UntypedAgent app = AgenticServices.sequenceBuilder()
+                                          .subAgents(sniff, zoom, doc, howl)
+                                          .outputKey("Article")
+                                          .listener(listener)
+                                          .build();
+        var r = app.invokeWithAgenticScope(Map.of("Mission", input));
+        return String.valueOf(r.result());
     }
 
     /** How the page draws it, and what the catalogue shows. */
