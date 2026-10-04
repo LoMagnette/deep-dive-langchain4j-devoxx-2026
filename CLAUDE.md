@@ -739,9 +739,15 @@ web/             PatternResource · LogResource · LogStream — REST and SSE
   different arrangements. A category chip on every card was the earlier design and it was worse
   twice over: it made the reader sort what the layout can sort for them, and it competed with the
   pattern's own name for the top-left of the card. The colour each chip carried survives as a
-  small dot on the group heading. A card holds the pattern's name, its `useful` line, and a
-  label-free thumbnail of its topology drawn by the same `layout()` the real diagram uses, so a
-  fan-out is recognisable from a chain at a glance. **Three cards a row at most** — the track
+  small dot on the group heading. A card reads top to bottom: **Mission N** (its catalogue
+  index, which is the mission number), the pattern's name in bold, its **`gist`** in ink — one
+  plain line saying what the mechanism IS, set at the end of each `define()` with
+  `.gist("…")` — then a label-free thumbnail of its topology, then the story beat, italic and
+  quiet, under a rule. The cards used to show only the story, and a grid of dog anecdotes did
+  not say which card was a fan-out and which a planner. The thumbnail uses the same `layout()`
+  as the real diagram but is **cropped to its boxes** (the live canvas's label margins left the
+  shape a smudge mid-frame) and inked with `--edge-line`; agents are accent-tinted, a
+  supervisor/router solid accent, a planner dashed, so a star reads as "one box in charge". **Three cards a row at most** — the track
   minimum is `max(255px, (100% - 28px)/3)`, so a wide screen lands on exactly three and a narrow
   one still falls back to two and then one, with no width in between that yields four. Unbounded
   `auto-fill` put five or six across a large monitor, which read as a list and shrank the

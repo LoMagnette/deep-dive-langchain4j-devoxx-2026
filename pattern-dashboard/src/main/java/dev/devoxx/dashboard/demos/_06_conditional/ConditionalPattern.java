@@ -85,6 +85,7 @@ public final class ConditionalPattern {
                 topo,
                 "Pup HQ, emergency phone: Mrs Pebble's tortoise has fallen down the old well "
                         + "behind the bakery, and she can hear him shouting.",
-                ConditionalPattern::run);
+                ConditionalPattern::run)
+                .gist("A router picks the one agent that handles the input.");
     }
 }

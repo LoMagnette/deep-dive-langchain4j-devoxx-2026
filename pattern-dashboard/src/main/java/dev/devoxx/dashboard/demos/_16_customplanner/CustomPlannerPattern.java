@@ -86,6 +86,7 @@ public final class CustomPlannerPattern {
                 "Missions: find the Mayor's reading glasses; fetch the post from the station; dig "
                         + "out the blocked drain on Elm Street; check the new puppy at number 4. "
                         + "Energy: Sniff 90, Zoom 75, Dig 40, Doc 80. Zoom is hungry.",
-                CustomPlannerPattern::run);
+                CustomPlannerPattern::run)
+                .gist("Your own Planner class decides every next step, in plain Java.");
     }
 }

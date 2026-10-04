@@ -129,6 +129,7 @@ public final class BlackboardPattern {
                 "Paws up, Rangers! The Great Sausage Heist: every sausage in the butcher's "
                         + "window is gone, the door was locked, and a sausage crumb has been found "
                         + "in Zao's beard.",
-                BlackboardPattern::run);
+                BlackboardPattern::run)
+                .gist("Specialists add to a shared board as soon as they are able to.");
     }
 }

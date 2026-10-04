@@ -104,11 +104,11 @@ body:not(.on-grid) .gallery{display:none}
    same way and in the same order, so the two views do not teach different arrangements — and a
    chip on every card competed with the pattern's own name for the top-left corner while making
    the reader do the sorting the layout can do for them. */
-.groups{display:flex;flex-direction:column;gap:28px;padding-bottom:8px}
+.groups{display:flex;flex-direction:column;gap:34px;padding-bottom:8px}
 .group-head{display:flex;align-items:baseline;gap:9px;margin:0 4px 11px;padding-bottom:7px;
   border-bottom:1px solid var(--line)}
-.group-head h3{font-family:var(--display);margin:0;font-size:17.5px;letter-spacing:-.01em}
-.group-head .note{color:var(--muted);font-size:13px}
+.group-head h3{font-family:var(--display);margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.group-head .note{color:var(--muted);font-size:14.5px}
 .group-head .count{margin-left:auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 /* The dot keeps the colour each category used to carry on its chip — a quick anchor when
    scrolling, at a size that cannot read as a badge. */
@@ -130,8 +130,8 @@ body:not(.on-grid) .gallery{display:none}
    auto-fill, NOT auto-fit: the sections with one or two patterns keep cards the same size as
    everywhere else instead of stretching a lone card across the row.
    The 28px is the two gaps between three cards — keep it in step with `gap` on the line above. */
-.cards{display:grid;gap:14px;
-  grid-template-columns:repeat(auto-fill,minmax(max(255px,(100% - 28px)/3),1fr))}
+.cards{display:grid;gap:16px;
+  grid-template-columns:repeat(auto-fill,minmax(max(255px,(100% - 32px)/3),1fr))}
 @media (max-width:560px){
   /* Stacked headings need the note on its own line or it squeezes the group name to two words. */
   .group-head{flex-wrap:wrap}
@@ -139,22 +139,34 @@ body:not(.on-grid) .gallery{display:none}
 }
 /* Cards are real links, so Back, keyboard and open-in-new-tab all work without JS. */
 .card{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--panel);
-  border-radius:16px;padding:14px 15px 13px;box-shadow:var(--shadow);
+  border-radius:16px;padding:16px 18px 15px;box-shadow:var(--shadow);
   transition:transform .12s ease, box-shadow .12s ease}
 .card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(0,0,0,.06),0 16px 34px -16px rgba(0,0,0,.30)}
 .card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* No top margin any more: the category chip that used to sit above the name is gone, so the
    name is the first thing in the card. */
-.card h3{font-family:var(--display);margin:0 0 5px;font-size:16.5px;letter-spacing:-.01em}
+/* Hierarchy, strongest first: the name, then what it does (in ink, not muted — it is the line
+   that makes the card readable to someone new), then the shape, then the story, quietest. */
+.card .mission{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:4px}
+.card h3{margin:0 0 6px;font-size:18.5px;font-weight:700;line-height:1.25;letter-spacing:-.01em}
+.card .gist{margin:0;color:var(--ink);font-size:15px;line-height:1.4}
 .card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.4}
 /* A shape signature: you learn to recognise a fan-out from a chain before reading the name. */
-.thumb{width:100%;height:60px;display:block;margin-top:12px;background:var(--panel2);border-radius:10px}
-.thumb .tedge{stroke:var(--node-line);stroke-width:5;fill:none}
-.thumb .tnode{fill:var(--node);stroke:var(--node-line);stroke-width:4}
+/* Big enough to recognise, and inked like the real diagram's arrows (--edge-line): at the old
+   60px with --node-line it was a faint grey smudge that no shape could be read from. */
+.thumb{width:100%;height:96px;display:block;margin:14px 0 12px;background:var(--panel2);border-radius:10px;padding:8px 10px;box-sizing:border-box}
+.thumb .tedge{stroke:var(--edge-line);stroke-width:7;fill:none}
+.thumb .tnode{fill:var(--node);stroke:var(--edge-line);stroke-width:6}
+.thumb .tnode.agent{fill:var(--accent-soft);stroke:var(--accent)}
+.thumb .tnode.code{fill:var(--panel);stroke:var(--edge-line);stroke-dasharray:none}
 .thumb .tnode.input{fill:var(--panel2)}
 .thumb .tnode.join{fill:var(--panel2);stroke-dasharray:10 7}
 .thumb .tnode.board{fill:var(--board);stroke:var(--board-line)}
-.thumb .tnode.supervisor,.thumb .tnode.router{fill:var(--accent-soft);stroke:var(--accent)}
+/* The decider is solid accent, so a star reads as "one box in charge" at a glance. */
+.thumb .tnode.supervisor,.thumb .tnode.router{fill:var(--accent);stroke:var(--accent)}
+.thumb .tnode.planner{fill:var(--panel);stroke:var(--accent);stroke-dasharray:8 6}
+.thumb .tnode.human{fill:var(--panel);stroke:var(--ink)}
 .back{display:inline-block;margin-bottom:6px;color:var(--muted);text-decoration:none;font-size:13.5px;font-weight:600}
 .back:hover{color:var(--accent)}
 .head{padding:16px 4px 0;flex:0 0 auto}
@@ -170,7 +182,8 @@ body:not(.on-grid) .gallery{display:none}
 .walk .step:hover{color:var(--accent)}
 .walk .step:empty{visibility:hidden}
 .walk #p-next{margin-left:auto;text-align:right}
-.card .story{font-family:inherit;font-size:13.5px;line-height:1.4;margin:0;color:var(--muted)}
+.card .story{font-family:inherit;font-size:13.5px;line-height:1.45;margin:auto 0 0;color:var(--muted);
+  font-style:italic;padding-top:10px;border-top:1px solid var(--line)}
 /* What this demo reuses from the ones before it. Marked with the accent because by the capstone
    almost every box on the diagram is something the room has already watched run, and nothing says
    so unless this line does. */

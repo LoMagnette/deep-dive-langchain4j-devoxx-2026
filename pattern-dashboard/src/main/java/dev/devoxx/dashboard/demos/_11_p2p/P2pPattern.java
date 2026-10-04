@@ -112,6 +112,7 @@ public final class P2pPattern {
                 topo,
                 "Paws up, Rangers! The Mayor's goat, Gertrude, has wandered into the giant corn "
                         + "maze at Hillside Farm. She was last heard bleating somewhere in the middle.",
-                P2pPattern::run);
+                P2pPattern::run)
+                .gist("No leader: agents react whenever a value they listen to changes.");
     }
 }

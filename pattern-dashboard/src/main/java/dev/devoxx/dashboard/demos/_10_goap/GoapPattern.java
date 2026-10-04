@@ -103,6 +103,7 @@ public final class GoapPattern {
                 topo,
                 "Paws up, Rangers! Marmalade is stuck on top of the water tower — 12 metres up — and "
                         + "is yowling at the whole of Barkville.",
-                GoapPattern::run);
+                GoapPattern::run)
+                .gist("Name the goal; the planner derives the order from what each needs.");
     }
 }

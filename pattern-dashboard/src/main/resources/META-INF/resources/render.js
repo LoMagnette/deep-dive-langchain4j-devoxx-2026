@@ -381,8 +381,14 @@ function stampNode(g, took){
 }
 
 function drawThumb(svg, topo){
-  const {nodes, idx, cw, ch} = layout(topo);
-  svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
+  const {nodes, idx} = layout(topo);
+  /* Cropped to the boxes, not the full canvas: the canvas is sized for the live diagram's
+     labels and padding, and at thumbnail size that margin left the shape a smudge in the middle
+     of its frame. A margin of half a box keeps the outer strokes clear of the edge. */
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const x0 = Math.min(...xs) - NW/2 - NW/4, x1 = Math.max(...xs) + NW/2 + NW/4;
+  const y0 = Math.min(...ys) - NH/2 - NH/2, y1 = Math.max(...ys) + NH/2 + NH/2;
+  svg.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
   const parts = [];
   topo.edges.forEach(e => {
     const a = idx[e.from], b = idx[e.to];

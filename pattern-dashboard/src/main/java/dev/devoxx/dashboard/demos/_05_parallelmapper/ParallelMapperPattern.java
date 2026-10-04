@@ -80,6 +80,7 @@ public final class ParallelMapperPattern {
                         + "fountain; Noodle — last seen under the bandstand; Pip — last seen at the "
                         + "bus stop; Socks — last seen in the Mayor's roses; Bean — last seen "
                         + "following Marmalade",
-                ParallelMapperPattern::run);
+                ParallelMapperPattern::run)
+                .gist("One agent, run once per item, all at once — then gathered.");
     }
 }

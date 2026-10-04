@@ -119,6 +119,7 @@ public final class SupervisorPattern {
                 "Paws up, Rangers! The Town Fair is chaos: a lost child by the carousel, a "
                         + "runaway sausage cart rolling towards the duck pond, and a hole in the "
                         + "bouncy castle.",
-                SupervisorPattern::run);
+                SupervisorPattern::run)
+                .gist("A model decides who to call next, and when to stop.");
     }
 }

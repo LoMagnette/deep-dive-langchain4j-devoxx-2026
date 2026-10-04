@@ -41,7 +41,7 @@ Off the dial entirely, and deliberately so:
 - **Composites** (`sitterNote`, `secondDogCouncil`) — several patterns wired into one system. The
   builders *nest*: each composite is itself an `UntypedAgent` another builder takes as a sub-agent.
 - **Running it for real** (`modelRouting`, `async`, `resilience`) — not positions on the dial but
-  *modifiers*, one call each, that rivet onto any pattern above.
+  *modifiers*, one call each, that bolt onto any pattern above.
 
 Note the shape of the walk: §1–§5 go left to right through the workflows, §6 jumps to the far right
 (the supervisor — the pivot), and §7 comes back to the middle ground. That is why the dashboard's

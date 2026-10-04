@@ -106,6 +106,7 @@ public final class ParallelPattern {
                 "Paws up, Rangers! Storm warning for Barkville: winds of 90 km/h from six tonight. "
                         + "Check the river bridge, the forest path and the old drainage tunnels "
                         + "before then.",
-                ParallelPattern::run);
+                ParallelPattern::run)
+                .gist("Independent agents run at the same time; results merged.");
     }
 }

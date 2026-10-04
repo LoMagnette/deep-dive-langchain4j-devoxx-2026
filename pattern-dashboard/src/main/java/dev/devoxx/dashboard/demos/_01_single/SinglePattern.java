@@ -127,6 +127,7 @@ public final class SinglePattern {
                 SinglePattern::run,
                 // The only demo that honours the token toggle: streaming is a property of the
                 // LAST agent, and every other entry ends on something that is not one.
-                true);
+                true)
+                .gist("One agent that chooses its own tools.");
     }
 }

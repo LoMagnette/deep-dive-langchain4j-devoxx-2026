@@ -112,6 +112,7 @@ public final class DebatePattern {
                 topo,
                 "Barkville town council: should the empty lot on Elm Street become a dog park or a "
                         + "cat café? Howl speaks for the dog park, Marmalade for the cat café.",
-                DebatePattern::run);
+                DebatePattern::run)
+                .gist("Agents argue in rounds; a judge rules at the end.");
     }
 }

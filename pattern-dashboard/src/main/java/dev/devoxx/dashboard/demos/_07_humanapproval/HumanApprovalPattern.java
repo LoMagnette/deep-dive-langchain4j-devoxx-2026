@@ -108,6 +108,7 @@ public final class HumanApprovalPattern {
                 topo,
                 "Paws up, Rangers! A hedgehog is trapped under the Mayor's prize roses, the ones "
                         + "that won Best in Show. The Mayor is at the flower show until four.",
-                HumanApprovalPattern::run);
+                HumanApprovalPattern::run)
+                .gist("The run stops and waits for a person to decide.");
     }
 }

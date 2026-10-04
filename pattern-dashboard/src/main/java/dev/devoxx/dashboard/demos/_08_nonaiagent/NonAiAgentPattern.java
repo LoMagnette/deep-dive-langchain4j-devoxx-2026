@@ -79,6 +79,7 @@ public final class NonAiAgentPattern {
                 topo,
                 "Paws up, Rangers! The kitten's branch on the Main Street oak is 6 metres up. "
                         + "Rivet, how long a ladder? Zoom, go and get it.",
-                NonAiAgentPattern::run);
+                NonAiAgentPattern::run)
+                .gist("Plain Java as an agent: no model, no guessing.");
     }
 }

@@ -91,6 +91,7 @@ public final class SequentialPattern {
                         + "forgets to say where the kitten was, Howl cannot know. That is why "
                         + "Doc's prompt tells him to repeat it — the seam is a key, and the key "
                         + "is all the next agent has.",
-                topo, KITTEN, SequentialPattern::run);
+                topo, KITTEN, SequentialPattern::run)
+                .gist("Agents in a fixed order, each reading the last one's output.");
     }
 }

@@ -130,6 +130,7 @@ public final class MegaMuttPattern {
                         + "Java steps, `TapeMeasure` and `GazetteBrief`, do the joining. And Zoom's "
                         + "output key is chosen by this wiring, not by Zoom: the key is the "
                         + "contract, and a composite is where contracts get written.",
-                topo, SequentialPattern.KITTEN, MegaMuttPattern::run);
+                topo, SequentialPattern.KITTEN, MegaMuttPattern::run)
+                .gist("Workflows nest: earlier missions and a loop, inside one sequence.");
     }
 }

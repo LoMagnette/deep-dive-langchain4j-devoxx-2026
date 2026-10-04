@@ -159,6 +159,7 @@ public final class BdiPattern {
                 topo,
                 "Radio: a squirrel has just run off towards the riverbank. Also, the old bridge "
                         + "over the river came down in the storm last night.",
-                BdiPattern::run);
+                BdiPattern::run)
+                .gist("Ranked desires with plans; a new belief can preempt one.");
     }
 }

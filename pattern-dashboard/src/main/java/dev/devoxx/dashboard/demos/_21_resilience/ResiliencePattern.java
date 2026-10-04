@@ -135,6 +135,7 @@ public final class ResiliencePattern {
                 // Mentions an injury, so the optional step runs. Delete "a thorn in its paw" on
                 // stage and watch the same run skip Doc and still get the kitten down.
                 SequentialPattern.KITTEN + " It has a thorn in its paw.",
-                ResiliencePattern::run);
+                ResiliencePattern::run)
+                .gist("Skip a step whose input is missing; retry a call that fails.");
     }
 }

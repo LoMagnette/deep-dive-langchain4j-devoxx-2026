@@ -110,6 +110,7 @@ public final class LakePartyPattern {
                         + "they declared — so the inspection is written back INTO the mission, "
                         + "original words first, or Rivet's ruler loses the measured thickness. "
                         + "Reusing an agent means accepting the key it already declared.",
-                topo, VotingPattern.LAKE, LakePartyPattern::run);
+                topo, VotingPattern.LAKE, LakePartyPattern::run)
+                .gist("A mapper, a veto vote and an announcement, wired as one system.");
     }
 }

@@ -17,7 +17,7 @@ const CAT_NOTES = {"classic":"A plain AI service: tools and guardrails, no agent
                    "planner":"The system decides: Zao, a plan, or the pups themselves",
                    "minds":"You can write the rules yourself",
                    "composite":"Several missions wired into one bigger Ranger",
-                   /* Not a position on the dial — a modifier you can rivet onto any of the above,
+                   /* Not a position on the dial — a modifier you can bolt onto any of the above,
                       which is why this group sits outside the ordering rather than inside it. */
                    "production":"Not where on the dial — what it takes to run it"};
 let patterns = [], current = null, es = null;
@@ -105,11 +105,17 @@ function buildGallery(){
       a.className = 'card';
       a.href = '#/' + encodeURIComponent(p.id);
       a.dataset.id = p.id;
-      /* The card shows the STORY, not the `useful` line: scanned top to bottom the gallery is
-         then the narration itself, and the tester page carries the explanation. */
-      a.innerHTML = `<h3>${escapeHtml(p.name)}</h3>`
-        + `<p class="story">${escapeHtml(p.story || p.useful)}</p>`
-        + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`;
+      /* Read top to bottom: which mission, what the pattern IS (name and gist — enough for
+         someone who has not heard the talk), its shape, and then the story beat, quieter, below
+         a rule. The story alone used to carry the card, and a grid of dog anecdotes did not say
+         which card was a fan-out and which a planner. The mission number is the index in the
+         catalogue, which is also the spec's mission number and the package's _NN_. */
+      const mission = patterns.indexOf(p);
+      a.innerHTML = `<span class="mission">Mission ${mission}</span>`
+        + `<h3>${escapeHtml(p.name)}</h3>`
+        + (p.gist ? `<p class="gist">${escapeHtml(p.gist)}</p>` : '')
+        + `<svg class="thumb" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>`
+        + `<p class="story">${escapeHtml(p.story || p.useful)}</p>`;
       cards.appendChild(a);
       drawThumb(a.querySelector('.thumb'), p.topology);
     });

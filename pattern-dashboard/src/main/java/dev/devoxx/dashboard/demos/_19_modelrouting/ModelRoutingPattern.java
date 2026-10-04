@@ -102,6 +102,7 @@ public final class ModelRoutingPattern {
                 topo,
                 "Pup HQ night phone: Grandpa Biscuit slipped on the ice outside the bakery, and "
                         + "his ankle has swollen up like a melon.",
-                ModelRoutingPattern::run);
+                ModelRoutingPattern::run)
+                .gist("A cheap or a strong model, chosen per call from the scope.");
     }
 }

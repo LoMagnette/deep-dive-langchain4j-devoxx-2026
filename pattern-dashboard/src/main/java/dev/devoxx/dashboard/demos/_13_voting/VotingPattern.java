@@ -130,6 +130,7 @@ public final class VotingPattern {
                         + "EQUAL votes: \"SAFE — the ducks are on it\" and \"SAFE, 12 cm\" are two "
                         + "different votes to it, so every vote has to be read down to a word a "
                         + "tally can compare before any strategy means anything.",
-                topo, LAKE, VotingPattern::run);
+                topo, LAKE, VotingPattern::run)
+                .gist("Several agents vote; a strategy turns the votes into a decision.");
     }
 }

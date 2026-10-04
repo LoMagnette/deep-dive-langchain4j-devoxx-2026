@@ -118,6 +118,7 @@ public final class LoopPattern {
                 topo,
                 "Poster for the Barkville Town Fair: Saturday 12 October, on Barkville Green, "
                         + "10:00 to 16:00. Free entry. Sausage stall, and the dog show at 14:00.",
-                LoopPattern::run);
+                LoopPattern::run)
+                .gist("Repeat a step until a critic's score clears the bar.");
     }
 }

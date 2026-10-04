@@ -89,6 +89,7 @@ public final class AsyncPattern {
                 topo,
                 "Paws up, Rangers! Storm warning for Barkville: winds of 90 km/h from six tonight. "
                         + "Check the forest path, the river bridge and the old drainage tunnels.",
-                AsyncPattern::run);
+                AsyncPattern::run)
+                .gist("An agent runs in the background; you wait only where it is read.");
     }
 }

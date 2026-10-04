@@ -111,6 +111,7 @@ public final class AiServicePattern {
                 "Dear Pup HQ, I have lost my reading glasses again. Please tell me everything: "
                         + "which Ranger can find them, all about how he works, his whole history "
                         + "with Barkville, and exactly when he can come. Leave nothing out! — The Mayor",
-                AiServicePattern::run);
+                AiServicePattern::run)
+                .gist("One model call with tools and guardrails — no agents yet.");
     }
 }
