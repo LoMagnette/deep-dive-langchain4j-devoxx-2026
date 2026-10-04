@@ -63,15 +63,15 @@ public final class ParallelPattern {
             StormWarning app = AgenticServices.sequenceBuilder(StormWarning.class)
                     .name("Sequential")
                     .subAgents(inspections, zao)
-                    .outputKey(SafetyReport.class)
+                    // The report is built from the scope by the workflow itself, so the caller
+                    // gets the finished answer and never has to read the scope back.
+                    .output(scope -> "**Safety report**\n\n" + scope.readState(SafetyReport.class)
+                            + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
+                            + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
+                            + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), ""))
                     .listener(listener)
                     .build();
-            var r = app.warn(input);
-            var scope = r.agenticScope();
-            return "**Safety report**\n\n" + r.result()
-                    + "\n\n---\n\n*Bridge (Zoom):* " + requireNonNullElse(scope.readState(BridgeReport.class), "")
-                    + "\n\n*Forest (Sniff):* " + requireNonNullElse(scope.readState(ForestReport.class), "")
-                    + "\n\n*Tunnels (Dig):* " + requireNonNullElse(scope.readState(TunnelReport.class), "");
+            return app.warn(input).result();
         }
     }
 
